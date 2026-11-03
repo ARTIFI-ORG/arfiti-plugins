@@ -407,10 +407,18 @@ Comments and read-only questions do not authorize changes. Do not mark a review
 completed through `agent_request.update` or manually post a second invoice to
 bypass its owner.
 
+Questions from Master Data (and other model-driven agents) take a plain-words
+answer. The agent that asked carries it out with its own permissions, not the
+person's, and records what it did on the task: applied, partly applied, failed
+with the reason (including a permission it lacks), or a follow-up question. A
+change that needs approval brings the task back to the agent after the decision.
+Telling an agent to "take all permissions" does nothing: permissions change only
+in the agent's configuration.
+
 If the response is refused with "A response is already being processed", an
 earlier answer is still with its agent: wait for its outcome on the task. For
-vendor/customer reviews, Bill reviews and billing usage tasks, a run that fails
-before doing anything with the answer releases it: the task shows "could not be
+Master Data and other model-driven agents, Bill reviews and billing usage tasks,
+an answer the agent did not act on is released: the task shows "could not be
 carried out" and accepts a new answer. Other tasks keep the answer until their
 agent records an outcome; ask an administrator if one stays stuck. A `review_auto_created_*` request must name an existing vendor or
 customer (`entity_type`, `entity_id`); creating one without is refused.
