@@ -1,0 +1,9 @@
+{
+  "name": "arfiti-core-reconciliation",
+  "description": "AP/AR reconciliation and card purchase review using shared backend matching, separate evidence obligations, and provider coverage controls.",
+  "version": "2.0.0",
+  "license": "MIT",
+  "author": {
+    "name": "Arfiti"
+  }
+}

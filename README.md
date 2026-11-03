@@ -10,23 +10,22 @@ Universal plugins that work with any chart of accounts and any country.
 
 | Plugin | What it does | Commands |
 |--------|-------------|----------|
-| [artifi-core-financial-reports](./artifi-core-financial-reports) | Financial reporting suite: Balance Sheet, P&L, Cash Flow, Trial Balance, Aging Analysis, and Dimension Analysis. Discovers account properties dynamically — works with any COA. | `/balance-sheet` `/profit-and-loss` `/cash-flow` `/trial-balance` `/aged-receivables` `/aged-payables` `/dimension-analysis` `/financial-summary` |
-| [artifi-core-budget-planning](./artifi-core-budget-planning) | Budget planning: annual/quarterly budgets, forecasting from actuals, employee cost budgeting with burden rates, and project budgeting. | `/create-budget` `/forecast-budget` `/preview-budget` `/review-variance` |
-| [artifi-core-cost-allocation](./artifi-core-cost-allocation) | Cost allocation across departments, projects, or dimensions. Standalone mode (from GL balances) and document-linked mode (from a specific bill/invoice with full traceability). | `/run-allocation` `/preview-allocation` |
-| [artifi-core-implementation-consultant](./artifi-core-implementation-consultant) | ERP migration consultant. Guides customers through the full migration journey: chart of accounts setup, opening balances with open transactions (individual AR invoices, AP bills, fixed assets), master data import, gap period transaction processing, and go-live verification. Supports 4 migration paths — Connector (Merit/QBO/SmartAccounts), CSV/Manual, Greenfield, and Hybrid. Features advisory intelligence that scans the balance sheet to detect what additional data is needed. | `/start-migration` `/migration-status` `/import-data` `/verify-migration` `/close-migration` |
-| [artifi-core-reconciliation](./artifi-core-reconciliation) | Payment-to-invoice reconciliation. Automated 6-pass matching via reconciliation agent, then guided manual matching for complex cases — N:N splits, partial payments, rounding write-offs. Supports AR and AP. | `/reconcile` `/match-payment` `/reconciliation-status` |
-| [artifi-core-country-setup](./artifi-core-country-setup) | Generates country-specific tax and payroll configuration templates. Researches VAT/GST rates, tax authorities, withholding taxes, and payroll rules to produce structured JSON for onboarding. | `/generate-country-template` |
-| [artifi-credit-intelligence](./artifi-credit-intelligence) | Credit intelligence on a borrower's live general ledger. Produces real-time credit memos with DSCR, leverage, working-capital cycle, concentration risk, and early-warning signals — with citations back to specific GL transactions. Designed for banks, alt lenders, and PE credit teams monitoring portfolio borrowers. | `/credit-read` `/covenant-monitor` `/cash-runway` `/borrower-watchlist` |
-| [artifi-fund-servicing](./artifi-fund-servicing) | Fund-servicing back office on an AI-native ledger. Strikes NAV, accrues management/performance fees, processes investor subscriptions and redemptions, maintains the cap table, and produces investor statements. The accounting layer behind tokenized funds, FoFs, and private-market vehicles. | `/nav-strike` `/investor-statement` `/cap-table` |
+| [arfiti-core-financial-reports](./arfiti-core-financial-reports) | Financial reporting suite: Balance Sheet, P&L, Cash Flow, Trial Balance, Aging Analysis, and Dimension Analysis. Discovers account properties dynamically — works with any COA. | `/balance-sheet` `/profit-and-loss` `/cash-flow` `/trial-balance` `/aged-receivables` `/aged-payables` `/dimension-analysis` `/financial-summary` |
+| [arfiti-core-budget-planning](./arfiti-core-budget-planning) | Budget planning: annual/quarterly budgets, forecasting from actuals, employee cost budgeting with burden rates, and project budgeting. | `/create-budget` `/forecast-budget` `/preview-budget` `/review-variance` |
+| [arfiti-core-cost-allocation](./arfiti-core-cost-allocation) | Cost allocation across departments, projects, or dimensions. Standalone mode (from GL balances) and document-linked mode (from a specific bill/invoice with full traceability). | `/run-allocation` `/preview-allocation` |
+| [arfiti-core-erp](./arfiti-core-erp) | The operating manual for the Arfiti ERP inside Claude: the `submit` write gateway and its approval lanes, the read tools, the `get_*` / `manage_*` tool pairs, and a domain guide for each area. Skills and reference documents only; generated from the monorepo skill templates. | Skill `arfiti-erp` (no slash commands) |
+| [arfiti-core-implementation-consultant](./arfiti-core-implementation-consultant) | ERP migration consultant. Guides customers through the full migration journey: chart of accounts setup, opening balances with open transactions (individual AR invoices, AP bills, fixed assets), master data import, gap period transaction processing, and go-live verification. Supports 4 migration paths — Connector (Merit/QBO/SmartAccounts), CSV/Manual, Greenfield, and Hybrid. Features advisory intelligence that scans the balance sheet to detect what additional data is needed. | `/start-migration` `/migration-status` `/import-data` `/verify-migration` `/close-migration` |
+| [arfiti-core-reconciliation](./arfiti-core-reconciliation) | Payment-to-invoice reconciliation. Automated 6-pass matching via reconciliation agent, then guided manual matching for complex cases — N:N splits, partial payments, rounding write-offs. Supports AR and AP. | `/reconcile` `/match-payment` `/reconciliation-status` |
+| [arfiti-core-country-setup](./arfiti-core-country-setup) | Generates country-specific tax and payroll configuration templates. Researches VAT/GST rates, tax authorities, withholding taxes, and payroll rules to produce structured JSON for onboarding. | `/generate-country-template` |
 
 ### Estonia (EE)
 
 | Plugin | What it does | Commands |
 |--------|-------------|----------|
-| [artifi-ee-year-end-bookkeeping](./artifi-ee-year-end-bookkeeping) | Builds a full year's accounting from scratch for Estonian companies (OÜ/AS). Guides through chart of accounts setup, opening balances, bank statement processing (month by month), source document posting, reconciliation, and period close — preparing the entity for annual report filing. | `/setup-entity` `/upload-opening-balance` `/process-bank-statements` `/fill-gaps` `/reconcile-and-close` `/check-progress` |
-| [artifi-ee-annual-report](./artifi-ee-annual-report) | Prepares the full annual report (balance sheet, income statement, notes, management report) and generates XBRL for e-Business Register filing. Uses the et-gaap-2026 taxonomy. | `/prepare-annual-report` `/check-prerequisites` `/generate-xbrl-file` |
-| [artifi-ee-payroll-calculator](./artifi-ee-payroll-calculator) | Calculates gross-to-net payroll with Estonian tax formulas (social tax, income tax, unemployment insurance, funded pension) and generates TSD declarations for EMTA. | `/calculate-payroll` `/generate-tsd` |
-| [artifi-ee-vat-declaration](./artifi-ee-vat-declaration) | Prepares & validates VAT returns (KMD2 machine CSV + XML) and KMD INF annexes. Runs a pre-close validation gate, then generates. The EC Sales List (Form VD) is a separate filing. Dynamically discovers tax codes and maps to KMD lines. | `/prepare-vat-declaration` (add `validate` to run the gate only) `/prepare-ec-sales-list` |
+| [arfiti-ee-year-end-bookkeeping](./arfiti-ee-year-end-bookkeeping) | Builds a full year's accounting from scratch for Estonian companies (OÜ/AS). Guides through chart of accounts setup, opening balances, bank statement processing (month by month), source document posting, reconciliation, and period close — preparing the entity for annual report filing. | `/setup-entity` `/upload-opening-balance` `/process-bank-statements` `/fill-gaps` `/reconcile-and-close` `/check-progress` |
+| [arfiti-ee-annual-report](./arfiti-ee-annual-report) | Prepares the full annual report (balance sheet, income statement, notes, management report) and generates XBRL for e-Business Register filing. Uses the et-gaap-2026 taxonomy. | `/prepare-annual-report` `/check-prerequisites` `/generate-xbrl-file` |
+| [arfiti-ee-payroll-calculator](./arfiti-ee-payroll-calculator) | Calculates gross-to-net payroll with Estonian tax formulas (social tax, income tax, unemployment insurance, funded pension) and generates TSD declarations for EMTA. | `/calculate-payroll` `/generate-tsd` |
+| [arfiti-ee-vat-declaration](./arfiti-ee-vat-declaration) | Prepares & validates VAT returns (KMD2 machine CSV + XML) and KMD INF annexes. Runs a pre-close validation gate, then generates. The EC Sales List (Form VD) is a separate filing. Dynamically discovers tax codes and maps to KMD lines. | `/prepare-vat-declaration` (add `validate` to run the gate only) `/prepare-ec-sales-list` |
 
 More countries coming soon.
 
@@ -35,18 +34,18 @@ More countries coming soon.
 ### Option 1: Clone the repository
 
 ```bash
-git clone https://github.com/ar-ti-fi/plugins.git
+git clone https://github.com/ARTIFI-ORG/arfiti-plugins.git
 ```
 
 Add the plugin directory to your Claude Desktop project or Cursor workspace.
 
 ### Option 2: Download ZIP
 
-[Download latest ZIP](https://github.com/ar-ti-fi/plugins/archive/refs/heads/main.zip)
+[Download latest ZIP](https://github.com/ARTIFI-ORG/arfiti-plugins/archive/refs/heads/main.zip)
 
 ### Option 3: Via Arfiti admin dashboard
 
-If you use [Arfiti](https://ar-ti-fi.com), plugins are available directly from the admin dashboard under **Administration > Plugins** with one-click download.
+If you use [Arfiti](https://arfiti.com), plugins are available directly from the admin dashboard under **Administration > Plugins** with one-click download.
 
 ## How Plugins Work
 
@@ -103,6 +102,14 @@ The canonical production endpoint is `https://mcp.arfiti.com/streamable/mcp`.
 After the October 2026 migration, update installed plugins to the new patch
 versions; cached earlier releases still contain the old `/mcp` URL. Reconnect
 the MCP connection if prompted. Updating source does not rewrite installed caches.
+
+## Support
+
+support@arfiti.com · Documentation: https://arfiti.com/docs
+
+## Publishing to the Anthropic directory
+
+This repository's contents are submitted to the Anthropic directory from `ARTIFI-ORG/arfiti-plugins`, which the publish workflow syncs and nobody edits by hand. Each plugin folder needs a README with a "What it runs and sends" section, a LICENSE and a `license` in `plugin.json`, all checked by `plugins/scripts/check_mcp_configs.py`. `arfiti-core-erp` is generated: edit `mcp-server/skill-templates/base`, run `plugins/scripts/build_core_plugin.py`, and commit both. The full process is in [GUIDE_PLUGINS.md](../docs/GUIDES/GUIDE_PLUGINS.md#anthropic-directory).
 
 ## Versioning (required on every content change)
 

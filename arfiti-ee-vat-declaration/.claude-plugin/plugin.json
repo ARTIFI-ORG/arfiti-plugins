@@ -1,0 +1,9 @@
+{
+  "name": "arfiti-ee-vat-declaration",
+  "description": "Estonian VAT return (KMD) for monthly e-MTA filing in the official KMD2 format. Runs a pre-close validation gate (BLOCK/WARN), then generates the KMD2 machine CSV and XSD-validated XML with the KMD INF annex. Locks the tax period after filing. EC Sales List (Form VD) prepared separately for portal entry. Dynamically discovers and classifies tax codes — never hardcoded.",
+  "version": "3.1.5",
+  "license": "MIT",
+  "author": {
+    "name": "Arfiti"
+  }
+}
