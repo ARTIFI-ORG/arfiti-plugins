@@ -213,9 +213,9 @@ The `tax_return.create` operation is generic. Each jurisdiction's plugin fills i
 ## Admin Dashboard
 
 Tax returns are viewable at `/tax/returns`:
-- **List page**: Filterable by entity, return type, status
-- **Detail page**: Renders `return_data` JSONB with structured sections (sales summary, VAT calculation, filing instructions, raw JSON)
-- **Download XML**: Regenerates XML from stored JSONB data (Estonian KMD supported)
+- **List page**: the selected entity's returns; search, status chips and + Filter (return type, status) narrow the list
+- **Detail page**: tabs Return data, Form checks, Export and Metadata. Return data draws the stored `return_data` by shape: a list of same-shaped rows is a table, other keys are rows, nested objects fold
+- **Form checks and Export (KMD only)**: Form checks lists the KMD check's errors and warnings; Export's **Generate XML** creates the KMD files (CSV and XML) from the stored data for download and sends nothing to the tax authority. It is off while the checks list errors. Other return types have neither tab
 
 
 ## Close evidence update (b1, awaiting deployment)
