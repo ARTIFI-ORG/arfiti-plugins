@@ -1038,13 +1038,61 @@ contract versions the line instead of overwriting it:
   inside is split by days on one invoice (Andrew, 31 Oct 2026): €100 → €120 from 15 Sep
   bills "1–14 Sep" at 100 × 14/30 = 46.67 and "15–30 Sep" at 120 × 16/30 = 64.00. Preview
   shows the same amounts.
-- A date before the next unbilled period is refused: those days were billed or are due at
-  the price in force then. Correct a billed period with a credit memo or an additional
-  invoice. (A correction path with its own approval is not built yet.)
+- A date before the next unbilled period is refused (`price_change_in_billed_period`,
+  nothing written): those days were billed or are due at the price in force then. To
+  correct a billed price, send `price_correction: true` (below).
 - On a draft contract, and for a change dated on or before the line's first day, the edit
   applies in place: nothing was billed at the old price.
 - A dated change on a usage line is refused; end the line and add a new one.
 - Derived contract totals and renewals count only the version in force.
+
+### Correcting a billed price (AR-1009)
+
+A price that was wrong in periods already billed is corrected with `contract_line.update`
+plus `price_correction: true`, a `correction_reason` and the `price_effective_from` the
+correct price applies from (Andrew, 1 and 3 Nov 2026):
+
+```json
+{"line_id": 812, "fixed_amount": 80, "price_effective_from": "2026-09-01",
+ "price_correction": true, "correction_reason": "Discount agreed at signing"}
+```
+
+- The line is versioned as for any dated change, but the date may fall in billed periods.
+- No billed invoice is changed. Each billed period whose amount changes gets one
+  **difference document**: an AR invoice for a shortfall, an AR credit memo for an
+  overcharge (the credit memo is linked to the period's invoice). It is dated the day of
+  the correction, carries the tax code of the invoice it corrects, and is linked to the
+  contract (`recurring_contract_id`). Its `metadata.price_correction` records the
+  corrected invoice, the period, the service days, the difference, the reason and who
+  decided it.
+- The difference is what the period bills at the corrected price minus what it billed,
+  worked out with the terms the billing receipt recorded for that period (proration,
+  cadence) and each version's share of the days. Example: €100 → €130 from 16 Oct on a
+  monthly contract billed for October posts one AR invoice of 100 × 15/31 + 130 × 16/31
+  − 100 = €15.49 plus tax; September is unchanged.
+- A quantity or `unit_price` change on a fixed line changes no billed amount, so it posts
+  no document.
+- **Who decides:** an owner or admin. One who submits it saves it directly. A submission
+  from anyone else, or from an agent, waits on the "Owner or admin approves" step of
+  `contract_line.update`, and an agent can never approve it. If an organisation removes
+  that step, a correction from anyone but an owner or admin is refused rather than run.
+- **Refused before submission** (nothing is created):
+  - a usage line, which is billed from recorded usage: correct it with a manual credit
+    memo or invoice;
+  - no billed day on or after the date;
+  - billed days not each covered by one posted, unreversed period invoice;
+  - a billing receipt from before term capture (no recorded terms);
+  - an invoice with no single tax code for the line;
+  - today's fiscal period closed or locked, or today inside a locked tax reporting period.
+    The document is never moved to another period: reopen it, or correct later;
+  - a change to a price version that a newer version replaced, unless it corrects that
+    whole version (`price_effective_from` on or before its first day, applied in place):
+    splitting it would leave two current versions;
+  - a date before the version's own first day when an earlier version exists. Each
+    version is corrected separately: the earlier one as a whole, then this one from its
+    first day.
+- The line version in force records `metadata.price_correction`: the reason, the
+  decider and the document ids.
 
 ### Amendment Workflow
 

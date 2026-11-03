@@ -790,7 +790,7 @@ submit("recurring_contract", "renew", {
 | `amortization_schedule.cancel` | `schedule_id` | Optional: `cancellation_reason`, `void_pending_lines` |
 | `recurring_contract.create` | `party_type`, `customer_id`, `legal_entity_id`, `contract_name`, `start_date` | `billing_frequency` defaults to monthly; `billing_interval` (default 1) multiplies it; `billing_day_of_month` is refused for weekly/biweekly |
 | `billing_run.execute` | `legal_entity_id`, `billing_date` | Only customer contracts with frequency != 'once' |
-| `contract_line.update` (price) | `line_id` + new `quantity`/`unit_price`/`fixed_amount` | Optional `price_effective_from`; versions the line; never before the next unbilled period |
+| `contract_line.update` (price) | `line_id` + new `quantity`/`unit_price`/`fixed_amount` | Optional `price_effective_from`; versions the line; before the next unbilled period only with `price_correction: true` + `correction_reason` (owner/admin decides; posts a difference document per billed period) |
 
 ---
 
