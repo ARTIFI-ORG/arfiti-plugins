@@ -1447,6 +1447,30 @@ a saga checkpoint and remains part of pending cycle-safe saga verification.
 - `force: true` with `force_reason` closes despite failing *policy* checks, never integrity ones, and only when a person holding `accounting:close` submits or approves it. As an agent, do not force; tell the user which checks fail and ask them to fix the records, change the policy, or force it themselves.
 - A close refused by its checks comes back as `refused: true` with an `error` code (`close_integrity_failed`, `close_checks_failed`, `close_policy_invalid`, `close_drafts_exist`, `close_trial_balance_unbalanced`) and `detail.failing_checks`; nothing was written and the month is still open. Tell the user which checks failed. A forced close that fails still returns an outcome-unknown envelope; read its reason in `get_submissions(action="history", workflow_id=...)`. After fixing the cause, resubmit with a new `idempotency_key`: the same key replays the first answer.
 
+## A paused month-end close saga (AR-462)
+
+The close saga delegates no fix-up work. When a blocking check fails, the saga pauses, and the failed phase's `error_message` names the checks and what each needs. For example: "Blocking close checks remain unresolved: depreciation_run. Needs: run_depreciation (no handler configured)."
+
+The phase output's `resolution_required` lists the same items, with kinds:
+- `action`: run the named operation;
+- `evidence`: correct the records;
+- `check`: the check did not run, so retry it.
+
+The saga's `checkpoint_data.pause_reasons` says why each failed phase paused:
+- `resolution_required`;
+- `execution_failed` (the run ended without a result);
+- `credits_exhausted`;
+- `agent_disabled`;
+- `remediation_rejected`;
+- `stale_wait`;
+- `period_closed`.
+
+To continue:
+1. Do the work with the normal tools, or ask the user to.
+2. Call `submit("saga","retry_phase", {saga_id, phase_number})`. The checks run again, and the phase completes only if they pass.
+
+A retry after credits are topped up, or after an agent is switched back on, also re-runs the other phases stopped for that reason. There is no "mark resolved" operation. Whether a check applies is a policy or `force` decision at close (above).
+
 ## Close evidence update (b1, awaiting deployment)
 
 Built-in saga orchestration is optional product workflow. External clients remain subject to supported operation authorization and integrity controls. Recompute-at-close, the recorded close basis and the scoped `force` shipped in AR-461 (section above). Inspect actual workflow configuration; a lane name alone does not prove a human approval step exists.
