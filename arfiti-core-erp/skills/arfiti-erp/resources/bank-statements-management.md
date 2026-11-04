@@ -60,6 +60,43 @@ Legacy payment-pass descriptions below apply to non-card AP/AR behavior. Card ro
 
 # Bank Statements Management
 
+## Plaid bank connection (local, not deployed)
+
+The legacy Plaid preview adapter is not registered for
+`manage_connectors` ingestion. Preview does not create bank lines, acknowledge a
+durable cursor or prove reconciliation. Keep pending, modified and removed rows
+distinct. Never invent balances to force a preview through statement import.
+Platform credentials belong in server configuration, never chat. The
+dedicated dashboard uses Link and stores the Item token encrypted. See the
+provider guide.
+
+The local branch also has a shared `bank_statement.sync` operation for complete
+transaction-feed deltas. It goes through `submit` and always requires an active
+organization workflow definition; none are activated for customers by this
+change. All changed accounts need explicit mappings. Pending evidence stays out
+of reconciliation; posted lines have no fabricated balances. Updates and removals
+preserve source history; protected, classified, linked or closed-period evidence
+refuses the complete batch. Pending-only records may advance in a closed period
+only when they create or change no bank line. The cursor advances only with all
+account writes. Deltas support up to 500,000 total records; larger batches fail
+without acknowledging a partial cursor. This bound is not a scale guarantee.
+Incoming posted date ranges overlapping non-voided manual/other non-feed
+statements are refused regardless of provider IDs. Choose the start date after
+existing statement history before the first sync.
+Plaid's optional **Start importing from** setting filters previously unseen
+transactions by an inclusive date. Choose and save it before first sync; afterward
+it is fixed. Unset includes all available history. Skipped rows do not stall the
+cursor, and known imported rows still receive protected corrections/removals.
+Browser Link/renewal, actual signed Sandbox webhook delivery and imports into a
+disposable database were tested. The local sandbox dashboard and daily/weekly
+scheduler now use this gateway. Outstanding approval workflows block new
+proposals, and revoked schedule-owner access stops imports. Signed public callbacks
+now trigger the same consumer for connections with automatic sync enabled, with
+durable retry recovery every 60 seconds. Manual mode prevents callback imports.
+Real-bank connections use separate production configuration and bank OAuth; provider approval, deployment and real-bank verification remain pending. The user chooses test or real banks at creation; an existing connection cannot change environment. This is not production enablement. Renewal preserves the Item/cursor; reconnect
+after removal creates a new connector and preserves history. Importing a new feed
+into an account with another feed's history is refused pending explicit cutover.
+
 ## Existing postings and unclassified movements
 
 Before automatic bank classification, same-day GL cash movements are checked within the organization, legal entity, bank GL account and document currency, using the signed amount. Reversed originals and reversal entries are both candidates. A candidate produces `possible_existing_gl` review, not an automatic match: amount and date do not establish identity. Review the source and match the existing transaction, or explicitly classify a genuinely separate movement.
