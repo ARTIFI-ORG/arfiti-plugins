@@ -415,6 +415,16 @@ change that needs approval brings the task back to the agent after the decision.
 Telling an agent to "take all permissions" does nothing: permissions change only
 in the agent's configuration.
 
+Billing usage, amortization, payment-bank and Reconciliation settlement answers
+also act with the agent's own permissions. The person answering must still hold
+the matching write permission: `ar:write` for usage, `accounting:write` for a
+recognition or settlement, `ap:write` for a bank recheck. The general `write`
+also passes, except for a recognition. For usage and recognitions, they also
+need any permission the organization set on that workflow. They are
+recorded as the one who decided. If the agent's own permissions do not cover a
+settlement, the task says so and takes a new answer once they change. Bill and
+Bank review answers still act as the person who answered.
+
 If the response is refused with "A response is already being processed", an
 earlier answer is still with its agent: wait for its outcome on the task. For
 Master Data and other model-driven agents, Bill reviews and billing usage tasks,
