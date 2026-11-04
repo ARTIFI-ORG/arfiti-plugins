@@ -422,8 +422,14 @@ recognition or settlement, `ap:write` for a bank recheck. The general `write`
 also passes, except for a recognition. For usage and recognitions, they also
 need any permission the organization set on that workflow. They are
 recorded as the one who decided. If the agent's own permissions do not cover a
-settlement, the task says so and takes a new answer once they change. Bill and
-Bank review answers still act as the person who answered.
+settlement, the task says so and takes a new answer once they change.
+
+Bank and card review answers act with the Bank agent's own permissions too. The
+person answering needs `banking:write`, `accounting:write` or `write`, plus
+the permission each resulting posting needs: `ar:write` for a customer payment,
+`ap:write` for a vendor payment or a card expense, `accounting:write` for a
+bank fee or other bank entry. They also need any permission the organization set on that
+workflow. Bill review answers still act as the person who answered.
 
 If the response is refused with "A response is already being processed", an
 earlier answer is still with its agent: wait for its outcome on the task. For
