@@ -368,6 +368,15 @@ Company bank accounts are operating accounts owned by the legal entity for busin
 
 Use the `bank_account.create` workflow to create company bank accounts.
 
+An owner or admin approves a submission from an agent, and anyone's submission
+that carries an IBAN or an account number (the default definitions'
+"Owner or admin approves" step, the same for `bank_account.update`). Such a
+submit returns `status: "pending"` with a `workflow_id` and no
+`bank_account_id`; the account exists once the task is approved. A person's
+change of other fields (name, limits, default flags) runs at once.
+Executing a create refuses a second active account with the same IBAN and
+currency in the entity, so two waiting creates for one IBAN leave one account.
+
 **Workflow: bank_account.create**
 
 ```javascript
