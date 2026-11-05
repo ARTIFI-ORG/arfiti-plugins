@@ -141,6 +141,13 @@ All master fields can be overridden per entity with `_override` suffix:
 - Set `address_type="billing"` and `is_billing=true` for explicit billing address
 - Set `is_primary=true` for default address when type is unspecified
 
+**Changing addresses with `customer.update`:** send `customer_addresses` as operations with `_action`:
+- `add` needs `address_line_1`, plus `legal_entity_id` unless the customer is linked to one entity only.
+- `update` needs `id` and sets only the fields you name; a field sent as `null` is emptied.
+- `delete` needs `id`.
+
+The `id` must be one of this customer's addresses (`get_entity("customer", id=X)` lists them). An operation that cannot apply refuses the whole update, so nothing is half-changed.
+
 ### Customer Item Pricing (customer_item_pricing table)
 
 Customer-specific pricing tiers for volume discounts or negotiated rates.
