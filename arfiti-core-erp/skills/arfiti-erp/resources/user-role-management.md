@@ -138,7 +138,7 @@ The system supports two auth methods transparently:
 
 | Method | Header | Format | Use Case |
 |--------|--------|--------|----------|
-| **OAuth 2.1** | `Authorization: Bearer <token>` | JWT from Auth0 | Claude.ai, admin dashboard |
+| **OAuth 2.1** | `Authorization: Bearer <token>` | JWT from the sign-in provider (Auth0, or WorkOS AuthKit once switched) | Claude.ai, admin dashboard |
 | **API Keys** | `X-API-Key: <key>` | `sk_<org_id>_<random_64_chars>` | Claude Desktop, programmatic access |
 
 Both methods produce the same `AuthContext`, so tools work identically regardless of auth method.
@@ -590,7 +590,8 @@ This gives the user Controller access to Entity 1 and AR Accountant access to En
 | `system.organization_users` | Organization membership (level + entity access) |
 | `system.api_keys` | API key records (hashed, never stored in plain text) |
 | `system.user_invitations` | Pending and accepted team invitations |
-| `system.user_linked_identities` | Multiple Auth0 identities per user (e.g., email + Google OAuth) |
+| `system.user_external_identities` | Sign-in identities by issuer and subject; how a token finds its user (never email) |
+| `system.user_linked_identities` | Legacy: multiple Auth0 identities per user, kept until Auth0 is retired |
 | `system.audit_logs` | Audit trail for all operations |
 
 ### Key Relationships
