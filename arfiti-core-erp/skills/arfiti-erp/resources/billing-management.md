@@ -214,7 +214,7 @@ A nested legacy default entity must agree with the effective entity; billing
 schedules refuse this per-run override before emitting events.
 Server `_billing_task` binding retains its separate authority and replay checks.
 
-Billing pipeline 1.0.3 (which carries the 1.0.1 scope handling, the 1.0.2 named usage outcomes and the 1.0.3 durable waits and authenticated attribution), the shipped default since AR-274, sends canonical business payloads and reads its
+Billing pipeline 1.0.4 (the 1.0.1 scope handling, the 1.0.2 named usage outcomes, the 1.0.3 durable waits and authenticated attribution, and the 1.0.4 per-contract usage answers of AR-1102), the shipped default, sends canonical business payloads and reads its
 actual saved event. Recognized saved scheduler and dashboard/MCP scheduled-job
 run-once envelopes normalize their absent-scope sentinels; arbitrary caller
 null or empty scope is still refused. A legacy dashboard Run once event that names
@@ -223,15 +223,15 @@ billing Run once producer now emits one singleton-scoped event per selected
 entity in a single transaction; it never reduces the requested list to the
 first entity. This dispatch queues work and does not prove invoice completion. Per-run notification, assignment and
 default-entity configuration overrides are explicitly unsupported by
-1.0.3: edit the agent configuration instead. Existing authored configuration
+1.0.3 and 1.0.4: edit the agent configuration instead. Existing authored configuration
 remains supported. The old `emit_delivery_events` and `emit_payment_events`
 booleans are inert compatibility values; they do not control invoice events.
 Retained 1.0.0 blocks and global runner behavior are unchanged. In particular,
 runner `state.config` merging does not make billing blocks' `context.config`
 read per-run overrides. Inventory existing job payloads/custom pipelines before
 rollout. A definition with an active revision keeps its pinned pipeline until the
-1.0.3 release is published and activated for it; one without an active revision
-reads the shipped `pipeline.yaml` and runs 1.0.3 once deployed.
+1.0.4 release is published and activated for it; one without an active revision
+reads the shipped `pipeline.yaml` and runs 1.0.4 once deployed.
 
 ### Usage record rollback evidence (local, unreleased)
 
@@ -701,9 +701,9 @@ Example: Contract starts Jan 15, billing period Jan 1-31
 
 | Workflow | Required Fields | Description |
 |----------|-----------------|-------------|
-| `contract_usage.record` | `contract_line_id`, `usage_date`, `quantity` | Record single usage data point |
+| `contract_usage.record` | `contract_line_id`, `usage_date`, `quantity` | Record single usage data point (quantity 0 or more; 0 closes the period with no invoice) |
 | `contract_usage.batch_record` | `legal_entity_id`, `usage_records` | Batch import multiple usage records |
-| `contract_usage.update` | `usage_id` | Update unbilled usage record |
+| `contract_usage.update` | `usage_id` | Update unbilled usage record, or a 0 closed with no invoice (reopens that period) |
 | `contract_usage.delete` | `usage_id` | Delete unbilled usage record |
 
 **Database Columns:**
@@ -782,6 +782,8 @@ For lines with `line_type = 'usage'`:
 4. Preview shows amounts separately; execute marks as billed
 
 **No usage recorded → contract SKIPPED, period stays open.** If a usage-only contract has no unbilled usage in the period, the run creates NO invoice (never a €0 one), records the contract as `skipped`, and does NOT advance `next_billing_date` — the period stays open and is billed automatically by a later run once usage is recorded. Skipped contracts are listed in the result's `contracts_skipped_no_usage`, and the scheduled billing agent creates ONE **"provide usage data" verification task in My Tasks** (assigned to the org owner/admin, with a notification email; dedup-checked so daily re-runs don't stack tasks) listing each contract and its open period — completing it means recording the usage and re-running billing. If a preview shows €0 for a usage contract, check the per-contract `warning` — it names the period window that was checked; record usage for that window first, then run billing.
+
+**Usage recorded as 0 → period closed with no invoice (AR-1102).** `contract_usage.record` accepts a quantity of 0 ("nothing was used"; a negative quantity is refused). When a usage-only period's recorded usage sums to 0, the billing run creates no invoice, advances `next_billing_date`, records the contract as `no_charge` and lists it in `contracts_closed_no_charge`; `billing_run.cancel` reopens it. **Correcting a wrong 0.** `contract_usage.update` on a 0 row consumed by a `no_charge` period reopens that one period in the same transaction: the period's usage returns to `recorded`, the `no_charge` receipt becomes `cancelled`, `next_billing_date` rolls back to the period start, and the result carries `reopened_period`. The next run bills the corrected quantity. Nothing was posted, so nothing is reversed and no other contract in the run is touched; `billing_run.cancel` is not needed. The update is refused while a later period of the contract is already billed or closed, because moving the billing date back would bill that later period again: cancel that later billing first, or bill the correction separately. Usage billed on an invoice stays immutable. With billing pipeline 1.0.4 an answer to a usage task is applied contract by contract: the clear part is recorded and billed, 0 closes the period, an unclear contract stays asked on the same task, and the task says what was done and why not. `usage_task_per_contract` in the billing agent config chooses one task per contract or one per run.
 
 ### Pricing Models
 
