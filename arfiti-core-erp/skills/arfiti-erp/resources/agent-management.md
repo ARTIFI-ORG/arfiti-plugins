@@ -429,7 +429,9 @@ person answering needs `banking:write`, `accounting:write` or `write`, plus
 the permission each resulting posting needs: `ar:write` for a customer payment,
 `ap:write` for a vendor payment or a card expense, `accounting:write` for a
 bank fee or other bank entry. They also need any permission the organization set on that
-workflow. Bill review answers still act as the person who answered.
+workflow. Bill review answers do the same since 2026-11-04: the person who
+answered is checked, and the posting runs on the Bill agent's own
+`transaction.post` grant; without that grant it stops and names it.
 
 If the response is refused with "A response is already being processed", an
 earlier answer is still with its agent: wait for its outcome on the task. For

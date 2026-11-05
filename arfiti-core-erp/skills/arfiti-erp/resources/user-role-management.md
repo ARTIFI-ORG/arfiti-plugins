@@ -859,7 +859,7 @@ submitter. If access was removed while awaiting review, execution must fail; res
 only intended access and make a new submission after reviewing the failed workflow.
 Do not bypass the denial or reuse a recorded human decision.
 
-Installed native agents derive this permission only after their current/pinned workflow capability is verified. Authored agents and human task actors retain their existing RBAC; a workflow capability alone does not elevate them.
+Installed native agents derive this permission only after their current/pinned workflow capability is verified. Authored agents retain their creator/revision-bound RBAC; a workflow capability alone does not elevate them. No agent run acts with a person's permissions.
 
 ### Report-only access to workflow approvals
 
