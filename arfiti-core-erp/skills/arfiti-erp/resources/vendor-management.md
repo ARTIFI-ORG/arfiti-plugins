@@ -603,6 +603,8 @@ For bank accounts, addresses, currencies, and dimensions, use the `_action` fiel
 
 **Important:** Always use `_action` (with underscore prefix) to specify the operation. The system also accepts `action` for backwards compatibility, but `_action` is preferred.
 
+**Currencies:** a currency row's code is never changed in place; `update` with a different `currency` is refused. To move a vendor from USD to EUR, `add` EUR with `is_primary: true` and `update` the USD row to `is_primary: false` (or `delete` it) in the same submission, and set the master `currency` field. `update` and `delete` only reach this vendor's own rows, in entities you may act on.
+
 #### Add Bank Account
 
 ```json
