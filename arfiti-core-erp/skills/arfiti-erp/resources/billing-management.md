@@ -108,10 +108,16 @@ the period-close billing check all use this one calculation.
   decides the amount: `daily_prorata` bills the clipped days over the full period's
   days (ten days of a fourteen-day period bills 10/14), `full_period` bills the whole
   period's amount. That choice is the contract's stored term, not a product default.
-  **A fixed term that starts off the anchor therefore bills one more full charge under
-  `full_period`**: 15 Sep 2026 – 14 Sep 2027, anchor 1, bills 15–30 Sep, Oct–Aug and
-  1–14 Sep 2027, 13 charges for 12 months. Choose `daily_prorata`, or start the term on
-  the anchor day, when the term's total must equal its monthly price × months.
+  **A fixed term bills on its start day** unless `billing_day_of_month` is given (Andrew,
+  6 Nov 2026): 15 Sep 2026 – 14 Sep 2027 bills 15 Sep–14 Oct and so on, 12 whole periods.
+  A fixed term on a month cadence whose start is not its billing day would, under
+  `full_period`, bill its short first and last periods in full: with day 1 the same term
+  bills 15–30 Sep, Oct–Aug and 1–14 Sep 2027, 13 charges for 12 months. Create, renew and
+  update refuse that combination unless `full_period_stubs_confirmed: true`; the refusal
+  offers the start day or `daily_prorata` instead. A renewal keeps the original's billing
+  day (none: the new start day). An update is refused only when it introduces the
+  combination (a new billing day, end date or cadence); a contract already in it can still
+  be extended. Open-ended contracts default to day 1 as before.
 - **When a period is due:** in advance, once it has started; **in arrears, once the run's
   billing date reaches the period's last day**, and the invoice carries that date
   (AR-1009). A run never creates an in-arrears invoice ahead of its date.
@@ -1093,6 +1099,10 @@ correct price applies from (Andrew, 1 and 3 Nov 2026):
   - a date before the version's own first day when an earlier version exists. Each
     version is corrected separately: the earlier one as a whole, then this one from its
     first day.
+- A correction is accepted on active, suspended, terminated and expired contracts: a wrong
+  price is often found after the customer leaves. Billed days after the contract's end
+  date are never assumed. Ordinary line updates stay limited to draft and active
+  contracts.
 - The line version in force records `metadata.price_correction`: the reason, the
   decider and the document ids.
 
