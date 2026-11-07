@@ -272,8 +272,7 @@ Use the `fiscal_period.close` workflow to close accounting periods after month-e
 ```javascript
 submit("fiscal_period", "close", {
     legal_entity_id: 13,
-    period_name: "2025-01",
-    create_closing_entries: false
+    period_name: "2025-01"
 })
 ```
 
@@ -288,7 +287,7 @@ submit("fiscal_period", "close", {
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `create_closing_entries` | boolean | Create closing journal entries (default: false) |
+| `create_closing_entries` | boolean | Not supported: `true` is refused. Closing a period books no closing entries (default: false) |
 
 **Validation:**
 - Period must exist and be open (`is_closed = false`)
@@ -320,18 +319,21 @@ submit("fiscal_period", "close", {
 
 **Result:** January 2025 closed, no new transactions allowed
 
-### Example: Year-End Close with Closing Entries
+### Year-End Close
+
+Closing a period books no closing entries, and `create_closing_entries: true` is
+refused. If the entity's policy closes the income statement into retained
+earnings, post that journal yourself (a journal entry dated in the last period),
+then close the period:
 
 ```javascript
-// Close December 2025 with closing entries
 submit("fiscal_period", "close", {
     legal_entity_id: 13,
-    period_name: "2025-12",
-    create_closing_entries: true
+    period_name: "2025-12"
 })
 ```
 
-**Result:** December 2025 closed, closing journal entries created to zero out income statement accounts
+**Result:** December 2025 closed. Income statement balances stay as posted unless a closing journal was posted first.
 
 ---
 
