@@ -291,7 +291,8 @@ curl -sf -F "file=@/path/to/acme_invoice_jan2025.pdf" "https://mcp.arfiti.com/ap
 
 - Success returns `{"success": true, "attachment_id": ..., "file_size": ..., "content_hash": ...}`. The file is stored in R2 and linked to the attachment automatically — **no `confirm_upload` call needed**.
 - Tell the user the original file is attached; don't show them the link.
-- HTTP 404/410 means the token expired — generate a new upload URL and retry once.
+- HTTP 404/410 means the token expired, was already used, or its attachment was deleted — check the attachment first; if it still has no file, generate a new upload URL and retry once.
+- HTTP 409 means another upload with the same link is in progress — do not send the file again; check the attachment a moment later.
 - If your environment cannot reach the endpoint, fall back to giving the user the link.
 - Only default to the link when you have no copy of the file on disk or no shell access (claude.ai web chat).
 - Keep uploads at or below **25 MB** (the document pipeline's working ceiling). Larger files: attach metadata only and tell the user the file is too large to store.
@@ -317,12 +318,14 @@ read_attachment(
 
 ### 3. Confirm Upload
 
-Called after a file has been uploaded via the public upload URL. Links the uploaded file to the attachment record. This is typically called automatically by the upload endpoint, but can also be called manually if needed.
+Links a file already stored under the pending upload's storage key to the attachment. A file uploaded through the public upload page is linked by the page itself, so no confirmation is needed there.
+
+The server reads the stored object: it must exist and match `content_hash` and `file_size`, or the call is refused ("Validation Failed"), nothing changes and the token stays usable. Confirm only after the file is stored. After a refusal, send the corrected call with a new `idempotency_key`: an identical retry replays the saved refusal.
 
 ```javascript
 submit("attachment", "confirm_upload", {
     "upload_token": "abc123def456...",
-    "content_hash": "sha256_of_file",
+    "content_hash": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",  // SHA-256 of the uploaded bytes, 64 hex characters
     "file_size": 12345
 })
 
