@@ -224,6 +224,7 @@ get_imports(action="status", import_id="uuid")
 | `stop_on_error` | `false` | Stop entire import on first error |
 | `validate_only` | `false` | Dry run — no business writes. Record-array previews persist no import tracking; CSV checks retain a check record, file hash and row results |
 | `defaults` | `{}` | Default values merged into every record |
+| `advisory_thresholds` | none | `fixed_asset` only: warning thresholds for this import — `original_cost_above`, `useful_life_months_above`, `salvage_ratio_above` (fraction, `0.5` = 50%). None set means no threshold warnings. Take the numbers from the firm's instructions; there are no built-in ones. A threshold warns, never refuses |
 
 ---
 

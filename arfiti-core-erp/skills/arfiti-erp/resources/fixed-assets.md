@@ -229,7 +229,8 @@ The `dimensions` map is persisted with the asset (one command per type; `{ "type
 
 ## Acquiring Assets from Transactions
 
-Use the `fixed_asset.acquire_from_bill` workflow to link assets to source transactions.
+Use `fixed_asset.acquire_from_bill` to create new assets from source transactions.
+Use `fixed_asset.link_source_transaction` when the asset already exists.
 
 **See:** fixed_asset.acquire_from_bill definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
 
@@ -252,21 +253,41 @@ When the transaction is already posted to an asset account:
 
 ### Link Existing Asset to Transaction
 
-When asset was created separately:
+For an existing asset, submit **`fixed_asset.link_source_transaction`**:
 
 ```json
 {
   "legal_entity_id": 13,
-  "existing_asset_id": 45,
-  "source_transactions": [
-    {
-      "transaction_id": 43,
-      "transaction_line_id": 34,
-      "transaction_type": "AP_INVOICE"
-    }
-  ]
+  "fixed_asset_id": 45,
+  "transaction_id": 43,
+  "transaction_line_id": 34,
+  "link_type": "acquisition"
 }
 ```
+
+`acquire_from_bill` creates new assets and requires `category_code`; it does not
+support an `existing_asset_id` linking mode. Provide `book_id` for acquisition or
+improvement links when the asset has multiple books. Submit one link per source
+line. These link types can affect depreciation schedules, so select the intended
+semantics rather than treating a link as documentation-only.
+
+- `amount` is functional currency in whole cents. For `acquisition`/`improvement`
+  it defaults to the line's posted asset cost not yet allocated to other assets.
+- All acquisition and improvement links on one line together never exceed the
+  line's posted asset cost; an over-allocation is refused with the available
+  amount. Re-linking the same asset and line replaces its own amount.
+- An `improvement` raises the asset cost and the book's acquisition cost and NBV,
+  and re-spreads the scheduled lines from the improvement's source date over the
+  same remaining periods of the selected book, net of its recognised depreciation
+  and impairments (posted depreciation untouched). Re-linking applies only
+  the difference. If no monthly fiscal period can hold the new lines, the link is
+  refused: create the periods and link again.
+- When the asset has no depreciation month left on or after the improvement's
+  date (for example fully depreciated), the link needs `additional_life_months`:
+  the months to depreciate the improvement over, chosen by you or the accountant
+  (the platform has no default). It is refused without it, and refused when
+  months remain. The asset's and book's recorded life grow by that number, and a
+  `fully_depreciated` asset becomes `active` again.
 
 ### Multiple Assets from One Transaction (qty > 1)
 
@@ -353,6 +374,11 @@ Use the `fixed_asset.capitalize_expense` workflow when an expense should be recl
   "justification": "HVAC system upgrade"
 }
 ```
+
+Capitalizing into an existing asset moves its cost, book value and schedule
+together, exactly like an `improvement` link, dated by the capitalization
+journal. Add `book_id` when the asset has several books, and
+`additional_life_months` when it has no depreciation months left.
 
 ---
 
