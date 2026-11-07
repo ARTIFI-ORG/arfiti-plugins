@@ -7,7 +7,7 @@ capitalization writes. It does not silently distribute the difference or choose
 an accountant's rounding policy. A reporting-currency rounding allocation is not
 implemented by this correction.
 
-Local AR-548 correction (not deployed): acquire-from-bill records initial cost,
+AR-548 correction (merged in PR #467, 28 October 2026): acquire-from-bill records initial cost,
 zero accumulated depreciation and equal net book value for its new book.
 Lifecycle posting can insert a missing legacy value row using the stored book's
 asset/entity identity. This retains disposal-before-depreciation history; it does
