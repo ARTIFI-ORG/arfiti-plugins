@@ -715,6 +715,21 @@ get_entity("employee", id=123)
 - Dimensions
 - Vendor mappings (if contractor)
 
+**Entity scope.** The employee (the master person) is visible organisation-wide,
+but everything entity-specific is read only inside the caller's legal entities,
+or inside the task's entity when an agent task is bound to one: the effective
+row (job title, department, manager, status), and the addresses, bank accounts,
+dimensions, vendor mappings and direct reports returned with it. A caller
+restricted to entity 13 who reads an employee employed only in entity 12 gets
+the person's identity (codes, names, work email, status) with empty employment
+fields and no entity-12 related rows. The person's personal and HR detail
+(personal email and phone, date of birth, gender, nationality,
+notes, emergency contact, termination reason, metadata, custom fields) comes back
+`null` for that caller, and search or a `custom_fields.<key>` filter does not match
+it; ask someone with access to the employee's entity when you need it. The same
+holds for `get_entity(ids=[...])`, `query("employee", ...)` and search; a
+`legal_entity_id` filter outside the caller's entities is refused.
+
 ### Search Employees (Recommended)
 
 Use the unified `query` tool:
@@ -728,6 +743,8 @@ query("employee", query="John", filters={"legal_entity_id": 13, "status": "activ
 - Filter by: legal_entity_id, status, department, location, employment_type, manager_employee_id
 - Sort by: last_name (default), first_name, employee_number, hire_date
 - Pagination: limit and offset supported
+- One row per employee unless `legal_entity_id` names exactly one entity; the
+  total counts employees, not employee-entity rows
 
 ---
 

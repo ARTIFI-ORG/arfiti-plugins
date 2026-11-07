@@ -123,6 +123,15 @@ not bypass restricted membership or API-key entity scope. Role assignments
 union their scopes within that ceiling. An unrestricted role cannot enlarge
 restricted membership access.
 
+**You can grant only what you have.** If your own access is limited to some
+entities, an invite, a membership update or a role assignment must list
+entities within your own. "All entities" (`null` / omitted `entity_ids`) is
+refused for a membership and for `user_role.assign`, with `entity_access_denied`
+(`error_stage: "entity_grant"`). So are invitations into linked client
+organisations, and payload edits that would widen a pending grant. Ask an
+unrestricted owner or admin to grant other entities, or to change a member
+whose access goes beyond yours.
+
 Legal-entity list/search results and pagination counts include only allowed
 entities. Single and batch `get_entity("legal_entity", ...)` reads report
 excluded IDs as not found, just like nonexistent IDs; do not infer that an

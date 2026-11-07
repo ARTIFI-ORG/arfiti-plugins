@@ -167,7 +167,7 @@ Vendor bank accounts store payment instructions for paying vendors via ACH, wire
 **Default & Status:**
 - `is_active` (boolean, default: true) - Account is active for payments
 - `is_default` (boolean, default: false) - Default account for this vendor+entity+payment method+currency
-- `preferred_source_bank_account_id` (integer, FK to bank_accounts, NULL) - Which of our bank accounts to use as the source when paying this vendor. Entity-scoped: entity A and entity B each have a separate `vendor_bank_accounts` row and can point to different source banks. When NULL, the payment proposal agent falls back to entity-level `bank_accounts.supported_payment_methods` matching.
+- `preferred_source_bank_account_id` (integer, FK to bank_accounts, NULL) - Which of our bank accounts to use as the source when paying this vendor. Entity-scoped: entity A and entity B each have a separate `vendor_bank_accounts` row and can point to different source banks. When NULL, the payment proposal agent falls back to entity-level `bank_accounts.supported_payment_methods` matching. The source must be a bank account of the vendor bank account's own legal entity: a create or update naming another entity's bank is refused ("preferred source bank … must be a bank account of legal entity …"). On update the stored row's entity decides, not a `legal_entity_id` in the payload. `null` clears it. The same rule applies to `employee_bank_account.preferred_source_bank_account_id`.
 
 **Verification:**
 - `verification_status` (varchar(50), default: "unverified") - Verification status
@@ -751,7 +751,7 @@ submit("vendor_bank_account", "create", {
 | `intermediary_swift_code` | string | Intermediary SWIFT, max 20 chars |
 | `intermediary_account_number` | string | Intermediary account, max 100 chars |
 | `is_default` | boolean | Default for this vendor+entity+method+currency |
-| `preferred_source_bank_account_id` | number | Which of our `bank_accounts` to use as source when paying this vendor. Entity-scoped. NULL = fall back to entity-level `supported_payment_methods` matching. |
+| `preferred_source_bank_account_id` | number | Which of our `bank_accounts` to use as source when paying this vendor. Must belong to the same legal entity as this vendor bank account (refused otherwise). NULL = fall back to entity-level `supported_payment_methods` matching. |
 | `verification_status` | string | unverified, pending, verified, failed, expired (default: "unverified") |
 | `verification_method` | string | How to verify (e.g., "micro_deposits", "bank_letter") |
 | `daily_limit` | number | Daily payment limit |
