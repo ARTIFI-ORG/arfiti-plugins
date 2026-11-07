@@ -12,8 +12,8 @@
     "content_hash": "97f370b8b15659e09edba16fc301a54e3e3a5616697293ccc5cb93683058c6f8"
   },
   "arfiti-core-erp": {
-    "version": "2.0.31",
-    "content_hash": "727f6cf5dd089ff6ce870cb074e229b37be35ccf8dc31c73af8d27052c3e1d3b"
+    "version": "2.0.32",
+    "content_hash": "e70d2eb7c3c5ec6474a69906d47486cf34d8b64d6118879f93cfa3c4998d8591"
   },
   "arfiti-core-financial-reports": {
     "version": "2.0.0",

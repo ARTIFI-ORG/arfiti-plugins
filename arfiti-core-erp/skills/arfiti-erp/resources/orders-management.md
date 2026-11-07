@@ -153,6 +153,8 @@ for a partial bill. The remaining-amount cap is enforced under a lock.
 ### match_bill / unmatch_bill — link an existing bill
 
 Same shape as the sales side (`transaction_id`, optional `line_pairs`).
+`match_bill` requires `ap:write` (the bill is an AP document); a caller without it
+is refused with `permission_denied` before anything is linked.
 Matching tolerances are per-org config, and both default to **exact** when
 unconfigured:
 
