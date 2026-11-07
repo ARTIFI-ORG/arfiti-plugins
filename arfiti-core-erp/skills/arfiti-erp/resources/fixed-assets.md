@@ -50,7 +50,7 @@ Fixed assets are long-term tangible assets used in business operations (equipmen
 
 **What you can do:**
 - Create asset categories with depreciation defaults
-- Create and update asset records with multi-book depreciation
+- Create and update asset records and their depreciation books
 - Acquire assets from bills, journal entries, or any transaction type
 - Capitalize expenses and construction-in-progress (CWiP)
 - Transfer assets between departments/locations
@@ -86,7 +86,7 @@ Fixed assets are long-term tangible assets used in business operations (equipmen
 | `query(entity_type, filters={...})` ×N | Fetch reference data (issue the calls in parallel) (categories, accounts, etc.) |
 | `query("asset_acquisition_line", filters={"legal_entity_id": X})` | List bills with asset-account lines available for asset acquisition (requires fixed-asset categories with `gl_cost_account` configured — see below) — replaces `list_available_bills_for_asset_acquisition` (MCP registration removed); for a minimum-amount filter, use a range operator: `filters={"legal_entity_id": X, "available_amount": {"gte": 500}}` |
 | `generate_report("fa_gl_reconciliation", {"legal_entity_id": X})` | Reconcile fixed asset register totals to GL account balances (current balances only — no `as_of_date` param) — replaces `reconcile_fixed_assets_to_gl` (MCP registration removed) |
-| `generate_report("unposted_depreciation", {"fiscal_period_id": X, "legal_entity_id": X, "book_code": "GAAP"})` | Preview what a depreciation run would produce for a fiscal period without executing — replaces `preview_depreciation_run` (MCP registration removed) |
+| `generate_report("unposted_depreciation", {"fiscal_period_id": X, "legal_entity_id": X})` | Preview what a depreciation run would produce for a fiscal period without executing — replaces `preview_depreciation_run` (MCP registration removed). Without `book_code` it previews the ledger-posting book; `period_info.book_code` says which |
 
 **Virtual fields (resolved inline — no extra lookups needed):**
 - `category_name` — category name resolved from `category_master_id`
@@ -190,32 +190,13 @@ Use the `fixed_asset.create` workflow to add new asset records.
 }
 ```
 
-### Asset with Multi-Book Depreciation
+### Depreciation books
 
-Support GAAP, TAX, and IFRS books with different methods:
+The create, acquire, capitalize and import workflows create one primary book per asset;
+a `books` array in the payload is not read, and no supported workflow adds a second
+book yet. Every schedule line belongs to one book, and each book keeps its own
+depreciation and book value (AR-370).
 
-```json
-{
-  "legal_entity_id": 13,
-  "category_code": "COMPUTER",
-  "asset_name": "Dell Latitude 5420 Laptop",
-  "acquisition_date": "2025-01-15",
-  "in_service_date": "2025-01-15",
-  "original_cost": 1500.00,
-  "books": [
-    {
-      "book_code": "GAAP",
-      "depreciation_method": "straight_line",
-      "useful_life_months": 36
-    },
-    {
-      "book_code": "TAX",
-      "depreciation_method": "declining_balance_double",
-      "useful_life_months": 60
-    }
-  ]
-}
-```
 
 ### Asset with Dimensions and Assignment
 
@@ -445,6 +426,12 @@ Use the `fixed_asset.impair` workflow when asset value permanently decreases.
 
 **GL Impact:** Yes - DR Impairment Loss, CR Accumulated Depreciation
 
+The journal is dated at the end of `fiscal_period_id`. The amount cannot exceed the
+carrying amount at that date (cost less posted depreciation, earlier impairments and
+depreciation still scheduled up to that period). Periods after it are re-based on the
+new carrying amount over the asset's remaining useful life, and book values, disposal and
+the GL reconciliation all include the impairment.
+
 ---
 
 ## Disposing Assets
@@ -463,7 +450,6 @@ Use the `fixed_asset.dispose` workflow to sell, scrap, or retire assets.
   "disposal_date": "2025-01-31",
   "proceeds_amount": 500.00,
   "proceeds_account_number": "1000",
-  "book_code": "GAAP",
   "notes": "Sold to employee at book value"
 }
 ```
@@ -477,12 +463,17 @@ Use the `fixed_asset.dispose` workflow to sell, scrap, or retire assets.
   "fiscal_period_id": 50,
   "disposal_date": "2025-01-31",
   "proceeds_amount": 0,
-  "book_code": "GAAP",
   "notes": "Equipment beyond repair - scrapped"
 }
 ```
 
 **GL Impact:** Yes - DR Cash/Accum Depr/Loss, CR Asset
+
+Disposal retires the whole asset in every book; there is no book-only disposal. The
+journal comes from the entity's ledger-posting book and every other book keeps its own
+closing value. `book_code` is optional: if you pass it, it must be the ledger-posting
+book or the request is refused. A second disposal of the same asset, even sent at the
+same moment, is refused with "Asset already disposed".
 
 ---
 
@@ -518,8 +509,6 @@ Use the `fixed_asset_depreciation.process` workflow:
 - `straight_line` - Equal amounts each period
 - `declining_balance_double` - 200% declining balance
 - `declining_balance_150` - 150% declining balance
-- `sum_of_years_digits` - Accelerated depreciation
-- `units_of_production` - Based on usage
 
 ### Sync a Migrated Asset's Subledger
 
@@ -660,12 +649,21 @@ This ensures:
 - Proper transaction tracking
 - Complete audit trail
 
-### Multi-Book Depreciation
+### Books and the ledger-posting book
 
-Assets can have up to 3 depreciation books (GAAP, TAX, IFRS) with:
-- Different depreciation methods per book
-- Different useful lives per book
-- Separate accumulated depreciation tracking
+- Each depreciation line belongs to one book; runs, previews and book values are per book.
+- One book writes the ledger, set by governed policy `fixed_assets.policy` →
+  `ledger_posting_book` (`{"book_code": "<code>"}`; default: each asset's primary book).
+  Change it with `submit("policy", "save", ...)`; never assume a book code means anything.
+- Other books are calculation-only: their run ends `calculated`, their lines are
+  `calculated`, and no journal is written.
+- A run takes each scheduled line once, even when runs for overlapping periods or a
+  disposal happen at the same time.
+- Disposal and impairment journal from the posting book; impairing a calculation-only
+  book is refused. Omit `book_code` on a depreciation schedule to run the posting book.
+- If an asset's ledger history came from a different book (the posting book was changed
+  mid-life), runs skip it and disposal/impairment refuse it. Ask the user how to handle
+  the transition; do not work around it.
 
 ### MSEO Pattern
 
