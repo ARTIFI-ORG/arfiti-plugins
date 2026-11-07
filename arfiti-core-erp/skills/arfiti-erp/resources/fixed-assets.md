@@ -458,6 +458,15 @@ depreciation still scheduled up to that period). Periods after it are re-based o
 new carrying amount over the asset's remaining useful life, and book values, disposal and
 the GL reconciliation all include the impairment.
 
+An impairment recorded before the 7 November 2026 release (PR #590, live 19:55 UTC) did
+not re-base the schedule. Go by when it was recorded, not its `impairment_date`, which
+can be backdated: the event's `created_at` is the recording time. The decisive check is
+the schedule itself: if the book's scheduled depreciation after the impairment's period
+totals more than its carrying amount less salvage, the later periods still use the old,
+higher amounts and the book value will end below salvage (or below zero). That is the
+known gap AR-1129, not a calculation error to work around; report it to the user rather
+than posting a correcting journal.
+
 ---
 
 ## Disposing Assets
@@ -679,7 +688,8 @@ This ensures:
 
 - Each depreciation line belongs to one book; runs, previews and book values are per book.
 - One book writes the ledger, set by governed policy `fixed_assets.policy` →
-  `ledger_posting_book` (`{"book_code": "<code>"}`; default: each asset's primary book).
+  `ledger_posting_book` (`{"book_code": "<code>"}`; default: each asset's primary book,
+  a deliberate default, not a missing setting).
   Change it with `submit("policy", "save", ...)`; never assume a book code means anything.
 - Other books are calculation-only: their run ends `calculated`, their lines are
   `calculated`, and no journal is written.
