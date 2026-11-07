@@ -199,7 +199,7 @@ When an import returns `async: true`:
 
 ### Concurrent Import Limit
 
-Only **one large import per organization** can run at a time. If a second large import is attempted while one is running, it will be rejected with an error. Small imports (<=50 records) are not affected by this limit.
+Only **one background import per organization** can run at a time: large record imports, CSV imports and approved batches, across server processes. A second one is refused with an error and leaves no import record; check import history and start it when the first finishes. Small record imports (<=50 records) are not affected by this limit.
 
 ### Approval Gate and Idempotent Re-runs
 

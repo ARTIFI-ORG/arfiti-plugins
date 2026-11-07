@@ -209,9 +209,9 @@ get_imports(action="status", import_id="uuid")
 // Returns: { status: "completed", imported_count: 190, skipped_count: 5, error_count: 5, ... }
 ```
 
-**Concurrent limit:** Only one large import per organization at a time.
+**Concurrent limit:** Only one background import per organization at a time, including CSV and approved background imports, across server processes. Small record-array imports (≤50 rows) are unaffected. If refused, check import history and retry when the running import finishes; the refusal may include its import ID when that job is on the same server process. A refused new submission creates no import record; an approved batch keeps its existing record.
 
-**Approval gate:** If the org has an `import_batch.review` workflow configured, the import (sync or async) can land in `pending_approval` instead of running immediately — check `status` in the response rather than assuming it always executes right away.
+**Approval gate:** If the org has an `import_batch.review` workflow configured, the import (sync or async) can land in `pending_approval` instead of running immediately — check `status` in the response rather than assuming it always executes right away. A reviewer rejection or request for changes marks that import `rejected`; no business rows are imported. Use `get_imports(action="status", import_id=...)` to read its final status.
 
 ---
 
@@ -222,7 +222,7 @@ get_imports(action="status", import_id="uuid")
 | `on_duplicate` | `"skip"` | `"skip"` = ignore, `"update"` = overwrite, `"error"` = fail |
 | `batch_size` | `100` | Records per database transaction |
 | `stop_on_error` | `false` | Stop entire import on first error |
-| `validate_only` | `false` | Dry run — validate without persisting |
+| `validate_only` | `false` | Dry run — no business writes. Record-array previews persist no import tracking; CSV checks retain a check record, file hash and row results |
 | `defaults` | `{}` | Default values merged into every record |
 
 ---
@@ -507,15 +507,17 @@ View past imports at **Administration > Bulk Import > History**:
 
 ### Import scope and dry runs
 
-For `import.execute`, place `validate_only` inside `options`; a top-level flag is rejected. A top-level `legal_entity_id` is copied into each record for synchronous, asynchronous and approval paths. A conflicting record entity is rejected. Use separate imports for different entities. Dimension codes identify classification; they never compute or allocate monetary amounts.
+For a records-array `import.execute`, place `validate_only` inside `options`; a top-level flag is rejected. A stored-CSV request instead supplies a company-scoped `r2_storage_key` and non-empty `field_mapping` without `records`; its legacy top-level check flag remains accepted. `get_submissions(action="schema", object_type="customer", operation="import")` describes both alternatives. Public `submit(..., validate_only=True)` checks the envelope but does not read the file or validate its rows; `options.validate_only` starts an actual CSV row check. The outer `submit` object type supplies the payload type when omitted. Supported built-in import types are `account`, `card_transaction`, `customer`, `dimension_type`, `dimension_value`, `employee`, `fixed_asset`, `item`, `opening_balance`, `transaction`, and `vendor`. A top-level `legal_entity_id` is copied into each record for synchronous, asynchronous and approval paths. A conflicting record entity is rejected. Use separate imports for different entities. Dimension codes identify classification; they never compute or allocate monetary amounts.
 
 ## Validation, partial results and transaction boundaries
 
-`options.validate_only` (or `manage_imports(action=<import type>, validate_only=true)`) uses the validation path without import tracking writes, approval requests or business writes. The response explicitly sets `validation_only=true`; `validated_records` counts valid rows and `imported` is zero.
+For a submitted **records array**, `options.validate_only` (or `manage_imports(action=<import type>, validate_only=true)`) validates without import tracking, approval requests or business writes. The response sets `validation_only=true`; `validated_records` counts valid records and `imported` is zero.
 
-Each independent imported record commits with its GL, workflow audit and external-link rows on one connection. A failed record rolls back its counts and IDs, and processing continues unless `stop_on_error=true`. Existing grouped imports retain group transactions. An import with errors reports `status="partial"` if some records succeeded, otherwise `status="failed"`; compatibility `success=true` may still represent partial success. Inspect errors before retrying and use duplicate handling to avoid replaying committed records.
+Each independent imported record commits with its GL, workflow audit and external-link rows on one connection. A failed record rolls back its counts and IDs, and processing continues unless `stop_on_error=true`. Existing grouped imports retain group transactions. The synchronous record-array response reports `status="partial"` if some records succeeded, otherwise `status="failed"`; compatibility `success=true` may still represent partial success. A CSV job can report `completed` with rejected rows; inspect its `error_count` and row records. Inspect errors before retrying and use duplicate handling to avoid replaying committed records.
 
-Transaction imports refuse missing/inactive tenant `transaction.post` definitions when the template defines that operation, including validation and connector imports. This check supplements the existing `import_batch.review` approval path; it does not remove it. `get_submissions(action="schema", object_type="customer", operation="import")` and other supported import aliases expose the shared import payload contract.
+For a rejected Merit group, every rolled-back row counts as processed and as an error. The group has one summary cause and one error row outcome per record; `total_records - processed_records` still means rows not attempted.
+
+Transaction imports refuse missing/inactive tenant `transaction.post` definitions when the template defines that operation, including validation and connector imports. This check supplements the existing `import_batch.review` approval path; it does not remove it. `get_submissions(action="schema", object_type="customer", operation="import")` and other supported import aliases expose the shared two-form import envelope; public preview success is not proof of row or file validity.
 
 
 ### Employee numbering across imports and creation (E2E-041)
@@ -535,9 +537,15 @@ creation after deploying the shared allocator. Custom source IDs need not have
 a numeric EMP suffix. Numbers beyond six digits are preserved, not truncated.
 
 
-The record-array `options.validate_only` contract does not apply to an R2 CSV
-payload (`r2_storage_key`). The dashboard CSV “Check rows first” dry run is
-separate planned work; do not describe that option as implemented.
+For an R2 CSV payload (`r2_storage_key`), `options.validate_only` is the
+implemented **Check rows first** path. It streams the file and persists an
+import check record, `check_sha256` and per-row validation/error results; it
+does not write business records or consume the approval or re-import gates.
+On that check record, `imported_count` counts rows that passed validation,
+not newly imported business records. Inspect `options.validate_only` and the
+later Execute run separately.
+A later Execute uses only the rows that passed that completed check, after
+verifying the file bytes and the checked target/mapping still match.
 
 ### Interrupted import recovery
 
@@ -548,15 +556,39 @@ that lock before publishing `importing`, including preprocessing and nontransact
 imports, and release it after processing/finalization. Another worker's held lock
 prevents recovery. An unlocked marked record becomes `failed`, retaining its
 counts and existing errors and appending a restart explanation. No age threshold
-is used. The message says rows **recorded** as written: persisted progress can lag
-the last committed batch, so inspect the ledger before resubmitting a partial file.
+is used. The message says rows **recorded** as written. CSV jobs with row
+records (every importer except opening balances) commit each row or Merit
+group with its row outcome and the run's counts in the same transaction. A failed outcome write
+rolls back that business row, which is then recorded as an error ("CSV row
+outcomes could not be persisted"); a row the ledger refuses at COMMIT is
+recorded the same way. A worker loss after commit preserves its outcome. A rolled-back row's error outcome is written right after
+the rollback; if that write fails, the run stops and its row records are marked
+`partial`. The difference between total and processed rows is not an error
+count: it is the rows not reached when the job stopped. Large record-array
+imports and CSV jobs from before November 2026 can still have lagging progress,
+so inspect the ledger before resubmitting a partial or historical file.
+
+For a failed run with known or uncertain written rows, the public import-status
+message and Dashboard run detail repeat that review-before-retry instruction.
+They do not describe a no-write refusal as having written rows.
+
+A CSV opening-balance import binds its posted
+`OPENING_ENTRY` to the import ID and stores its processed/imported counts in the
+journal metadata. If the worker stops just after posting, recovery restores
+counts only from that exact journal; an unbound same-period entry is never
+credited to the import. When binding cannot be verified, review the period
+before retrying. A second opening entry for the same entity and period is
+refused. Opening-balance CSV does not use generic per-row receipts. The CSV job reads
+an opening-balance file as one batch, whatever its size, so a trial balance of more
+than 100 accounts posts as one journal.
+Its imported count excludes a generated balancing-account line.
 
 Rolling-upgrade limitation: unmarked legacy `importing` records are counted in
 startup logs as `legacy_needing_review` and left unchanged. Their liveness cannot
 be proved with the transaction-only file lock, especially during preprocessing.
 Review them after all old workers stop; do not infer failure from age or reset
 counts. Pending jobs that died before starting are also outside this sweep.
-The file fingerprint lock continues to prevent duplicate transaction-file imports.
+The file fingerprint lock prevents a simultaneous duplicate transaction-file import. For new imports, a marker committed with the first written row also prevents a same-file retry if the worker dies before its progress count is saved. Recovery reports only durably stored outcomes; it does not guess what an in-flight row would have done. Older fingerprinted imports made before this marker or the row-outcome change require manual review when their counts may have lagged.
 
 ### Mandatory account subtype
 

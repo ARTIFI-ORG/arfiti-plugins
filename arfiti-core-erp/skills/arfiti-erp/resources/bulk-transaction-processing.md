@@ -550,7 +550,7 @@ get_imports(action="status", import_id="uuid")
 
 ### Concurrent Import Limit
 
-Only **one large import per organization** runs at a time. Small imports (<=50 records) are unaffected. If a second large import is attempted:
+Only **one background import per organization** runs at a time (large record imports, CSV imports and approved batches, across server processes). Small record imports (<=50 records) are unaffected. A refused submission leaves no import record. When the running import is on the same server process the error names it:
 
 ```json
 {
@@ -558,6 +558,8 @@ Only **one large import per organization** runs at a time. Small imports (<=50 r
   "error": "Organization already has a running import: <import_id>. Wait for it to complete or check status with get_imports(action='status', import_id='<import_id>')."
 }
 ```
+
+Otherwise it reads "Organization already has a running import. Wait for it to complete and check import history before trying again."
 
 ### Communicating Results to User
 
