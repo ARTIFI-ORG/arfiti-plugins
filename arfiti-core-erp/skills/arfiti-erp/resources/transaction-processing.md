@@ -910,7 +910,11 @@ term at any level, the invoice is due on its invoice date.
 Customer and payment-term entity overrides are honored. Missing, inactive or
 invalid selected terms fail validation and posting; zero days means immediate.
 An explicit term is validated even when an explicit due date wins; inherited
-terms are not consulted when that date is supplied. Term codes are identifiers:
+terms are not consulted when that date is supplied. The customer must be
+available in the invoice's entity (`v_customers_effective`) whichever way the
+due date is given: an explicit `due_date` or `payment_term_code` does not skip
+that check (AR-378), and a customer of another entity is refused before anything
+is posted. Term codes are identifiers:
 the resolver uses stored calendar days, not code parsing or end-of-month rules.
 Validation and execution use the same resolver; execution rechecks current terms.
 This affects new AR postings only, not existing invoice dates or ledger amounts.

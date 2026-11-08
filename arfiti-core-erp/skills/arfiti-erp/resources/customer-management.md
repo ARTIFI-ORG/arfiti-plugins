@@ -597,6 +597,8 @@ Use the `customer.update` workflow to modify existing customers.
 
 **See:** customer.update definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
 
+Customer names are unique among active customers (case-insensitive). An update may resend the customer's own name unchanged; only a name another active customer holds is refused. The record updated is the one `customer_id` names, or, without it, `global_customer_id`.
+
 ### Update Basic Information
 
 Only include fields you want to change:
