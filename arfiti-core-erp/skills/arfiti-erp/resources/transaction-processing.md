@@ -771,6 +771,7 @@ submit("transaction", "delete", {
 - The fiscal period for the transaction must be open (not closed)
 - **AP/AR invoices with payments**: Cannot delete if `amount_paid > 0` — delete/reverse the payments first
 - **AP/AR payments**: Cannot delete if the payment has been applied to invoices
+- **Reimbursement payouts and the expense reports they settled**: refused while a bank-side `REIMBURSEMENT_PAYOUT` is applied to the report (force or not) — reverse the payout first
 - **Reversal pairs**: If deleting a reversed transaction, both the original and its reversal are deleted together. Both fiscal periods must be open.
 
 ### Success Response
