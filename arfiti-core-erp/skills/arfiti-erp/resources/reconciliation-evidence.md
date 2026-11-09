@@ -24,7 +24,8 @@ without regrouping them when each has a shared typed reference or reviewed bill
 link, every purchase uniquely identifies this bill, all amounts are in the bill
 currency, and the complete set fits the remaining balance. The entire eligible set
 is rechecked under application locks. An equal-sum combination alone remains
-ambiguous. For a single-source
+ambiguous. A bill whose own lines itemise several charges (one dated entry per
+charge) is the separate `itemised_bill_lines` rule in the reconciliation guide. For a single-source
 foreign-currency purchase, omitted source_applied_amount can be derived only from
 its recorded original-currency evidence using the existing allocation service.
 Never compare a EUR source amount numerically to a USD invoice amount.
