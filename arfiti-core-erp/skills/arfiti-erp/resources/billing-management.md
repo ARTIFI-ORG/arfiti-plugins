@@ -1753,6 +1753,52 @@ best-effort event savepoint. It does not prove actual email delivery or authoriz
 a historical data repair. Runtime is merged; this verification did not deploy it.
 
 
+### Platform checkout policy: the `platform_billing` setting (AR-1011)
+
+A platform checkout (Stripe today) needs five choices: payment terms, the
+dunning schedule, which items the plan and add-ons are, their revenue accounts,
+and the tax code for the customer. They come from one setting on the billing
+entity, `config_settings` key `platform_billing`, edited through
+`submit("config_setting", "create" | "update", {"legal_entity_id": <billing entity>,
+"config_key": "platform_billing", "config_value": {...}})`:
+
+- `payment_terms_code` and `dunning_schedule_days` (positive whole days in
+  ascending order);
+- `plan_items`: `"<plan_code>:<billing_interval>"` to an item number;
+- `usage_items`: an ordered list of `{metric, item_number, description}`, one
+  usage contract line each;
+- `top_up_item`: the item number for AI credit top-ups;
+- `tax_rules`: tried in order, first match wins. A rule matches
+  `{"country": "missing"}`, or `{"countries": [ISO codes]}` with an optional
+  `"vat_number": true | false`. An empty match matches every checkout.
+
+Each item's revenue account is the item's own `revenue_account_number`, and the
+tax code is read as the billing entity sees it (`v_tax_codes_effective`). A
+malformed value is refused when saved. A checkout the setting cannot answer is
+held, not guessed, and nothing is written: no setting, no matching rule, an
+unmapped plan, or a missing item, revenue account or tax code. The answer lives
+in `src/services/platform_billing_config.py` and is served to the webhook by
+`POST /api/internal/platform-billing/resolve`, so another payment provider's
+checkout can use the same setting. The platform operator saves the platform's own values.
+
+### The checkout-paid first period (AR-989)
+
+A subscription's first period is paid at checkout, so the contract's
+`next_billing_date` starts at the second period. When the checkout's posting
+names that first period (`service_period_start`, `service_period_end`), the
+posting endpoint records a `billed` billing receipt for it after the payment,
+linked to the checkout's invoice and carrying the contract's terms
+(`src/services/provider_first_period_receipt.py`). The billing run then bills
+the second period normally, instead of holding the contract with
+`initial_service_uncovered`. The posting is refused before the invoice, and
+nothing is written, if:
+- the period is not exactly the contract's first period (`start_date` to the day
+  before `next_billing_date`);
+- another receipt already covers those days.
+A retry that only lacks the payment always posts the payment.
+The first payment and later billing-run invoices tax the plan the same way
+(tested on real SQL for a VAT-registered and a non-registered seller).
+
 ### Subscription contract transaction (AR-474)
 
 The Stripe checkout contract stage now uses one database transaction for its
