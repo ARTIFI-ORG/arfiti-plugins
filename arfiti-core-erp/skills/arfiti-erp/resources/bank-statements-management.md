@@ -1801,3 +1801,17 @@ Statement `metadata` must be a JSON object. A legacy array or scalar cannot prov
 source coverage: finalization reports `source_coverage_unknown`, also with
 `force=true`, and recomputation neither finalizes nor rewrites the malformed
 metadata. Repairing that evidence is a separate, authorized action.
+
+### Plaid prospective card routing
+
+New Plaid feed sources with explicit original-description card evidence route
+through the shared governed card importer only for a unique card in an activated
+account/program in the same entity. Original description masked digits are
+evidence; merchant names and payment channels are not card identity. Existing
+bank imports stay in place. Unknown/ambiguous attribution remains bank evidence
+with a routing reason, never a guessed employee. Refunds retain their inflow
+sign. Descriptive enrichment is audited without rewriting imported sources.
+Imported card financial/identity corrections or removals refuse the delta for explicit review;
+never reset a cursor or reimport the movement to work around this protection.
+See `docs/GUIDES/GUIDE_CONNECT_PLAID.md`, “Prospective Plaid card imports”, for
+configuration, source ownership and recovery details.
