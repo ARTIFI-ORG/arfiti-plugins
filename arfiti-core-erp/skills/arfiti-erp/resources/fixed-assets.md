@@ -14,9 +14,9 @@ asset/entity identity. This retains disposal-before-depreciation history; it doe
 not bulk-repair previously disposed assets. Historical repairs remain separate.
 
 
-## Dimension selection (branch implementation)
+## Dimension selection (migration 656)
 
-The branch implementation (migration 642; not deployed) selects assets by their
+Asset reports (migration 656, live) select assets by their
 current recorded dimension assignments as of the entity business date. This is
 explicitly disclosed even when the valuation date is historical; it does not
 reconstruct past departmental ownership. Existing book, currency and historical
