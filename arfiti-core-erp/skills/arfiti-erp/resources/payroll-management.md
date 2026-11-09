@@ -763,7 +763,7 @@ than raising, so nobody is tempted to re-run an already-posted payroll.
 - **Fiscal period auto-lookup**: If not provided, looks up the open fiscal period matching the pay_date
 - **Bank account auto-lookup**: If `bank_account_id` not provided, selects the first active bank account matching the entity + currency
 - **One database transaction**: the PAYROLL journal, the draft payment batch and the run's `paid` marker commit together or not at all, so a failure part-way leaves no journal behind.
-- **Journal recovery (verified reuse)**: a journal from an earlier attempt (the run's `transaction_id`, or a posted `PAY-RUN-{id}` journal whose run update did not commit) is reused only when it is the posted, unreversed PAYROLL journal for this run in the run's entity, currency and pay date, with amount and GL lines (account, debit, credit, employee, vendor) equal to the approved detail lines. Otherwise — reversed, different reference, different amounts, or more than one posted `PAY-RUN-{id}` journal — `process_payment` refuses with "Cannot reuse payroll journal" and changes nothing. Do not retry blindly: show the user the journal named in the error. If the run had no linked journal (an earlier attempt's orphan), they review it and reverse it if wrong; the retry then posts a new journal. If the run itself links the reversed or wrong journal, retrying keeps failing: void the run (`payroll_run.void`) and create, calculate and approve a new one.
+- **Journal recovery (verified reuse)**: a journal from an earlier attempt (the run's `transaction_id`, or a posted `PAY-RUN-{id}` journal whose run update did not commit) is reused only when it is the posted, unreversed PAYROLL journal for this run in the run's entity, currency and pay date, with amount and GL lines (account, debit, credit, employee, vendor) equal to the approved detail lines. Otherwise — reversed, different reference, different amounts, or more than one posted `PAY-RUN-{id}` journal — `process_payment` refuses with "Cannot reuse payroll journal" and changes nothing. Do not retry blindly: show the user the journal named in the error. If the run had no linked journal (an earlier attempt's orphan), they review it and reverse it if wrong; the retry then posts a new journal. If the run itself links the reversed or wrong journal, retrying keeps failing: void the run (`payroll_run.void`, which reverses that journal if it is still posted) and create, calculate and approve a new one.
 - **One preparation per run**: simultaneous `process_payment` calls for the same run produce one journal and one draft batch; the other call is refused with "already paid". Treat that refusal as "already prepared", not as a failure to retry.
 - **Batch line_count correction**: After inserting batch lines, the header's `line_count` is updated to reflect actual inserted lines (may differ from anticipated if vendor bank accounts are missing)
 
@@ -777,11 +777,19 @@ Use the `payroll_run.void` workflow (high-risk; approval steps as the organisati
 {
   "payroll_run_id": 1,
   "void_reason": "Incorrect tax calculations - need to recalculate",
-  "reverse_gl": true
+  "reverse_gl": true,
+  "reversal_date": "2026-09-30"
 }
 ```
 
-Use when errors are discovered after processing. Creates reversing GL entries if `reverse_gl` is true.
+Use when errors are discovered after processing. Voids a payroll run, and never leaves its journal or payment batch live behind it (AR-1136):
+
+- **Not yet paid** (draft, calculated, approved, no batch): the run is marked `voided`; nothing else changes.
+- **Paid, batch not yet transmitted** (`draft`, `pending_approval` or `approved`): in one transaction the batch and its lines are cancelled, the run's PAYROLL journal is reversed (through `transaction.reverse`, dated `reversal_date` or today, which must fall in an open period) and the run is marked `voided`. A batch that was waiting for approval is cancelled; an approval that arrives later finds it cancelled.
+- **Refused:** a batch already `transmitted` or later, or with a line transmitted, paid or returned. Money may have moved, and a sent batch is never cancelled: reversing its payments only returns the batch to `transmitted`, so such a run cannot be voided at all. Leave it paid and correct it with a correction run (`payroll_run.create` with `run_type: "correction"`). Also refused: `reverse_gl: false` while the run's journal is posted, which would leave payroll expense in the ledger behind a voided run.
+- A batch in `failed` or `processing` is refused too, even when every line failed. A journal with a live payment application (a bank payment matched to it) is refused by the same pre-flight `transaction.reverse` runs.
+
+The void locks the run, the same lock `process_payment` holds while it prepares, so a void and a preparation never interleave. A void sent while a preparation is in flight waits for it, then reverses and cancels what it created. The result names `reversing_transaction_id` and `cancelled_payment_batch_id`, and the run's `metadata` keeps both.
 
 ### Update Run
 
@@ -908,11 +916,14 @@ Employer Cost:
 
 ### Error Correction
 
-If errors are discovered after payment:
+If errors are discovered after processing:
 
 ```
-1. Void the incorrect run
-    payroll_run.void (creates reversing entries)
+1. Void the incorrect run (only before its payment batch is transmitted)
+    payroll_run.void (cancels the batch, reverses the PAYROLL journal)
+   Once the batch was transmitted the void is refused for good (reversing
+   the payments does not make the batch cancellable): correct with a
+   correction run instead, without voiding.
 
 2. Create correction run
     payroll_run.create (run_type: correction)
