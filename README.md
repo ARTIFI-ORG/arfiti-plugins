@@ -111,23 +111,39 @@ support@arfiti.com · Documentation: https://arfiti.com/docs
 
 This repository's contents are submitted to the Anthropic directory from `ARTIFI-ORG/arfiti-plugins`, which the publish workflow syncs and nobody edits by hand. Each plugin folder needs a README with a "What it runs and sends" section, a LICENSE and a `license` in `plugin.json`, all checked by `plugins/scripts/check_mcp_configs.py`. `arfiti-core-erp` is generated: edit `mcp-server/skill-templates/base`, run `plugins/scripts/build_core_plugin.py`, and commit both. The full process is in [GUIDE_PLUGINS.md](../docs/GUIDES/GUIDE_PLUGINS.md#anthropic-directory).
 
-## Versioning (required on every content change)
+## Versioning (assigned when publishing)
 
 Claude.ai caches installed plugins **by version** — shipping changed content under an
 unchanged version means users keep the stale cached copy even after reinstalling.
-Whenever you change anything inside a plugin, bump its version:
+
+A pull request that changes a plugin does **not** bump its version. When `main` is
+published, `publish-plugins.yml` compares every plugin with the copy the public mirror
+(`ARTIFI-ORG/arfiti-plugins`) already serves, ignoring the version field, and gives
+each changed plugin the next patch above its published version
+(`plugin_versions.py --assign`). The mirror therefore always serves a new version for
+new content, and parallel pull requests no longer collide on one version number or on a
+shared lock file (the former `versions.lock.json`, removed 2026-11-09).
+
+The version in this repository is the **declared floor**. Raise it only for a deliberate
+change, and publishing never goes below it:
 
 ```bash
-python3 plugins/scripts/plugin_versions.py --bump <plugin-name> <major|minor|patch>
+python3 plugins/scripts/plugin_versions.py --bump <plugin-name> <major|minor>
 ```
 
 - **major** — breaking: commands removed/renamed, output format changed
 - **minor** — new commands or features
-- **patch** — fixes, doc/text updates
+- **patch** — assigned by the publish; never needed by hand
 
-The bump updates `plugin.json`, `marketplace.json`, and `versions.lock.json` together.
-CI (`publish-plugins.yml`) runs `plugin_versions.py --check` before syncing to the
-public marketplace repo and **fails the publish** if content changed without a bump.
+`plugin_versions.py --check` (pull requests and the publish) fails when `plugin.json`
+and the `marketplace.json` entry disagree or a plugin is missing from the marketplace.
+The published patch can be a few numbers above the declared version: the app's plugin
+registry and the landing catalog show the declared version.
+
+The publish compares with the mirror's current copy only. A plugin removed from the
+mirror and added back later (or renamed) starts again from its declared version, so
+declare one it never published (`--bump <plugin> minor`), or clients keep a cached copy
+of that earlier version.
 
 Why this exists (per the official plugin-marketplace docs): when `version` is set,
 clients pin the cached plugin to that exact string — *"you must bump it every time you
