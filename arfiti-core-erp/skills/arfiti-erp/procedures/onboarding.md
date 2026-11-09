@@ -279,6 +279,8 @@ Clipboard refusal has a manual-copy fallback; it does not mean company setup fai
 
 Configuration company references such as ORG-0000002 are display labels, not API IDs; the underlying organization_id remains 2. The Admin connection wizard exposes ChatGPT, Claude and IDE setup paths. ChatGPT instructions use the company-pinned connector URL and OAuth; the selected path persists across reloads. Ask the user to select the installed Arfiti plugin in ChatGPT and request Check onboarding status, then confirm the returned company. The company connection timestamp may come from another client or user and does not verify this ChatGPT session. Workspace availability and live OAuth must be verified separately. The ChatGPT path offers neither IDE keys nor Claude skill/plugin downloads. The separate page-help link only opens the assistant destination.
 
+On every path (Claude, ChatGPT, IDE) the Admin badge reads **First company connection** with a time, or **No company connection recorded**. It is organization history, not a live connection for the selected client; ask the user to confirm the company from that client's own tool response. Step 3's soft gate uses the same signal, and the step 3 and finish summaries show it beside the saved client choice. If the entity card reports failed onboarding tasks, check the checklist (`get_summary`), resolve each cause, then return only the affected task to `pending` with `update_task` and run another wave; nothing reruns automatically.
+
 
 The final wizard screen is **Review your setup**, labeled **SETUP REVIEW**.
 Reaching it records navigation progress; it does not certify ledger completion
