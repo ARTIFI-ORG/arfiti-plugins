@@ -458,15 +458,6 @@ depreciation still scheduled up to that period). Periods after it are re-based o
 new carrying amount over the asset's remaining useful life, and book values, disposal and
 the GL reconciliation all include the impairment.
 
-An impairment recorded before the 7 November 2026 release (PR #590, live 19:55 UTC) did
-not re-base the schedule. Go by when it was recorded, not its `impairment_date`, which
-can be backdated: the event's `created_at` is the recording time. The decisive check is
-the schedule itself: if the book's scheduled depreciation after the impairment's period
-totals more than its carrying amount less salvage, the later periods still use the old,
-higher amounts and the book value will end below salvage (or below zero). That is the
-known gap AR-1129, not a calculation error to work around; report it to the user rather
-than posting a correcting journal.
-
 ---
 
 ## Disposing Assets

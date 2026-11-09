@@ -1,7 +1,7 @@
 {
   "name": "arfiti-core-erp",
   "description": "Core operating skill for the Arfiti ERP: how to post, query, report and run workflows through the Arfiti MCP connector, with a domain guide for each area of the ledger.",
-  "version": "2.0.48",
+  "version": "2.0.49",
   "license": "MIT",
   "author": {
     "name": "Arfiti"
