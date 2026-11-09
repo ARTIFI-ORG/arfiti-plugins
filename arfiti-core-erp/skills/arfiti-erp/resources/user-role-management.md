@@ -676,6 +676,13 @@ pending submission instead of claiming it was applied.
 - Remove requires `user_id`; membership deletion and role deactivation are atomic.
   Owners cannot be removed. Only an owner can grant/change owner membership, and
   the last owner cannot be demoted. Changes serialize per organization.
+  These rules are checked before submission as well: a refusal comes back as a
+  pre-submission `Validation Failed` with the sentence in `errors` (for example
+  "The last owner cannot be demoted"), and nothing is changed. The refusal is
+  stored under the request's idempotency key: once the cause is fixed, resubmit
+  with a new `idempotency_key`. The rules are checked against the organisation
+  as it is at submission, also for a change that waits for approval: to hand
+  over ownership, promote the new owner and let that complete first.
 - Actor membership and target organization are checked again at execution, after
   any approval wait. Only active roles belonging to the organization or system
   roles can be assigned. Existing assignment expiry dates are preserved.
@@ -1003,7 +1010,14 @@ MCP history and task reads check the underlying object permission and caller's
 entity membership before returning or enriching payloads/actions. A wildcard
 does not bypass entity restrictions. A restricted reader cannot read workflows
 with missing entity metadata; retain an owner for reviewing legacy metadata.
-Stored transaction types override payload hints. Generic MCP workflow get,
+Stored transaction types override payload hints, in both directions: when a
+transaction workflow names a stored `transaction_id`, its stored (source) type
+decides the domain, so an AP reader sees a stored AP bill whose payload says
+`PAYROLL`, and an AP hint does not reveal a stored payroll transaction. The
+payload's `transaction_type` / `transaction_type_code` hint counts only when no
+stored transaction is named (then a payroll hint still requires `payroll:read`).
+Dashboard workflow lists, notification links and workflow details apply the
+same rule, and so do MCP workflow get, list and count (AR-706). Generic MCP workflow get,
 batched get, list/search and count apply the payroll/entity filter in SQL before
 pagination; generic payment-batch reads also exclude salary batches without
 payroll access. This does not grant approval authority or execute a workflow.
