@@ -438,11 +438,13 @@ Write actions (`manage_onboarding`): `add_entity`, `download_skill`, `get_summar
 `get_summary` and `download_skill` are write actions: when every task is done, `get_summary` finalizes onboarding, and the first `download_skill` generates the skill package. Their authority rules are unchanged.
 
 ```javascript
-manage_onboarding("start", country_code="US", accounting_standard="us_gaap_standard",
+manage_onboarding(action="start", country_code="US", accounting_standard="us_gaap_standard",
     tax_jurisdiction="us_sales_tax")   // first entity: omit legal_entity_id
-manage_onboarding("run_wave")
-get_onboarding("get_support", support_type="import_accounts")
+manage_onboarding(action="run_wave")   // repeat while next_tasks lists runnable work
+get_onboarding(action="get_support", support_type="import_accounts")
 ```
+
+A wave advances one legal entity's checklist. When more than one entity has open onboarding tasks, pass the entity: `manage_onboarding(action="run_wave", legal_entity_id=12)`; without it the call is refused and lists each entity with its open task count. Each answer's `next_tasks` carries `legal_entity_id`, and its message names the exact call to make next. `update_task` takes `legal_entity_id` the same way when two entities share the task.
 
 ### get_organization() / manage_organization()
 

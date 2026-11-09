@@ -126,6 +126,8 @@ manage_onboarding(action="get_summary")
 
 **Keep calling `run_wave` until `progress_pct` = 100.** Typical setup needs 3-5 waves.
 
+A wave advances one legal entity's checklist. When more than one entity has open onboarding tasks, `run_wave` needs the entity, `manage_onboarding(action="run_wave", legal_entity_id=12)`; without it the call runs nothing and lists each entity with its open task count. Follow the call each answer's message names: when this entity has nothing runnable left, it names the other entity's call.
+
 If a task fails, inspect and resolve its error, reset only that task to `pending` with `update_task`, then run another wave. Do not assume the failure is transient or repeatedly run a blocked wave.
 
 ### Step 5: Verify Setup

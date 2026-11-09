@@ -52,7 +52,7 @@ manage_onboarding(action="start",
     fiscal_year_start_month=1
 )
 # Then run waves until complete:
-manage_onboarding(action="run_wave")  # repeat until progress_pct == 100
+manage_onboarding(action="run_wave")  # repeat while next_tasks lists runnable work
 ```
 
 Wave 1's `create_legal_entity` task auto-derives the entity from the organization record:
