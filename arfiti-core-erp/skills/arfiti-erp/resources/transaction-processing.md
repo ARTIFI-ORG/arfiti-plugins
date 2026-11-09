@@ -718,6 +718,7 @@ submit("transaction", "update", {
 - Transaction must be in `posted` status (not reversed, cancelled, or draft)
 - Transaction must not have been reversed (`reversed_by_id` must be NULL)
 - The fiscal period for the transaction date must be open (not closed) — except an update of custom fields only
+- A posting dated where the entity has no fiscal period at all is refused: "No fiscal period covers <date> for legal entity <id>…". Create the period (`fiscal_period.create`) or use a date inside an open period
 - If changing `transaction_date`, the new period must also be open
 - **AP/AR invoices with payments**: Line edits are blocked if the invoice has partial/full payments applied — only header fields can be updated
 - **AP/AR payments**: Line/amount edits are blocked if the payment has been applied to invoices

@@ -193,6 +193,12 @@ executor refused before dispatch and nothing ran. Fix the listed `errors` and
 submit again. The refusal is kept without expiry, so an identical payload under
 the same key replays it even after the cause is fixed elsewhere (a vendor
 created, a period reopened): pass a new `idempotency_key` to be checked again.
+A refusal with `reason_code: invalid_payload` and `effect_outcome: no_effect` is
+the same kind: the workflow's own validation (a missing required field, an
+unknown reference, a name another record already uses) refused before any
+workflow existed. `message` is the sentence, `validation_errors` the list and
+`guidance` the expected format and reference lists. Fix them and submit again;
+the same key replays the refusal.
 A replayed refusal carries `replay_hint` saying this. A task-bound submission's
 identity comes from its task, so neither a new key nor a changed payload starts a
 new request; its replay carries no hint.
