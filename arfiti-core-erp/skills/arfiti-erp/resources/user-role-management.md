@@ -129,8 +129,15 @@ entities within your own. "All entities" (`null` / omitted `entity_ids`) is
 refused for a membership and for `user_role.assign`, with `entity_access_denied`
 (`error_stage: "entity_grant"`). So are invitations into linked client
 organisations, and payload edits that would widen a pending grant. Ask an
-unrestricted owner or admin to grant other entities, or to change a member
-whose access goes beyond yours.
+unrestricted owner or admin to grant other entities.
+
+**You can change only members within your entities.** With limited access you
+cannot update, remove or assign a role to a member whose access reaches beyond
+yours (every entity, or another entity), nor revoke or resend such an
+invitation: `entity_access_denied` (`error_stage: "member_scope"`). A new member
+with no role yet can be given a first role within your entities; changing or
+removing them still requires their entity list to be within yours. Ask an
+unrestricted owner or admin to change a wider member.
 
 Legal-entity list/search results and pagination counts include only allowed
 entities. Single and batch `get_entity("legal_entity", ...)` reads report
