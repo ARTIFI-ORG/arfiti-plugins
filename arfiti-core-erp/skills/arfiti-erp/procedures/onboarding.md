@@ -304,7 +304,10 @@ In Claude, open Customize → Plugins → Add → Add marketplace and enter
 `ARTIFI-ORG/arfiti-plugins`, or upload a downloaded plugin ZIP in the Plugins tab.
 Plugins are available on Claude web and Desktop with a paid plan, subject to
 workspace policy. Hooks, sub-agents and local MCP servers require Cowork or
-Claude Code. Downloading a ZIP does not install or verify the plugin.
+Claude Code. Downloading a ZIP does not install or verify the plugin. The ZIP holds
+the plugin as the marketplace publishes it, with the same version; when the
+marketplace cannot be reached it holds the copy deployed with the dashboard, whose
+version can be lower.
 
 Provider instructions checked on 2026-10-16 against
 [Anthropic’s plugin guide](https://support.claude.com/en/articles/13837440-use-plugins-in-claude).

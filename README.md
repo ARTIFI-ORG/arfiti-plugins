@@ -138,7 +138,11 @@ python3 plugins/scripts/plugin_versions.py --bump <plugin-name> <major|minor>
 `plugin_versions.py --check` (pull requests and the publish) fails when `plugin.json`
 and the `marketplace.json` entry disagree or a plugin is missing from the marketplace.
 The published patch can be a few numbers above the declared version: the app's plugin
-registry and the landing catalog show the declared version.
+registry and the landing catalog show the declared version. The onboarding plugin
+download (`/api/plugins/download/{slug}`) serves the mirror's files, so its zip carries
+the published version. It falls back to the repository copy, which has the declared
+version, only when the mirror cannot be read or has not published the plugin yet; the
+`X-Plugin-Source` response header says which (`mirror` or `repository`).
 
 The publish compares with the mirror's current copy only. A plugin removed from the
 mirror and added back later (or renamed) starts again from its declared version, so
