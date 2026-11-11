@@ -59,7 +59,9 @@ Arfiti exposes 24 tools. Read-only tools never change anything; write tools ask 
 
 ### What is not available here
 
-Money movement is not offered through these tools. Transmitting a payment batch (`payment_batch.transmit`) and exchanging currency (`fx_exchange.execute`) are refused on `submit`, and approving or editing such a pending submission is refused on `manage_submissions` (`operation_not_available_via_mcp`); rejecting it or requesting changes still works. The user transmits payment batches in the admin dashboard (Runs → Payment proposals → open the batch → Transmit) and exchanges currency at their bank. You can prepare everything before that point: build and submit the batch, check its lines, quote an exchange with `get_connectors(action="fx_quote", ...)`.
+Exchanging currency (`fx_exchange.execute`) is refused on `submit`, and approving or editing a pending exchange is refused on `manage_submissions` (`operation_not_available_via_mcp`); rejecting it or requesting changes still works. Quote an exchange with `get_connectors(action="fx_quote", ...)`; the user exchanges the currency at their bank.
+
+Transmitting a payment batch (`payment_batch.transmit`) is available, and it moves money: submit it only when the user asks you to transmit that batch, and say what will happen first (which batch, total, connector or file route). It runs the organisation's transmit workflow, so any approval steps the organisation configured still apply. See `resources/payment-batch-management.md` § Bank Transmission.
 
 ---
 
