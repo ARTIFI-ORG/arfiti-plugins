@@ -297,8 +297,8 @@ Write actions (`manage_submissions`): `comment`, `decide`, `edit_payload`, `prep
 |------|-----------|---------|
 | `get_submissions(action='my_tasks', status?, object_type?)` | `status`: `"pending"` (default), `"in_progress"` or `"completed"` | List tasks assigned to current user |
 | `get_submissions(action='task_details', task_id)` | `task_id`: int | Get full details of a task (payload, history, comments) |
-| `manage_submissions(action='decide', task_id, decision, notes?, field_verifications?, expected_payload_hash?)` | `decision`: `"approve"`, `"reject"` or `"request_changes"` | Decide a workflow task. Approving an `fx_exchange.execute` is refused (`operation_not_available_via_mcp`) |
-| `manage_submissions(action='edit_payload', workflow_id, field_changes, notes?, expected_payload_hash?)` | `field_changes`: JSON string of `{"field": new_value}` pairs | Modify payload fields before approval (see guardrails below). Refused on a pending `fx_exchange.execute` |
+| `manage_submissions(action='decide', task_id, decision, notes?, field_verifications?, expected_payload_hash?)` | `decision`: `"approve"`, `"reject"` or `"request_changes"` | Decide a workflow task. Approving a `payment_batch.transmit` or `fx_exchange.execute` is refused (`operation_not_available_via_mcp`) |
+| `manage_submissions(action='edit_payload', workflow_id, field_changes, notes?, expected_payload_hash?)` | `field_changes`: JSON string of `{"field": new_value}` pairs | Modify payload fields before approval (see guardrails below). Refused on a pending `payment_batch.transmit` or `fx_exchange.execute` |
 | `manage_submissions(action='comment', workflow_id, comment)` | Add a comment to a workflow | Attach notes for reviewers |
 | `get_submissions(action='history', workflow_id)` | Get full audit trail | All events, decisions, comments |
 | `get_submissions(action='schema', object_type, operation, payload?)` | Discover payload fields | Get required/optional fields for a workflow; `payload` is optional JSON routing context (`legal_entity_id`, `transaction_type_code`) |

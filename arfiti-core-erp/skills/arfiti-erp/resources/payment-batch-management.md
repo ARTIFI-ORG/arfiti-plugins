@@ -28,7 +28,7 @@ Payment batches organize multiple vendor payments into a single transmission to 
 | `submit("payment_batch", "submit", {...})` | Submit batch for approval |
 | `submit("payment_batch", "approve", {...})` | Approve pending batch — **only when no approval workflow is in flight**; normally you complete the task `submit` created (see Status Lifecycle) |
 | `submit("payment_batch", "reject", {...})` | Reject pending batch — same caveat as `approve` |
-| `submit("payment_batch", "transmit", {...})` | Transmit an approved batch (moves money on the connector route; runs the organisation's transmit workflow). Only when the user asks for that batch (see Bank Transmission) |
+| `submit("payment_batch", "transmit", {...})` | **Not available through the connector** — the user transmits from the admin dashboard (see Transmitting a batch) |
 | `submit("payment_batch", "cancel", {...})` | Cancel batch |
 | `submit("payment_batch", "update", {...})` | Correct `batch_date` (label only, no GL effect) |
 | `submit("payment_batch", "confirm_line", {...})` | Confirm single line from bank statement |
@@ -57,7 +57,7 @@ draft/pending/approved → cancelled
 |--------|-------------|-----------------|
 | `draft` | Batch created, editable | add_line, remove_line, edit_line, submit, cancel |
 | `pending_approval` | Awaiting approval | approve, reject, cancel, remove_line, edit_line |
-| `approved` | Ready for transmission | transmit, cancel |
+| `approved` | Ready for transmission | transmit (admin dashboard only), cancel |
 | `transmitted` | Sent to bank (connector path: lines move to `processing` while the bank executes; a line the provider completed stays confirmable until its statement debit posts it) | confirm_line, confirm_batch, sync_status |
 | `completed` | All payments confirmed | (final) |
 | `partially_completed` | Some lines confirmed, some failed | (final) |
@@ -286,27 +286,24 @@ house bank per run.
 
 ### Transmitting a batch
 
-Transmission is available through the connector and in the admin dashboard
-(Runs → Payment proposals → open the batch → Transmit); both go through the same
-gateway and the organisation's `payment_batch.transmit` workflow, so any
-approval steps it configured apply to either. Two routes exist: **bank
-transmission** through the linked bank connector, which moves money, and the
-**file route** (`route: "file"`), which only records that the user uploaded the
-payment file to the bank by hand.
+Transmission is **not available through the MCP connector**, and neither is
+approving or editing a transmission that is waiting in an approval lane. After a batch is
+approved, the user transmits it from the admin dashboard (Runs →
+Payment proposals → open the batch → Transmit) and approves a pending
+transmission in Tasks. Two routes exist there: **bank transmission** through the
+linked bank connector, which moves money, and the **file route**
+(`route: "file"`), which generates a payment file for manual upload and only
+changes the batch status. Both are dashboard-only. If a user asks you to
+transmit, or to approve or change a transmission, say where the button is and
+confirm the batch state with `query(entity_type="payment_batch", …)`. A
+`submit("payment_batch", "transmit", …)` call, a `decide` with
+`decision="approve"` on such a submission, or an `edit_payload` on it (its
+connector, route or amount), is refused with
+`operation_not_available_via_mcp`. You can still reject a pending transmission
+or request changes on it with `manage_submissions(action="decide", …)`: that
+moves no money.
 
-Transmit only when the user asks you to transmit that batch. First confirm its
-state with `query(entity_type="payment_batch", …)` (it must be `approved`) and
-tell the user what will happen: batch number, total, and whether money leaves
-through a connector or the file route is recorded. Then
-`submit("payment_batch", "transmit", {"batch_id": …, "connector_id": …})` for
-the bank rail, or `{"batch_id": …, "route": "file"}` for the file route. If the
-workflow parks it for approval, the approver decides it with
-`manage_submissions(action="decide", …)` or in Tasks. Read the result:
-`lines_accepted`, `lines_failed` and per-line statuses, and say plainly if any
-line failed or its outcome is unknown. A `posting_unknown` answer means the
-outcome needs checking: do not resubmit under a new identity.
-
-What a transmit does (from the connector or the dashboard's Transmit button), so you can explain the outcome:
+What the dashboard's Transmit does, so you can explain the outcome:
 
 - **The rail follows the bank account.** Without a route, the batch is paid
   through the connector its source bank account is linked to. If the account
@@ -352,9 +349,9 @@ When the source bank account has no payment connector, the payment file is gener
 
 1. **Generate payment file**: User asks Claude to generate a SEPA pain.001 XML or CSV for the batch. **The file holds only the lines whose status is `pending` or `approved`** — the lines transmit sends. Leave out `excluded` (held), `incomplete` and `cancelled` lines, and set `NbOfTxs` / `CtrlSum` (or the CSV's count and sum) from those lines. `get_entity("payment_batch", id)` already lists the other lines apart (`related.incomplete_lines`, `related.held_lines`, `related.cancelled_lines`), so `related.lines` holds exactly the lines for the file and its sum equals the header's `total_amount` / `line_count`. A held line's bill can be proposed again on a later batch, so paying it from this file pays it twice.
 2. **Download and upload**: User downloads the file and uploads it to their bank portal
-3. **Mark as transmitted**: After uploading the file, the transmission is recorded with the file route (`route: "file"`): the user clicks Transmit in the admin dashboard, or asks you to submit `payment_batch.transmit` with `route: "file"`. That records the transmission and never contacts a provider, even when the source account is linked to one. A plain transmit on an account with no connector is refused, not recorded.
+3. **Mark as transmitted**: After uploading the file, the user records the transmission in the admin dashboard with the file route (`route: "file"`). That records the transmission and never contacts a provider, even when the source account is linked to one. A plain transmit on an account with no connector is refused, not recorded.
 
-**Important**: Generating a payment file alone does not mean it was sent. Record the batch as transmitted only after the user confirms the upload to their bank.
+**Important**: Generating a payment file alone does not mean it was sent. Tell the user to mark the batch transmitted in the dashboard only after the upload to their bank.
 
 ---
 
@@ -554,12 +551,8 @@ submit("payment_batch", "approve", {
   approval_note: "Weekly run verified"
 })
 
-// Step 6: Transmit, when the user asks for it (or they click Transmit in the
-// admin dashboard). This moves money through the linked connector.
-submit("payment_batch", "transmit", {
-  batch_id: batch.batch_id,
-  connector_id: "<the source account's connector id>"
-})
+// Step 6: Transmit: the user clicks Transmit in the admin dashboard.
+// submit("payment_batch", "transmit", ...) is refused through the connector.
 ```
 
 ### Scenario 2: Batch Rejection and Correction
@@ -710,7 +703,7 @@ The payment proposal agent (`payment_proposal` agent type) can automate batch cr
 
 - **Payment batches** group multiple vendor payments into a single bank transmission
 - **11 workflow operations** cover the full lifecycle: create, add_line, remove_line, edit_line, submit, approve, reject, transmit, cancel, confirm_line, confirm_batch
-- **Transmission moves money** — available through the connector and the dashboard, both through the organisation's transmit workflow; transmit only when the user asks for that batch
+- **Transmission is dashboard-only** — the connector refuses `transmit` and refuses to approve or `edit_payload` a pending transmission (`operation_not_available_via_mcp`); rejecting one stays available
 - **Separation of duties** — submitter and approver must be different users
 - **GL entries created at confirmation** — when bank statement evidence confirms payment, not at transmission
 - **Auto-matching** — `confirm_batch` uses 4-priority matching to link bank statement lines to batch lines
