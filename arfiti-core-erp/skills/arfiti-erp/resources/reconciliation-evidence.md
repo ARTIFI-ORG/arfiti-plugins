@@ -92,12 +92,14 @@ matching remains available when a bill arrives; a missing bill alone does not
 require a chasing task. This setting does not add a period-close check.
 
 Deployment does not overwrite an existing agent revision that explicitly enables
-investigations. Startup sync (`AgentRegistry.seed_from_templates`) creates missing
-definitions from the file default (`false`); existing versioned definitions are
-retained, and legacy definitions are captured with their effective configuration.
-Entity onboarding through `seed_agent_definitions` copies
-`system.agent_definition_templates`, whose reconciliation config has no such key;
-the omitted-means-off rule covers those organizations. A saved configuration that
+investigations. Since 11 November 2026 (AR-1187) startup sync
+(`AgentRegistry.seed_from_templates`) and entity onboarding create the
+reconciliation definition in an organization that has none switched off and
+marked `config.runtime = "managed"` (a managed agent runs it), with the file
+default (`false`). Existing versioned definitions are retained,
+and legacy definitions are captured with their effective configuration. A
+definition copied earlier from `system.agent_definition_templates` has no such
+key; the omitted-means-off rule covers those organizations. A saved configuration that
 omits the key was previously treated as on and is off after this release. Changing an existing organization's choice
 requires the supported revision/approval process. This code change does not itself
 activate a replacement template release.

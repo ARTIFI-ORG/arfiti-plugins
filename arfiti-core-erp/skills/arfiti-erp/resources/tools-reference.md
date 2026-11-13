@@ -69,6 +69,21 @@ query("transaction_line", filters={"legal_entity_id": 12,
                                    "debit": {"gte": 100, "lte": 900}})
 ```
 
+**Configuration settings** are readable as `config_setting` (read-only; change
+them with `submit("config_setting", "update", ...)`):
+
+```javascript
+// One key for one entity, e.g. the reconciliation write-off limit
+query("config_setting", filters={"config_key": "reconciliation.write_off_limit",
+                                 "legal_entity_id": 12})
+// Organisation defaults (rows with no entity); only without an entity restriction
+query("config_setting", filters={"legal_entity_id": null})
+```
+
+Rows are the stored values. An absent row means the product's built-in
+fallback applies; a caller limited to some legal entities sees only those
+entities' rows.
+
 `date_filters` (the `{"from": ..., "to": ...}` form above) keeps working
 unchanged — it's sugar for the common "both ends of a date range" case.
 Range operators in `filters` are the general mechanism and also work on
@@ -188,6 +203,23 @@ request identity before dispatch, fail closed if replay protection is unavailabl
 and never release an uncertain outcome merely because an exception or timeout
 occurred. Keep the same key for transport retries. Generic execution failures
 remain `posting_unknown`; a failure sentence alone is not rollback proof.
+
+A failed execution answers one of two things (AR-1161):
+
+- **Definite refusal**: `refused: true`, `status: refused`,
+  `effect_outcome: no_effect`, a `reason_code`, the sentence in `message`, and
+  `rollback_proof` (`engine_transaction` or `executor_transaction`). The server
+  has proved that nothing was saved or posted. Tell the user the `message`, fix
+  the cause, then submit again with a **new `idempotency_key`**; the same key
+  replays this answer. `workflow_recorded: false` means the workflow was rolled
+  back too: `get_submissions(action='history', workflow_id=...)` then returns
+  `recorded: false` with the saved `outcome` of your own submission.
+- **Unknown**: `status: posting_unknown`. When the answer carries
+  `failure_reason` (with `failure_code` and `effect_outcome: unknown`), that is
+  why the execution failed, and you may tell the user. It does not prove that
+  nothing was saved: read the affected records with `query` first, keep the
+  same `idempotency_key`, and do not resubmit under a new one until you have
+  checked.
 A `Validation Failed` with `error_stage: pre_submission` is different: the
 executor refused before dispatch and nothing ran. Fix the listed `errors` and
 submit again. The refusal is kept without expiry, so an identical payload under
@@ -390,7 +422,7 @@ The action lists below are the tools' own action sets.
 |--------------|-----|
 | Bulk import data (accounts, vendors, etc.) | `manage_imports(action="accounts", ...)` |
 | Onboard entity, run checklist, load demo | `manage_onboarding(action="start", ...)` |
-| Org admin, roles, plugins | `get_organization(action="get_info")` |
+| Org admin, roles | `get_organization(action="get_info")` |
 | Register/sync banking connectors | `manage_connectors(action="register", ...)` |
 | Agent memory, financial context | `get_agents(action="recall_memories", ...)` |
 | Read or change a workflow configuration | `get_workflow(action="get", ...)` / `manage_workflow(action="draft", ...)` |
@@ -439,9 +471,9 @@ manage_onboarding(action, legal_entity_id?, task_key?, new_status?, support_type
 
 Read actions (`get_onboarding`): `check_status`, `get_checklist`, `get_support`, `verify_team_member`
 
-Write actions (`manage_onboarding`): `add_entity`, `download_skill`, `get_summary`, `initialize_entity`, `load_demo_data`, `reset`, `run_wave`, `start`, `update_task`
+Write actions (`manage_onboarding`): `add_entity`, `get_summary`, `initialize_entity`, `load_demo_data`, `reset`, `run_wave`, `start`, `update_task`
 
-`get_summary` and `download_skill` are write actions: when every task is done, `get_summary` finalizes onboarding, and the first `download_skill` generates the skill package. Their authority rules are unchanged.
+`get_summary` is a write action: when every task is done it finalizes onboarding. Its authority rule is unchanged. There is no skill package to download: this guide is the `arfiti-core-erp` plugin, installed from the marketplace `ARTIFI-ORG/arfiti-plugins`.
 
 ```javascript
 manage_onboarding(action="start", country_code="US", accounting_standard="us_gaap_standard",
@@ -455,7 +487,7 @@ A wave advances one legal entity's checklist. When more than one entity has open
 ### get_organization() / manage_organization()
 
 ```javascript
-manage_organization(action, organization_id?, user_id?, role_name?, plugin_slug?, ...)
+manage_organization(action, organization_id?, user_id?, role_name?, ...)
 ```
 
 ### Verify company scope after selection
@@ -470,9 +502,9 @@ The response's `organization_id` names the selected company;
 connect to the intended company and verify again before reading or writing records.
 Selection does not expand access or override an API key's organization scope.
 
-Read actions (`get_organization`): `download_plugin`, `get_clients`, `get_info`, `get_plugin`, `get_rate_limit`, `list_orgs`, `list_plugins`, `list_roles`, `list_user_roles`
+Read actions (`get_organization`): `get_clients`, `get_info`, `get_rate_limit`, `list_orgs`, `list_roles`, `list_user_roles`
 
-Write actions (`manage_organization`): `create`, `create_client`, `create_client_key`, `push_plugin`, `remove_role`, `repair_template_data`, `switch`, `update`
+Write actions (`manage_organization`): `create`, `create_client`, `create_client_key`, `remove_role`, `repair_template_data`, `switch`, `update`
 
 > **`action="update"` (rename) is current-org-only for non-wildcard callers**: it renames the session's **current** organization and requires `admin:write` — it cannot target another org by passing a different `organization_id`. To rename a different org, select it with `switch` and verify `get_info` reports it first; pinned connections can retain their scope. Wildcard (owner/admin) callers still must be members of the target org. An unknown/foreign org ID returns "Organization {id} not found".
 

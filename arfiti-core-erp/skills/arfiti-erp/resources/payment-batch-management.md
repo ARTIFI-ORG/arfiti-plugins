@@ -422,6 +422,8 @@ submit("payment_batch", "confirm_line", {
 // Creates AP_PAYMENT GL entry, links statement line, updates batch line to "completed"
 ```
 
+The posted payment carries the batch's `payment_method` as it is: a line of a `SEPA` batch posts with `SEPA`. A posted payment's method is one of `CHECK`, `ACH`, `WIRE`, `SEPA`, `CARD`, `CASH`, `OTHER`.
+
 ### Auto-Confirm Batch from Statement
 
 ```javascript

@@ -17,10 +17,10 @@ Items are the products and services your business sells or purchases. The workfl
 
 | Workflow | Purpose | When to Use |
 |----------|---------|-------------|
-| `item.create` (fields: `get_submissions(action="schema", object_type, operation)`) | Create new item | Adding products or services to catalog |
-| `item.update` (fields: `get_submissions(action="schema", object_type, operation)`) | Update item data | Change pricing, GL accounts, descriptions |
-| `item.delete` (fields: `get_submissions(action="schema", object_type, operation)`) | Deactivate item | Item discontinued or test cleanup |
-| `item.import` (fields: `get_submissions(action="schema", object_type, operation)`) | Bulk import items | Chart of accounts templates, data migration |
+| `item.create` | Create new item | Adding products or services to catalog |
+| `item.update` | Update item data | Change pricing, GL accounts, descriptions |
+| `item.delete` | Deactivate item | Item discontinued or test cleanup |
+| `item.import` | Bulk import items | Chart of accounts templates, data migration |
 
 **Available Query Tools:**
 

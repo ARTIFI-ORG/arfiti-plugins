@@ -2,6 +2,12 @@
 
 ## Agent callback and failure evidence
 
+Where the organisation's bank agent is set to the managed runtime (P-AR-42, built,
+not deployed), a managed agent does this work through the public tools and raises a
+review task when it cannot decide; see "How the managed agents work" in
+agent-management.md. The rest of this section describes the built-in pipeline, which
+still runs where the agent is not managed.
+
 For Bank pipeline 1.1.0, dependency completion means a stored, currently verified
 producer outcome. A completed activation or copied success flag is insufficient.
 Inspect each source outcome and permission error before retrying; a rolled-back
@@ -29,6 +35,15 @@ ownership rule, including phases, linked runs and attempts. Missing actor identi
 fails closed for these references; unrelated purchase_id fields are unchanged.
 Purchase aggregation remains unsupported. These read checks do not authorize
 purchase management or financial changes.
+
+### Who may manage a purchase
+
+`card_purchase.manage` is for a person whose membership is owner, admin or
+accountant with access to the entity. An agent signed in as its own user (a
+managed agent) may take two actions when its role gives `ap:write` for the
+entity: `link_existing_bill` and `request_settlement_review`. A link between
+different vendors still needs a person's approved settlement review. Every
+other action is refused for an agent; raise a review task for a person instead.
 
 Use the backend purchase workspace and shared matching decision; do not implement a competing card matcher in conversation. Preserve provider rows and show net purchase spend. Reference conflicts and competing candidates require review. A paid/settled item can still lack documentation; attach missing source evidence to the existing bill. Evidence review, waiver and grouping use `card_purchase.manage` with current version, evidence fingerprint and reason. Never infer write-off authority from matching tolerance.
 

@@ -484,6 +484,10 @@ await submit("reconciliation", "match", data='{"legal_entity_id": 40,
         {"target_transaction_id": 9001, "applied_amount": "32.40"}]}')
 ```
 
+A purchase leg whose card expense was posted without a vendor is applied under the purchase's vendor (the one vendor its legs name); the bill must belong to that vendor and the posted card expense is not changed. With no purchase, or a purchase that names no single vendor, the match is refused (`Payment <id> has no vendor assigned`).
+
+A one-cent leg of a split charge (61.48 + 0.01 of 61.49) is applied like any other leg and posts its own reclass; only an amount that rounds to 0.00 is refused. Do not use `reconciliation.write_off_item` for the last cent of a card-paid bill: an item that already has a reclass journal is refused there. Apply the remaining card leg instead.
+
 ---
 
 ## Legacy Multi-Pass Algorithm (non-card payments only)

@@ -40,6 +40,12 @@ ad-hoc writes. Preserve provider evidence and review each other stale line separ
 
 ## Agent callback and failure evidence
 
+Where the organisation's bank agent is set to the managed runtime (P-AR-42, built,
+not deployed), a managed agent does this work through the public tools and raises a
+review task when it cannot decide; see "How the managed agents work" in
+agent-management.md. The rest of this section describes the built-in pipeline, which
+still runs where the agent is not managed.
+
 For Bank pipeline 1.1.0, dependency completion means a stored, currently verified
 producer outcome. A completed activation or copied success flag is insufficient.
 Inspect each source outcome and permission error before retrying; a rolled-back
@@ -166,6 +172,7 @@ Bank statements track cash movements in company bank accounts. Statement lines c
 | `submit("bank_statement_line", "match", {...})` | Match line to GL transaction |
 | `submit("bank_statement_line", "unmatch", {...})` | Unmatch a line |
 | `submit("bank_statement_line", "exclude", {...})` | Exclude a line (no GL needed) |
+| `submit("bank_statement_line", "revoke_exclusion", {...})` | Restore an excluded line to `unmatched` (reason and request key required; read `get_entity` first for `expected_exclusion_hash`) |
 | `submit("bank_statement", "void", {...})` | Void a statement (reverses all GL) |
 | `query("bank_statement_line", group_by, aggregates, filters)` | Aggregate statement lines (e.g., totals by status) |
 | `query(entity_type, filters={...})` ×N | Fetch reference data (issue the calls in parallel) |
@@ -1483,8 +1490,9 @@ These are suggestions that help with matching but don't affect the GL.
 **Lines** separates bank lines from routed card transactions: `0 bank + 14 card`
 means the bank header has no ordinary lines and includes 14 card sources handled
 in card statements. Both participate in the bank balance check; do not import the
-card sources again as bank lines. The bank-line match rate is shown as a dash when
-there are no bank lines.
+card sources again as bank lines. The bank-line match rate is posted lines over the
+lines that are not excluded; the cell is empty when there are no bank lines to
+post.
 
 **Source interval** identifies the complete-account dates supported by provider
 evidence, not the first and last transaction dates. **Awaiting feed verification**
@@ -1492,9 +1500,15 @@ means no verified interval is recorded. Revolut's current UTC day stays open unt
 a later full sync can verify the completed day. This is independent of whether all
 known transactions are posted.
 
-List status cells show only the status badge. Inspect stored statement
-`metadata.controls.reasons` when explaining an open statement; absence of a
-second status line does not mean the controls passed. Statement details identify
+The list's Status cell shows how many bank lines are posted, for example
+`4 of 5 posted`. A line is posted when it is matched or reconciled; excluded
+lines are left out of the count, and a statement with no bank lines to post
+shows no status. A voided or locked statement shows that word instead. The
+stored `open` / `reconciled` status is not shown in the list or in the statement
+header: it still records finalisation and is returned by
+`query("bank_statement")`. Inspect stored statement
+`metadata.controls.reasons` when explaining why a statement is still open; every
+line being posted does not mean the controls passed. Statement details identify
 the connector by its configured name (provider fallback), rather than exposing
 `connector_sync` as the import label.
 

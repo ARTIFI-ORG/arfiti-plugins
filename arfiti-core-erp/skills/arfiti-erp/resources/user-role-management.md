@@ -249,6 +249,18 @@ submit("user_role", "assign", {
 
 ---
 
+### Roles for an agent's own user
+
+A managed agent signs in as its own user. That user is a member with the
+reserved `system` level, which grants nothing: what the agent may do is the
+roles assigned to it, built from the same permission groups as a person's.
+
+- Assign with `submit("user_role", "assign", {user_id: <agent user>, role_name, entity_ids?})`.
+  `submit("agent_api_key", "create", {..., identity: "agent_user"})` returns the user id.
+- Owners and admins only, and never for entities outside their own access.
+- A role with a wildcard or an admin permission is refused for an agent user.
+- Agent users are not listed as team members and are never approvers or assignees.
+
 ## Removing a Role from a User
 
 Use the `manage_organization` tool to remove a role assignment.

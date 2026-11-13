@@ -21,10 +21,10 @@ Customers are the businesses and individuals who buy your products or services. 
 
 | Workflow | Purpose | When to Use |
 |----------|---------|-------------|
-| `customer.create` (fields: `get_submissions(action="schema", object_type, operation)`) | Create new customer | Onboarding new client |
-| `customer.update` (fields: `get_submissions(action="schema", object_type, operation)`) | Update customer data | Change credit limit, pricing, addresses |
-| [`customer.merge`](../definitions/customer.merge.md) | Merge duplicate customers | Two records exist for the same client |
-| `customer.delete` (fields: `get_submissions(action="schema", object_type, operation)`) | Deactivate customer | Customer no longer active |
+| `customer.create` | Create new customer | Onboarding new client |
+| `customer.update` | Update customer data | Change credit limit, pricing, addresses |
+| `customer.merge` | Merge duplicate customers | Two records exist for the same client |
+| `customer.delete` | Deactivate customer | Customer no longer active |
 
 **Available Query Tools:**
 
@@ -58,7 +58,9 @@ Customers are the businesses and individuals who buy your products or services. 
 - `customer_name` (string, 1-255 chars) - Customer business or person name
 - `email` (string, valid email) - Primary contact email
 - `legal_entity_id` (integer) - Which entity owns this customer
-- `currency` (string, 3 chars) - Default currency code (USD, EUR, etc.)
+- `currency` (string, 3 chars) - Customer currency code (EUR, USD, etc.). Omitted on create: the functional currency of the legal entities the customer is created in, never USD by default; refused when there is no entity or the entities' functional currencies differ. `is_global` defaults to `true` on customer.create (the customer is linked to every active entity), so where entities have different functional currencies, name `currency` or pass `is_global: false` with the entity
+
+**Fields left out are stored empty** (AR-1193): `customer_type`, `payment_terms_code`, `credit_limit` and `payment_method_id` are optional, and a customer created without them holds none. The server assumes nothing: it used to store `NET_30` as the terms. Send a value only when the customer's records, the organisation's rules or your own stated judgement give one. A filter on type or terms does not return customers that have none; filter the field for `null` to find them. A sales invoice for a customer without terms uses the entity's default terms for AR invoices when the organisation configured them, and is otherwise due on its invoice date. A recurring invoice does the same after first looking at the contract's own terms; thirty days are no longer added. An update changes only the fields it names, including on a tax profile: the exemption (`tax_exempt`, `exemption_type`, certificate number and expiry) changes only when the update names it. An organisation can still make a field mandatory in its `customer.create` workflow definition (the shipped template requires `currency`). The server used to satisfy that rule itself by adding `USD`; now the caller has to send the value, and the create is refused without it.
 
 > **Note:** Required fields are configurable per organization. The fields listed here are the defaults. Always call `get_submissions(action='schema', object_type="customer", operation="create")` to discover the exact required fields for your setup.
 
@@ -73,9 +75,9 @@ Customers are the businesses and individuals who buy your products or services. 
 
 **Credit & Payment:**
 - `credit_limit` (decimal 15,2) - Maximum outstanding AR balance allowed
-- `payment_terms_code` (string) - Default payment terms (e.g., `NET_30` or `net_30` -- case-insensitive, underscore optional; `NET30` also accepted)
+- `payment_terms_code` (string, optional; stored empty when omitted) - Payment terms agreed with the customer (e.g., `NET_30` or `net_30` -- case-insensitive, underscore optional; `NET30` also accepted)
 - `payment_method_id` (integer, FK) - Preferred payment method
-- `currency` (string, 3 chars) - Default currency code (USD, EUR, etc.)
+- `currency` (string, 3 chars) - Customer currency code (EUR, USD, etc.)
 
 **Accounting Defaults:**
 - `default_revenue_account_id` (bigint, FK) - Default revenue GL account
@@ -340,7 +342,7 @@ The `metadata` JSONB field allows storing custom data without schema changes.
 
 Use the `customer.create` workflow to add new customers.
 
-**See:** customer.create definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="customer", operation="create")` returns the complete field list.
 
 ### Basic Customer
 
@@ -595,7 +597,7 @@ A comprehensive example with addresses, dimensions, tax profile, and pricing:
 
 Use the `customer.update` workflow to modify existing customers.
 
-**See:** customer.update definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="customer", operation="update")` returns the complete field list.
 
 Customer names are unique among active customers (case-insensitive). An update may resend the customer's own name unchanged; only a name another active customer holds is refused. The record updated is the one `customer_id` names, or, without it, `global_customer_id`.
 
@@ -826,7 +828,7 @@ query("customer", query="Acme", filters={"legal_entity_id": 13, "is_active": tru
 
 Use the `customer.merge` workflow to consolidate two customer records that represent the same client into one. This commonly happens during agent-driven onboarding when a client is created twice under slightly different names.
 
-**See:** [customer.merge definition](../definitions/customer.merge.md) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="customer", operation="merge")` returns the complete field list.
 
 ### Winner vs Loser
 
@@ -864,7 +866,7 @@ After all references are moved, the losing customer is **soft-deactivated** (`is
 
 Use the `customer.delete` workflow to deactivate or remove customers.
 
-**See:** customer.delete definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="customer", operation="delete")` returns the complete field list.
 
 **Accepted Parameters:**
 
@@ -1270,9 +1272,9 @@ Before constructing payloads, use search/list tools to get valid reference data:
 
 For complete field specifications, validation rules, and constraints:
 
-- customer.create (fields: `get_submissions(action="schema", object_type, operation)`) - All required and optional fields
-- customer.update (fields: `get_submissions(action="schema", object_type, operation)`) - Update operations and action patterns
-- customer.delete (fields: `get_submissions(action="schema", object_type, operation)`) - Soft and hard delete options
+- `customer.create`: All required and optional fields. Fields: `get_submissions(action="schema", object_type="customer", operation="create")`
+- `customer.update`: Update operations and action patterns. Fields: `get_submissions(action="schema", object_type="customer", operation="update")`
+- `customer.delete`: Soft and hard delete options. Fields: `get_submissions(action="schema", object_type="customer", operation="delete")`
 
 ---
 

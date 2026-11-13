@@ -537,6 +537,12 @@ Employees can email receipts to the entity's receipts inbox (created at entity s
 receipts.<entity>.<org-slug>@mail.arfiti.com
 ```
 
+Where the organisation's expense agent is set to the managed runtime (built, not
+deployed), a managed agent does this work. A receipt with no claim is filed on
+its company card charge, listed for the bill agent, or started as a draft claim for
+the employee who paid, who gets a task to check and send it; a claim is submitted for
+the employee only when a company rule says so, and no amount threshold is applied. The steps below are what the built-in agent does where the agent is not managed.
+
 The `expense_processor` agent:
 1. Reads the attachment (PDF/image) via `read_attachment`
 2. Classifies the document (receipt vs invoice)
@@ -600,8 +606,9 @@ unrelated employee details as matching evidence.
 
 ## Automated expense processing
 
-The Expense Processor pipeline owns employee reimbursement and configured
-per-diem/mileage claims; Bank processes feed transactions and Bill processes
+The expense agent owns receipts for employee reimbursement and configured
+per-diem/mileage claims (a managed agent where the row is set to the managed
+runtime, otherwise the built-in Expense Processor pipeline); Bank processes feed transactions and Bill processes
 company-paid card evidence. File content identifies a durable source, so repeated
 uploads do not create another reimbursement. A draft or accepted workflow is not
 proof of posting. Read the report and linked ledger result.

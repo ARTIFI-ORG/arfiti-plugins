@@ -504,7 +504,7 @@ View past imports at **Administration > Bulk Import > History**:
 - [Vendor Management](vendor-management.md) - Vendor master data
 - [Customer Management](customer-management.md) - Customer master data
 - [Employee Management](employee-management.md) - Employee records
-- [Data Migration Specialist](../roles/data-migration-specialist.md) - Full system migration workflow
+- The `arfiti-core-implementation-consultant` plugin - Full system migration workflow
 
 ### Import scope and dry runs
 

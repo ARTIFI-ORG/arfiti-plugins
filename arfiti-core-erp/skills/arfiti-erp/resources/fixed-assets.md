@@ -61,11 +61,11 @@ Fixed assets are long-term tangible assets used in business operations (equipmen
 
 | Category | Workflows | Purpose |
 |----------|-----------|---------|
-| Category Management | `fixed_asset_category.create` (fields: `get_submissions(action="schema", object_type, operation)`), `fixed_asset_category.update` (fields: `get_submissions(action="schema", object_type, operation)`) | Set up asset types with defaults |
-| Asset Lifecycle | `fixed_asset.create` (fields: `get_submissions(action="schema", object_type, operation)`), `fixed_asset.update` (fields: `get_submissions(action="schema", object_type, operation)`), `fixed_asset.attach` (fields: `get_submissions(action="schema", object_type, operation)`) | Create and maintain asset records |
-| Acquisition | `fixed_asset.acquire_from_bill` (fields: `get_submissions(action="schema", object_type, operation)`), `fixed_asset.capitalize_expense` (fields: `get_submissions(action="schema", object_type, operation)`), `fixed_asset.capitalize_cwip` (fields: `get_submissions(action="schema", object_type, operation)`) | Link assets to source transactions |
-| Operations | `fixed_asset.transfer` (fields: `get_submissions(action="schema", object_type, operation)`), `fixed_asset.impair` (fields: `get_submissions(action="schema", object_type, operation)`), `fixed_asset.dispose` (fields: `get_submissions(action="schema", object_type, operation)`) | Transfer, impair, or dispose assets |
-| Depreciation | `fixed_asset_depreciation.schedule` (fields: `get_submissions(action="schema", object_type, operation)`), `fixed_asset_depreciation.process` (fields: `get_submissions(action="schema", object_type, operation)`) | Run monthly depreciation |
+| Category Management | `fixed_asset_category.create`, `fixed_asset_category.update` | Set up asset types with defaults |
+| Asset Lifecycle | `fixed_asset.create`, `fixed_asset.update`, `fixed_asset.attach` | Create and maintain asset records |
+| Acquisition | `fixed_asset.acquire_from_bill`, `fixed_asset.capitalize_expense`, `fixed_asset.capitalize_cwip` | Link assets to source transactions |
+| Operations | `fixed_asset.transfer`, `fixed_asset.impair`, `fixed_asset.dispose` | Transfer, impair, or dispose assets |
+| Depreciation | `fixed_asset_depreciation.schedule`, `fixed_asset_depreciation.process` | Run monthly depreciation |
 
 > **IMPORTANT — Schema Discovery Required**: Before calling `submit()` for any workflow above, you MUST first call `get_submissions(action='schema', object_type, operation)` to discover the exact required and optional fields. Each organization configures different field requirements. Never assume the fields listed below are complete — always check the schema first.
 
@@ -125,7 +125,7 @@ Calculates what a depreciation run would produce for all active assets in the gi
 
 Use the `fixed_asset_category.create` workflow to set up asset types.
 
-**See:** fixed_asset_category.create definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="fixed_asset_category", operation="create")` returns the complete field list.
 
 ### Basic Category
 
@@ -172,7 +172,7 @@ Override category settings for a specific legal entity:
 
 Use the `fixed_asset.create` workflow to add new asset records.
 
-**See:** fixed_asset.create definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="fixed_asset", operation="create")` returns the complete field list.
 
 ### Basic Asset
 
@@ -232,7 +232,7 @@ The `dimensions` map is persisted with the asset (one command per type; `{ "type
 Use `fixed_asset.acquire_from_bill` to create new assets from source transactions.
 Use `fixed_asset.link_source_transaction` when the asset already exists.
 
-**See:** fixed_asset.acquire_from_bill definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="fixed_asset", operation="acquire_from_bill")` returns the complete field list.
 
 ### Create New Asset from Transaction
 
@@ -340,7 +340,7 @@ Combine multiple bills into one asset:
 
 Use the `fixed_asset.capitalize_expense` workflow when an expense should be reclassified as an asset.
 
-**See:** fixed_asset.capitalize_expense definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="fixed_asset", operation="capitalize_expense")` returns the complete field list.
 
 ### Create New Asset from Expense
 
@@ -386,7 +386,7 @@ journal. Add `book_id` when the asset has several books, and
 
 Use the `fixed_asset.capitalize_cwip` workflow when construction is complete.
 
-**See:** fixed_asset.capitalize_cwip definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="fixed_asset", operation="capitalize_cwip")` returns the complete field list.
 
 ```json
 {
@@ -412,7 +412,7 @@ Use the `fixed_asset.capitalize_cwip` workflow when construction is complete.
 
 Use the `fixed_asset.transfer` workflow to move assets between dimensions.
 
-**See:** fixed_asset.transfer definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="fixed_asset", operation="transfer")` returns the complete field list.
 
 ```json
 {
@@ -435,7 +435,7 @@ Use the `fixed_asset.transfer` workflow to move assets between dimensions.
 
 Use the `fixed_asset.impair` workflow when asset value permanently decreases.
 
-**See:** fixed_asset.impair definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="fixed_asset", operation="impair")` returns the complete field list.
 
 ```json
 {
@@ -464,7 +464,7 @@ the GL reconciliation all include the impairment.
 
 Use the `fixed_asset.dispose` workflow to sell, scrap, or retire assets.
 
-**See:** fixed_asset.dispose definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="fixed_asset", operation="dispose")` returns the complete field list.
 
 ### Asset Sale (with proceeds)
 
@@ -633,32 +633,34 @@ Before constructing payloads, check these reference lists:
 
 ## Workflow Details
 
-For complete field specifications, validation rules, and constraints:
+For each operation's complete field specification, validation rules and constraints, call
+`get_submissions(action="schema", object_type="<object>", operation="<operation>")`
+(for `fixed_asset.create`: `object_type="fixed_asset"`, `operation="create"`).
 
 **Category Management:**
-- fixed_asset_category.create (fields: `get_submissions(action="schema", object_type, operation)`)
-- fixed_asset_category.update (fields: `get_submissions(action="schema", object_type, operation)`)
+- `fixed_asset_category.create`
+- `fixed_asset_category.update`
 
 **Asset Lifecycle:**
-- fixed_asset.create (fields: `get_submissions(action="schema", object_type, operation)`)
-- fixed_asset.update (fields: `get_submissions(action="schema", object_type, operation)`)
-- fixed_asset.attach (fields: `get_submissions(action="schema", object_type, operation)`)
+- `fixed_asset.create`
+- `fixed_asset.update`
+- `fixed_asset.attach`
 
 **Acquisition:**
-- fixed_asset.acquire_from_bill (fields: `get_submissions(action="schema", object_type, operation)`)
-- fixed_asset.capitalize_expense (fields: `get_submissions(action="schema", object_type, operation)`)
-- fixed_asset.capitalize_cwip (fields: `get_submissions(action="schema", object_type, operation)`)
-- fixed_asset.link_source_transaction (fields: `get_submissions(action="schema", object_type, operation)`)
+- `fixed_asset.acquire_from_bill`
+- `fixed_asset.capitalize_expense`
+- `fixed_asset.capitalize_cwip`
+- `fixed_asset.link_source_transaction`
 
 **Operations:**
-- fixed_asset.transfer (fields: `get_submissions(action="schema", object_type, operation)`)
-- fixed_asset.impair (fields: `get_submissions(action="schema", object_type, operation)`)
-- fixed_asset.dispose (fields: `get_submissions(action="schema", object_type, operation)`)
+- `fixed_asset.transfer`
+- `fixed_asset.impair`
+- `fixed_asset.dispose`
 
 **Depreciation & Subledger:**
-- fixed_asset_depreciation.schedule (fields: `get_submissions(action="schema", object_type, operation)`)
-- fixed_asset_depreciation.process (fields: `get_submissions(action="schema", object_type, operation)`)
-- fixed_asset.sync_subledger (fields: `get_submissions(action="schema", object_type, operation)`) — subledger-only; align a migrated asset's book values + schedule to an already-correct GL
+- `fixed_asset_depreciation.schedule`
+- `fixed_asset_depreciation.process`
+- `fixed_asset.sync_subledger` — subledger-only; align a migrated asset's book values + schedule to an already-correct GL
 
 > `fixed_asset.update` also accepts `category_code` to (re)categorize a migrated/category-less asset (blocked if engine depreciation lines already exist, unless `force`).
 

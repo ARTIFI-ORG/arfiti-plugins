@@ -27,16 +27,20 @@ You can accomplish most ERP tasks using just the base skill and its 37 resource 
 
 ## How to Install Plugins
 
-Plugins are available from the Arfiti plugin repository:
+Plugins are published to the public marketplace:
 
-**Repository:** `https://github.com/ARTIFI-ORG/arfiti-plugins`
+**Marketplace:** `ARTIFI-ORG/arfiti-plugins` (`https://github.com/ARTIFI-ORG/arfiti-plugins`)
 
-Plugins are automatically installed during onboarding based on the organization's country and needs. Users can also install additional plugins from the admin dashboard (Settings → Plugins) or request them via Claude.
+- **Claude (web, Desktop, Cowork):** Customize > Plugins > Add > Add marketplace, enter `ARTIFI-ORG/arfiti-plugins`, then install each plugin you need.
+- **Claude Code:** `/plugin marketplace add ARTIFI-ORG/arfiti-plugins`, then `/plugin install <plugin>@arfiti-plugins`.
 
-To check which plugins are installed:
-```
-get_organization(action="list_plugins")
-```
+Adding the marketplace installs nothing: each plugin is installed separately. Start with `arfiti-core-erp` (this guide), then add the country and domain plugins the organisation needs. The admin dashboard's Plugins page (Administration > Plugins) lists the published catalogue; it is the same for every organisation.
+
+**Nothing in the ERP knows which plugins a user has installed in Claude.** Onboarding does not install plugins, and there is no tool that lists them. To know whether a plugin is available in this conversation, look at the skills and commands you have; if one is missing, tell the user how to install it.
+
+## Customising
+
+To change how a plugin works for one organisation, the user keeps a skill of their own in Claude beside the plugins (their rules, their thresholds, their preferred steps) and edits that. Claude lets a user customise an installed plugin, but an update of the plugin replaces those edits, so do not advise editing an installed plugin's files. There is no skill editor in the admin dashboard.
 
 ## Available Plugins
 

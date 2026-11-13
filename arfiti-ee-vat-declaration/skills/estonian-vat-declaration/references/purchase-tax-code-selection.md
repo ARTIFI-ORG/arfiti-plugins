@@ -1,8 +1,8 @@
 # Estonian purchase bills: tax code selection
 
-<!-- Generated from mcp-server/skill-templates/examples/roles/tax-manager-ee.md — edit the source, not this file. -->
+How to choose the tax code on an Estonian purchase bill, and the rates it depends on. Where the text says "this role", it means whoever owns VAT for the entity.
 
-Extracted from the Estonian tax manager role. Where the text says "this role", it means whoever owns VAT for the entity.
+This file is maintained here. (Until AR-1207 it was generated from a tax manager role template in the ERP repository; that template and the generation step were removed.)
 
 ## VAT Rates (Current — Effective from July 1, 2025)
 

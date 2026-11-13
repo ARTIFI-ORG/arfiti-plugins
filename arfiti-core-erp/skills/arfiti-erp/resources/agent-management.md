@@ -92,9 +92,93 @@ workflow authority remain separate controls.
 | `stripe_transaction_processor` | Processes Stripe payment transactions | code | varies |
 | `bills_collector_agent` | Collects missing vendor bills | pipeline | varies |
 | `payment_proposal_agent` | Proposes payment batches for approval | pipeline | varies |
-| `asset_creator` | Creates fixed asset records from transactions | llm | `fixed_asset.create` |
-| `agent_architect` | Manages and optimizes agent configurations | llm | varies |
 | `configuration_agent` | Handles system configuration tasks | llm | varies |
+
+Since 11 November 2026 (AR-1187): `asset_creator`, `agent_architect` and the Estonian country agents are retired (create a fixed asset with `submit("fixed_asset", "acquire_from_bill", …)`; an `asset_creation` task is refused with that sentence, because nothing would pick it up; a failed run emails the admins). `bill_processor`, `bank_transaction_processor`, `reconciliation_agent`, `master_data_agent`, `configuration_agent`, `expense_processor` and `period_close_agent` are run by managed agents: where the row already exists the built-in runtime keeps running until the row is set to the managed runtime; a new organisation gets the row switched off and marked `config.runtime = "managed"` (Mode "Managed" in the dashboard; enabling it is refused). `stripe_transaction_processor` is not created in a new organisation and is not shown in the agent list. `bills_collector_agent` and `payment_proposal_agent` are automations (fixed logic). Full list: the agent catalog guide.
+
+## How the managed agents work, and working beside them
+
+Status: P-AR-42, built, not deployed. Read this before you do work an agent also does
+(bills, bank and card lines, matching payments, vendors and customers, chart and posting
+set-up, expense receipts, period close checks), and before you answer a person who asks
+"why did the agent do that" or "how do I make it do X".
+
+**What a managed agent is.** A session in the agent service that works through the same
+tools you have (`query`, `get_entity`, `submit`, `generate_report`, `read_attachment`).
+It has no private path: anything it did, you can read; anything it cannot do, it was
+refused the same way you would be.
+
+| Agent (type in the agent list) | Its work | It never |
+|---|---|---|
+| Bill (`bill_processor`) | Reads a vendor bill and records it | Approves, pays, closes a period |
+| Bank and card (`bank_transaction_processor`) | Posts and matches bank statement lines and card charges; confirms a payment batch line a person approved against the bank's line, payroll batches included | Sends money, approves, calculates or changes payroll |
+| Reconciliation (`reconciliation_agent`) | Applies payments to invoices and bills | Writes off beyond the entity's configured ceiling |
+| Master data (`master_data_agent`) | Creates and updates vendors and customers, for people and for the other agents | Changes the organisation's own bank accounts |
+| Configuration (`configuration_agent`) | Chart of accounts and posting profile changes | Creates or closes periods |
+| Expense (`expense_processor`) | Files a receipt on its card charge or starts a draft claim for the employee | Submits, approves, posts or pays a claim (it submits only when a company rule says so) |
+| Period close (`period_close_agent`) | Runs the close checks and reports what blocks the close | Closes a period unless the checks pass and the client's rules ask for it |
+
+**Who it is.** Each agent signs in as its own user with its own role, made of the same
+permissions people have. The audit trail and the task list name the agent, not a person.
+An owner or admin can narrow the role and cannot give more than they hold themselves.
+Never ask a person to give an agent access so that a refused step goes through; a
+refused step is the person's to do.
+
+**How it decides.** In this order, for every value it needs (an account, terms, a
+dimension, a date):
+
+1. the organisation's records (the vendor or customer, the employee's profile, entity
+   settings, posting profiles, rate tables, earlier postings for the same party);
+2. the organisation's own rules for that agent (`query("agent_rules")`, the "Your rules"
+   tab on the agent's page);
+3. its own judgement, reported as judged with the evidence it used;
+4. a task for a person.
+
+Nothing we ship counts as the client's decision. If a person asks why an agent chose
+something, the run's final report says which of the four it was.
+
+**How it asks.** A review task (`agent_request` with `request_data.action =
+"agent_review"`), written for someone who is not an accountant: what happened, what it
+needs to know, plain choices. One task for one decision, also when many items wait on it.
+A system refusal is handed over as the work to do, not as a question.
+
+**What an answer does.** The answer is the organisation's decision. It is sent into the
+session that asked, and the agent acts on it without asking again or looking for a second
+reviewer; who else must approve is decided by the organisation's workflows. If the answer
+is a standing instruction ("hosting always goes to that account"), the agent either asks
+the master data or configuration agent to put it on the record, or proposes a rule for
+itself. A proposed rule waits for a person's approval and applies only after it.
+
+**What still needs a person.** Anything the organisation's workflows hold for approval:
+the agent submits, the workflow waits, a person approves or rejects, and a session the
+platform started is told the outcome. An agent never approves its own submission.
+
+**Runs.** A run starts from an event (a bill uploaded, a statement imported), a schedule,
+or a person's answer. Read them with `query("managed_agent_run")`; each has what started
+it, its cost, its final report and the tasks it raised. `agent_instance.start` does not
+start a managed agent.
+
+### When you work beside a managed agent
+
+- **Look before you post.** Before you post, match or correct something in an agent's
+  area, read the record and check for an open task or a pending approval on it
+  (`query("agent_request", filters={"status": "pending"})`, `get_submissions`). Two
+  postings for one bank line or one bill is the mistake to avoid. If the agent has a
+  submission waiting for approval, approve or reject that one; do not post a second.
+- **Answer the task, do not work around it.** If the person tells you their decision,
+  record it as their answer with `submit("agent_request", "respond", ...)` under their
+  sign-in, in their words. Do not answer for them without their decision, and do not
+  complete the work by hand and leave the task open: the agent would then act on a stale
+  question.
+- **To change how an agent works, change its rules.** One plain sentence in the rules
+  for that agent, saved with `submit("policy", "save", {"namespace": "agent.rules", ...})`
+  (see "Agent rules" below). Send the whole text. The standard instructions are ours and
+  are not the client's to edit.
+- **To stop a repeated question, put the fact where the agent looks first:** on the
+  vendor, customer or employee record if a field holds it, otherwise in the rules.
+- **You are not one of the organisation's agents.** You act as the person who signed in,
+  with their role. What they may approve, you may submit for them; an agent's limits
+  above are not yours, and yours are not the agent's.
 
 ---
 
@@ -102,7 +186,7 @@ workflow authority remain separate controls.
 
 Configuring the agent platform is for an owner or admin of the organization,
 or an agent whose own definition's `allowed_workflows` names the operation
-(`agent_architect` names `agent_definition.create`, `update` and `enable`).
+(no shipped agent names `agent_definition.*` since `agent_architect` was retired, AR-1187).
 That covers agent definitions, downstream rules, scheduled jobs, agent API
 keys, `agent_event` create and retry, `agent_instance` start, and the
 `manage_agents` actions that change an agent (`seed_definitions`,
@@ -299,6 +383,11 @@ Monitor and manage running agent sessions:
 | `get_agents(action="get_running_summary")` | Summary of all active agents |
 | `submit("agent_instance", "start", {...})` | Manually trigger an agent run (owner or admin) |
 
+`agent_instance` is the built-in runtime's run. A row run by a managed agent is switched
+off, so `agent_instance.start` for it is refused ("Agent '<type>' is disabled"), and its
+runs are not in `query("agent_instance")`: they start from events and schedules and are
+read with `query("managed_agent_run")` (see "Managed agents: runtime and runs").
+
 ### Examples
 
 ```
@@ -397,6 +486,54 @@ Inter-agent communication. One agent creates a request, another processes it.
 | `submit("agent_request", "add_reminder", {...})` | Add follow-up reminder |
 | `query("agent_request", filters={assigned_to_employee_id: X, status: "pending"})` | Get requests pending for a specific employee |
 
+### Raising a review task for a person
+
+When you cannot post a document, need a decision, or see more than one
+equally supported answer, raise a task instead of only reporting it:
+
+```
+submit("agent_request", "create", {
+  request_type: "verification",
+  legal_entity_id: <entity>,
+  request_data: {
+    action: "agent_review",
+    kind: "question" | "document_not_postable" | "ambiguous_match" | "system_refusal",
+    title: "<what is needed in a few words, e.g. Need expense account>",
+    question: "<what the person is asked, 10-2000 characters>",
+    details: "<what you checked and concluded>",
+    subject: {type: "transaction", id: <id>, label: "<number>"},
+    options: [{id: "keep", label: "Keep it"}, {id: "discard", label: "Discard it"}],
+    documents: [{filename, storage_url, content_type}]
+  }
+})
+```
+
+- Give a `title` of a few words: it is the task's row in the person's list,
+  followed by the subject label. Put the full question in `question`.
+- Ask one question the person can answer. Give options when the answers are
+  known; leave `options` out to get a written answer.
+- A refusal by the system is never a question. Use `kind: "system_refusal"`
+  with `refusal: {operation, reason, workflow_id}` and no `question`; it goes
+  to an administrator (the owner when there is none).
+- Never complete a task you raised. The answer is a person's.
+- Raising the same kind of task about the same `subject` again returns the
+  open task (`already_open: true`). Do not reword and retry.
+- Read the answer with `get_entity("agent_request", id=<request_id>)`:
+  `status: "completed"`, `response_data.selected_option`,
+  `response_data.notes`. Re-read the current records before acting on it; the
+  answer is information, not permission.
+- After acting, link the outcome:
+  `submit("agent_request", "update", {request_id, result_type: "transaction", result_id: <id>})`.
+- In a Managed Agents session, add
+  `run_reference: {runtime: "managed_agents", session_id: "<the managed_session_id from your kickoff>"}`.
+  The person's answer is then sent into your session as a message; act on it.
+  The task you raised stays readable to you.
+- Unknown fields are refused. A run or a runtime key of the built-in runtime
+  cannot raise this task. A managed agent signed in as its own user can: it
+  reads back the tasks it raised and may link the outcome or cancel one that
+  is no longer needed, and it is refused when it answers, completes,
+  reassigns or re-prioritises a task.
+
 ### Request Flow
 
 A Bill review answer belongs to the existing task. Read the current request and
@@ -478,6 +615,115 @@ chat shortcuts for editing or completing Bill review tasks.
 
 ---
 
+## Agent rules (the organisation's own rules)
+
+Status: AR-1185, built but not deployed. Until it is deployed, `query("agent_rules")`
+returns an unknown entity type error.
+
+An organisation can save short plain-text rules saying how it wants an agent to work.
+Read them before you start, for the agent you are and the entity you work for:
+
+```python
+query("agent_rules", filters={"agent_type": "bank_transaction_processor", "legal_entity_id": 40})
+```
+
+- `agent_type`: the agent's type in the organisation's agent list, as shown on its page.
+  The rules for all agents (`all`) are always included. An agent's own key may leave it
+  out and reads its own. A type the organisation does not have is refused.
+  `legal_entity_id`: the entity.
+- Who may read: owners, admins, people with `accounting:read`, and an agent for itself.
+- `results`: the rule sets in force, general before specific, each with `agent_type`,
+  `scope` (`organisation` or `entity`), `legal_entity_id` and `rules` (the text). Rule
+  sets add up. Where two disagree, the more specific applies: entity over organisation,
+  the agent's own over `all`.
+- `prompt_block`: the same rule sets wrapped in `<client_rules>`; use it as it is.
+- An empty `results` means no rules are saved. A rule set with `status: "invalid"` could
+  not be read: do not work as if there were none; raise a review task.
+
+Rules are guidance from the client. They never grant a permission and never override a
+refusal, an approval step, a closed period or any other control. If a rule asks for
+something the system refuses, the refusal stands; raise a review task that says so.
+
+An agent can propose a rule (for example after a person's answer that should apply from now
+on); signed in as its own user it may propose only for its own agent type unless its role
+holds `accounting:write`. The call is `submit("policy", "save", {"namespace": "agent.rules", "section": "<agent_type or all>",
+"legal_entity_id": <id or omit>, "content": {"text": "..."}, "reason": "..."})`. It
+waits for a person's approval and applies only after it. Send the whole text for that
+agent and level, not one added line: a save replaces that level's text. Limit: 4,000
+characters, plain text.
+
+## Managed agents: runtime and runs
+
+Status: AR-1189, built but not deployed. Until it is deployed, `set_runtime` and
+`query("managed_agent_run")` are refused as unknown.
+
+An agent in the organisation's list is run by the built-in runtime or by a managed agent
+(a session in the agent service that works through the same tools as you). Which one is
+a setting on the organisation's row; an owner or admin changes it:
+
+```python
+submit("agent_definition", "set_runtime", {
+    "agent_type": "bill_processor", "runtime": "managed",
+    "managed": {"agent_id": "agent_...", "environment_id": "env_...", "vault_id": "vlt_...",
+                "budget_cents": 300, "model_tier": "standard", "max_open_sessions": 1, "answers": "auto"}})
+```
+
+- `budget_cents` is the most one run may cost. `model_tier` is `fast`, `standard` or
+  `advanced`, or left out to keep the agent's own model. Never write a model id.
+- `runtime: "builtin"` removes the mark; it does not switch the built-in runtime on.
+- Ask the person for the ids. Do not guess them, and never put a credential in the payload.
+
+The runs the platform started are read, not written:
+
+```python
+query("managed_agent_run", filters={"agent_type": "bill_processor", "state": ["running", "stopped", "failed"]})
+get_entity("managed_agent_run", id="<run id>")   # adds kickoff, final_report, usage, tasks
+```
+
+`state`: `claimed`, `started`, `running`, `finished`, `stopped` (budget used or the session
+ended early), `failed` (never started; `error` says why). `cost_cents` is the list cost so
+far; `charged_cents` is how much of it was charged to the organisation's AI credits when the
+run ended (`charge_note` says why a cost was not charged). With no AI credits left no
+session starts: the event and the run are `failed` with that reason, and after a top-up
+`submit("agent_event", "retry", {"event_id": "..."})` starts it. Reading needs
+`accounting:read`. Full contract: GUIDE_MANAGED_AGENT_RUNS.
+
+What a managed agent runs (its prompt and skills) is kept in the agent service. The
+platform holds a record of it, so a person can read it on the agent's page
+(Standard instructions) and you can read it here (AR-1199, built but not deployed):
+
+```python
+query("agent_instructions", filters={"agent_type": "bill_processor"})   # versions, newest first; in_use marks the one in use
+get_entity("agent_instructions", id=12)                                  # one version with the text of its parts
+```
+
+An owner or admin records a version after applying instructions to the agent service:
+
+```python
+submit("agent_definition", "set_instructions", {
+    "agent_type": "bill_processor", "version": "19",
+    "parts": [{"name": "arfiti-bill-processing", "kind": "skill", "version": "skver_...", "text": "..."}]})
+```
+
+- This stores a record only. It does not change what the agent runs and sends nothing to
+  the agent service; say so if a person asks you to "change the agent's instructions" this way.
+- `kind` is `skill` or `prompt`. Never invent the text: record only text the person gives
+  you or that you read from the files that were applied.
+- Refused for an agent that is not managed. A client's own influence on an agent is its
+  rules (`agent_rules`), not this.
+
+A managed session whose submit was held for approval records what it waits for, and is told
+when the workflow is decided (AR-1194, built but not deployed):
+
+```python
+submit("managed_agent_run", "wait", {"session_id": "sesn_...", "workflow_id": "<pending workflow id>",
+       "waiting_for": "<one line: what continues once this is decided>"})
+```
+
+Only a session the platform started can declare a wait, and only for a workflow it submitted
+itself. `get_entity("managed_agent_run", id=...)` lists them under `waiting_on`; the run's
+state is `waiting` until the decision is passed on.
+
 ## Agent API Keys
 
 Each agent gets its own MCP API key for authentication.
@@ -485,6 +731,7 @@ Each agent gets its own MCP API key for authentication.
 | Tool | Purpose |
 |------|---------|
 | `submit("agent_api_key", "create", {...})` | Create MCP API key for an agent (owner or admin); the key is shown once to the caller and acts with the caller's roles |
+| `submit("agent_api_key", "create", {..., identity: "agent_user"})` | Key that signs a managed agent in as its own user (owner or admin). It carries the roles assigned to that user, not the caller's; the result gives `agent_user_id`. Add `deliver: "vault"` to store it in the agent's vault instead of returning it (required when your own access is limited to some legal entities; the agent's address must carry `?agent=<agent type>`). `rotate` on such a key keeps its owner |
 | `query("agent_api_key")` | List agent API keys |
 | `submit("agent_api_key", "revoke", {...})` | Revoke a key (owner or admin) |
 | `submit("agent_api_key", "rotate", {...})` | Rotate a key, revoking the old one (owner or admin); the new key acts with the caller's roles. The agent's own runtime key is refused: use `regenerate_keys` |
@@ -740,7 +987,10 @@ send_notification_email(
 get_agents(action="list_templates")
 
 # Seed from template
-manage_agents(action="seed_definitions", agent_types=["bill_processor"], confirmed=True)
+manage_agents(action="seed_definitions", agent_types=["bills_collector_agent"], confirmed=True)
+# A type a managed agent runs (for example bill_processor) is created switched
+# off, marked config.runtime = "managed". A type that is no longer seeded
+# (stripe_transaction_processor) comes back under "not_seeded"; nothing is created.
 
 # Configure the agent
 submit("agent_definition", "update", {
@@ -853,6 +1103,8 @@ Agent memory persists across runs. This allows agents to learn from previous pro
 
 ## Architect diagnosis and event liveness
 
+`agent_architect` is retired (AR-1187) and writes no new memories. The rule below still
+governs the ones it left and any agent of that type an organisation keeps:
 `agent_architect` memories with keys beginning `diagnosis:` or `health_review:`
 are diagnostic hypotheses, not permanent suppression rules. Stores require a JSON
 object, set `requires_live_revalidation: true` and `authority: diagnostic_hypothesis`,

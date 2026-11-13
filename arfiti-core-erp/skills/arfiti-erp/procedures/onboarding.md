@@ -30,7 +30,7 @@ They can seed shared accounting configuration, workflow/agent definitions and
 credentials, so entity-limited administrators must ask an unrestricted owner or
 admin to perform them. Ordinary entity-scoped accounting workflows are unchanged.
 
-Onboarding status/checklist/summary, support and skill-download actions retain
+Onboarding status/checklist/summary and support actions retain
 their existing access rules. New organization owners can still run first-time
 onboarding before the organization has any entities. Explicit organization IDs
 must match the connected organization; initialization/copy targets must belong
@@ -157,7 +157,7 @@ Tell the user:
    - Configure projects, dimensions, or budgets
 
    Do NOT suggest:
-   - ❌ "Download the skill from the admin dashboard" — the skill download link was already surfaced during onboarding (via the `generate_org_skill` task). Don't re-prompt for it.
+   - ❌ "Download the skill from the admin dashboard" — there is no skill package to download. The guide to the tools is the `arfiti-core-erp` plugin, and the completion response's `setup_info.plugins` names the marketplace (`ARTIFI-ORG/arfiti-plugins`) to install it and the country plugins from. Say that once, from the completion response; do not invent a download link.
    - ❌ "Add bank accounts (bank connectors available)" — don't push connectors unprompted during onboarding. Revolut Business is the bank connectivity, and it is set up from the admin dashboard's connector wizard (certificate + consent), not from chat. Only mention it if the user explicitly asks about bank integrations.
 
 ---
@@ -257,13 +257,13 @@ Check both `completed` and `skipped` counts. An empty migration task is skipped,
 
 ### After the final wave
 
-Use the completion response with the user’s preferred connected assistant. Apply skill/instruction files through that client’s supported setup, using the Admin onboarding guide for details. Verify the chosen client connects to the intended organization; completed company setup does not certify that connection. Review any `needs_attention` items before relying on them.
+Use the completion response with the user’s preferred connected assistant. Install the plugins the response names (`setup_info.plugins`: add the marketplace `ARTIFI-ORG/arfiti-plugins`, install `arfiti-core-erp` first, then the country and domain plugins the organisation needs) and apply the project instructions through that client’s supported setup. Each plugin is installed separately; adding the marketplace installs none. An organisation that wants its own rules keeps a skill of its own beside the plugins: an update replaces edits made inside an installed plugin. Verify the chosen client connects to the intended organization; completed company setup does not certify that connection. Review any `needs_attention` items before relying on them.
 
 The Admin finish summary uses the label Assistant. Its external Claude link appears only when the recorded path is Claude; IDE or unknown paths finish at the dashboard. Do not treat the finish-screen link or label as proof of a working connection.
 
 Connection-step copy/download indicators describe local browser actions only. Changed instructions, organization URLs or replaced keys/configurations need copying again. A failure clears the corresponding success indicator; it does not revoke or create a key, verify installation, or change onboarding status.
 
-Overlapping copy requests show feedback for the latest attempt. A login/error page returned by a skill/plugin download is rejected rather than reported as a downloaded archive; restore the browser session if needed and retry.
+Overlapping copy requests show feedback for the latest attempt. A login/error page returned by a plugin download is rejected rather than reported as a downloaded archive; restore the browser session if needed and retry.
 
 
 If Admin reports **Entities not loaded**, ask the user to retry the list read; do not infer that the organization has no entities or start duplicate setup from that message. The form disables currency selection when its catalog is unavailable: use Retry currencies after a read failure, or ask an administrator to investigate an empty catalog. Existing draft values are preserved; these browser states do not change MCP onboarding contracts.

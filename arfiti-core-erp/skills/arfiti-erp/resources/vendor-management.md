@@ -21,10 +21,10 @@ Vendors are the companies and individuals you pay for goods and services. The wo
 
 | Workflow | Purpose | When to Use |
 |----------|---------|-------------|
-| `vendor.create` (fields: `get_submissions(action="schema", object_type, operation)`) | Create new vendor | Onboarding a new supplier |
-| `vendor.update` (fields: `get_submissions(action="schema", object_type, operation)`) | Update vendor data | Changing payment terms, adding bank account |
-| [`vendor.merge`](../definitions/vendor.merge.md) | Merge duplicate vendors | Two records exist for the same payee |
-| `vendor.delete` (fields: `get_submissions(action="schema", object_type, operation)`) | Deactivate vendor | Vendor no longer used |
+| `vendor.create` | Create new vendor | Onboarding a new supplier |
+| `vendor.update` | Update vendor data | Changing payment terms, adding bank account |
+| `vendor.merge` | Merge duplicate vendors | Two records exist for the same payee |
+| `vendor.delete` | Deactivate vendor | Vendor no longer used |
 
 **Available Query Tools:**
 
@@ -62,11 +62,11 @@ Vendors are the companies and individuals you pay for goods and services. The wo
 
 **Recommended Fields:**
 - `email` (string, valid email) - Primary contact email
-- `payment_terms_code` (string, default: `net_30`) - Default payment terms (e.g., `NET_30` or `net_30` -- case-insensitive, underscore optional)
+- `payment_terms_code` (string, optional; stored empty when omitted) - Payment terms agreed with the vendor (e.g., `NET_30` or `net_30` -- case-insensitive, underscore optional)
 - `tax_id` (string, max 50) - Tax identification number (EIN, VAT, etc.)
 
 **Business Information:**
-- `vendor_type` (enum) - Vendor classification
+- `vendor_type` (enum, optional; stored empty when omitted) - Vendor classification
   - Options: `supplier`, `contractor`, `service_provider`, `utility`, `government`, `employee`, `other`
 - `phone` (string, max 50) - Primary phone number
 - `website` (string, max 255) - Vendor website URL
@@ -77,7 +77,7 @@ Vendors are the companies and individuals you pay for goods and services. The wo
 **Payment & Credit:**
 - `payment_method` (enum) - Preferred payment method
   - Options: `ach`, `wire`, `check`, `international`
-- `currency` (string, 3 chars) - Default currency code (USD, EUR, etc.)
+- `currency` (string, 3 chars) - Vendor currency code (EUR, USD, etc.). Omitted on create: the functional currency of the legal entities the vendor is created in, never USD by default
 - `credit_limit` (decimal 15,2) - Maximum unpaid balance allowed
 - `payment_hold` (boolean, default: false) - Temporarily prevent payments
 - `remittance_reference` (string, max 140) - Payment reference the institution requires on every payment (e.g. the tax office's personal reference number). Payment batches (including payroll-generated ones) use it as the default `payment_reference` on this vendor's lines instead of a synthetic reference.
@@ -103,6 +103,10 @@ Vendors are the companies and individuals you pay for goods and services. The wo
 - `legal_entity_ids` (integer[], optional) — multi-entity attach.
 - **No flag, no IDs** → defaults to `is_global=true` → fanout (today's behaviour preserved).
 - **`is_global=false` + no IDs** → master only (template); `vendor_currencies`, `vendor_dimensions`, `bank_accounts`, `addresses` REJECTED loudly. (Pre-Batch C this was the implicit fanout fallback — now requires an explicit choice.)
+
+**Fields left out are stored empty** (AR-1193): `vendor_type`, `payment_terms_code`, `credit_limit`, `tax_code` and `payment_method` are optional, and a vendor created without them holds none. The server assumes nothing: it used to store `supplier` and `net_30`, which then read as the vendor's agreed type and terms. Send a value only when the vendor's records, the organisation's rules or your own stated judgement give one; otherwise leave it out and, where it is needed, raise it with a person. A filter on type or terms does not return vendors that have none; filter the field for `null` to find them. A bill posted through `submit("transaction", "post")` for a vendor without terms keeps the due date it is given; with none given it is due on its invoice date, and no term is added. (The built-in bill agent is separate: it still applies the organisation's default terms, or 30 days, to a vendor without terms.) A new bank account (`bank_accounts` on create, where `vendor_bank_accounts` is accepted as the same key, and `vendor_bank_accounts` with `_action: "add"` on update) must name its `payment_method`; it is refused otherwise, with the field named. Its `usage_type` and `account_type` are stored empty when omitted, and its `currency_code` is the vendor's primary currency in that entity (also on `vendor_bank_account.create`; nothing is assumed). An update changes only the fields it names. An organisation can still make any of these mandatory in its `vendor.create` workflow definition (the shipped template lists `vendor_type` and `payment_terms` among its required fields). The server used to satisfy such a rule itself by adding `supplier`; now the caller has to send the value, and the create is refused without it.
+
+**Currency when omitted** (AR-1184): the vendor takes the functional currency of the legal entities it is created in, on the header and on each entity's primary `vendor_currencies` row. There is no USD fallback. A named `currency` is the header currency and the primary row; the codes of a `currencies` list (or, without one, of `vendor_currencies`) follow it, upper-cased and without duplicates (without `currency`, the first is the header and the primary row). When nothing is named and the create targets no entity (`is_global=false`, no IDs), or the target entities have different functional currencies, the create is refused before anything is written and the message asks for `currency`. A bank account in the same payload without `currency_code` takes the vendor's primary currency; on `vendor.update` an added bank account takes the vendor's primary currency in that entity (else the vendor's own currency, else it is refused), and an added currency row must name its `currency`. When nothing is named, the derived currency is written into the submitted payload as `currency` before the organisation's required-fields rule for `vendor.create` is checked (AR-1201), so a rule that lists `currency` as required is met by it. The currency is the one read when the request is submitted: a create that waits for approval stores that currency. A payload that names only a `currencies` list is not changed.
 
 Per-entity dependent payloads (`vendor_currencies`, `vendor_dimensions`, `bank_accounts`, `addresses`) are written for every target entity row. See GUIDE_MSEO_PATTERN.md for the full contract.
 
@@ -159,7 +163,7 @@ Secure storage for vendor payment account details.
 **Required:**
 - `payment_method` (enum) - Type of payment
   - Options: `ach`, `wire_domestic`, `wire_international`, `sepa`, `swift`, `check`, `card`, `crypto`, `paypal`, `venmo`
-- `currency_code` (string, 3 chars, default: USD) - Account currency
+- `currency_code` (string, 3 chars) - Account currency. Omitted inside `vendor.create` / `vendor.update`: the vendor's primary currency. State it on `vendor_bank_account.create`, which still falls back to USD
 - `account_holder_name` (string, max 255) - Legal name on account
 
 **US Bank Accounts (ACH/Wire Domestic):**
@@ -380,7 +384,7 @@ The `metadata` JSONB field allows storing custom data without schema changes.
 
 Use the `vendor.create` workflow to add new vendors.
 
-**See:** vendor.create definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="vendor", operation="create")` returns the complete field list.
 
 ### Basic Vendor
 
@@ -576,7 +580,7 @@ Store integration IDs and custom attributes:
 
 Use the `vendor.update` workflow to modify existing vendors.
 
-**See:** vendor.update definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="vendor", operation="update")` returns the complete field list.
 
 ### Update Basic Information
 
@@ -826,7 +830,7 @@ query("vendor",
 
 Use the `vendor.merge` workflow to consolidate two vendor records that represent the same payee into one. This commonly happens during agent-driven onboarding when a payee is created twice under slightly different names (e.g., "Google Cloud EMEA" as a duplicate of "Google Workspace").
 
-**See:** [vendor.merge definition](../definitions/vendor.merge.md) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="vendor", operation="merge")` returns the complete field list.
 
 ### Winner vs Loser
 
@@ -864,7 +868,7 @@ After all references are moved, the losing vendor is **soft-deactivated** (`is_a
 
 Use the `vendor.delete` workflow to deactivate or remove vendors.
 
-**See:** vendor.delete definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="vendor", operation="delete")` returns the complete field list.
 
 ### Soft Delete (Recommended)
 
@@ -1299,9 +1303,9 @@ Before constructing payloads, use query tools to get valid reference data:
 
 For complete field specifications, validation rules, and constraints:
 
-- vendor.create (fields: `get_submissions(action="schema", object_type, operation)`) - All required and optional fields
-- vendor.update (fields: `get_submissions(action="schema", object_type, operation)`) - Update operations and action patterns
-- vendor.delete (fields: `get_submissions(action="schema", object_type, operation)`) - Soft and hard delete options
+- `vendor.create`: All required and optional fields. Fields: `get_submissions(action="schema", object_type="vendor", operation="create")`
+- `vendor.update`: Update operations and action patterns. Fields: `get_submissions(action="schema", object_type="vendor", operation="update")`
+- `vendor.delete`: Soft and hard delete options. Fields: `get_submissions(action="schema", object_type="vendor", operation="delete")`
 
 ---
 

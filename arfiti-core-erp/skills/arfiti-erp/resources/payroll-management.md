@@ -582,7 +582,7 @@ Before creating vendor config, ensure:
 
 3. **Employee bank accounts exist** — Each employee needs a bank account in `employee_bank_accounts` for net pay batch lines.
 
-See country-specific role docs (Estonian, UK) for exact accounts, vendors, and config per country.
+The exact accounts, vendors and configuration per country are in that country's payroll plugin where one is published (Estonia: `arfiti-ee-payroll-calculator`); otherwise they are the organisation's own setup, kept in a skill of its own.
 
 ### Create Vendor Config
 

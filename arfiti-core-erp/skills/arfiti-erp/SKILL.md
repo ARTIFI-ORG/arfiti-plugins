@@ -16,7 +16,7 @@ This skill has one resource guide per domain in `resources/`. Each guide is self
 2. Read the matching resource guide (see routing table below)
 3. Follow the guide's instructions exactly — it has the correct tool calls and field requirements
 4. Look up valid values live instead of a static list: `query(entity_type="legal_entity")` for entity IDs, `query(entity_type="account")` for the chart of accounts, `query(entity_type="tax_code")`, `query(entity_type="payment_term")`, `query(entity_type="dimension_value")`.
-5. Cross-reference `definitions/` for exact workflow field specifications
+5. Get exact workflow field specifications live: `get_submissions(action="schema", object_type, operation)`
 
 ---
 
@@ -32,7 +32,7 @@ Arfiti exposes 24 tools. Read-only tools never change anything; write tools ask 
 | `get_guidance` | read | Server-side guide for a domain (`topic`), always current. | — |
 | `convert_currency` | read | Convert an amount at the stored rate on a date. | — |
 | `get_effective_item_price` | read | An item's price for an entity, customer, quantity and date. | — |
-| `read_attachment` | read | Extract text, amounts and metadata from a stored file or a `connector://` file (`storage_url`, `content_type`). | — |
+| `read_attachment` | read | Extract text, amounts, metadata and visual evidence (logos, issuing platform, stamps) from a stored file or a `connector://` file (`storage_url`, `content_type`; PDFs up to 200 pages, optional `pages`). | — |
 | `health_check` | read | Is the server up. | — |
 | `submit` | write | Every create, update, post, delete and lifecycle change of business records (`object_type`, `operation`, `data` as a JSON string). Routes through approval lanes. | — |
 | `send_notification_email` | write | Send an email to people (`to_emails`, `subject`, `body`). | — |
@@ -47,9 +47,9 @@ Arfiti exposes 24 tools. Read-only tools never change anything; write tools ask 
 | `get_imports` | read | Progress of an async import; opening balances. | `get_opening_balances`, `status` |
 | `manage_imports` | write | Bulk imports of master data, transactions and opening balances. | `accounts`, `customers`, `dimension_hierarchy`, `dimension_types`, `dimension_values`, `employees`, `fixed_assets`, `items`, `opening_balances`, `opening_balances_with_subledger`, `standard_coa`, `transactions`, `vendors` |
 | `get_onboarding` | read | Onboarding status, checklist and import format help. | `check_status`, `get_checklist`, `get_support`, `verify_team_member` |
-| `manage_onboarding` | write | Run onboarding, add a legal entity, load demo data. `get_summary` and `download_skill` are here because they can finalize onboarding or generate files. | `add_entity`, `download_skill`, `get_summary`, `initialize_entity`, `load_demo_data`, `reset`, `run_wave`, `start`, `update_task` |
-| `get_organization` | read | Organization info, roles, client orgs and plugins. | `download_plugin`, `get_clients`, `get_info`, `get_plugin`, `get_rate_limit`, `list_orgs`, `list_plugins`, `list_roles`, `list_user_roles` |
-| `manage_organization` | write | Create or switch organizations, client orgs and keys, remove roles, push plugins. | `create`, `create_client`, `create_client_key`, `push_plugin`, `remove_role`, `repair_template_data`, `switch`, `update` |
+| `manage_onboarding` | write | Run onboarding, add a legal entity, load demo data. `get_summary` is here because it can finalize onboarding. | `add_entity`, `get_summary`, `initialize_entity`, `load_demo_data`, `reset`, `run_wave`, `start`, `update_task` |
+| `get_organization` | read | Organization info, roles and client orgs. | `get_clients`, `get_info`, `get_rate_limit`, `list_orgs`, `list_roles`, `list_user_roles` |
+| `manage_organization` | write | Create or switch organizations, client orgs and keys, remove roles. | `create`, `create_client`, `create_client_key`, `remove_role`, `repair_template_data`, `switch`, `update` |
 
 ### How a write works
 
@@ -287,7 +287,7 @@ When adding/updating/deleting related data (bank accounts, dimensions, pricing),
 submit(object_type="vendor", operation="update", data=JSON.stringify({
   "vendor_id": 123,
   "bank_accounts": [
-    {"_action": "add", "bank_name": "Chase", "account_number": "123456"},
+    {"_action": "add", "legal_entity_id": 40, "payment_method": "ach", "account_holder_name": "Acme Inc", "bank_name": "Chase", "account_number": "123456"},
     {"_action": "update", "id": 5, "is_default": true},
     {"_action": "delete", "id": 3}
   ]
@@ -304,16 +304,14 @@ Most operations require `legal_entity_id`. Find valid IDs with `query(entity_typ
 
 | Folder | Contents | When to use |
 |---|---|---|
-| `definitions/` | Workflow field specifications per operation | When you need exact required/optional fields for a submit() call |
-| `procedures/` | Month-end close, year-end close | When user asks about accounting close procedures |
-| `roles/` | AP clerk, AR clerk, assets manager | To understand role responsibilities and approval hierarchies |
+| `procedures/` | Onboarding, support tickets | When the user starts onboarding or files a ticket |
 
 ---
 
 ## Rules
 
 1. **Always read the resource guide first** — each guide has the exact tool calls and fields
-2. **Never guess field names** — check the resource guide or `definitions/`
+2. **Never guess field names** — check the resource guide, then `get_submissions(action="schema", object_type, operation)`
 3. **Never loop submit()** — use import for bulk data
 4. **Always validate imports first** — set `validate_only: true` before executing
 5. **Never forget file uploads** — if user uploaded a file, create the attachment and attach the file (upload it yourself when it's in your environment; otherwise give the upload link)

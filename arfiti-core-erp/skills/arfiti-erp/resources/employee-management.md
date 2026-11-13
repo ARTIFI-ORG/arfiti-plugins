@@ -20,9 +20,9 @@ Employees are the people who work for your organization. The workflow system ens
 
 | Workflow | Purpose | When to Use |
 |----------|---------|-------------|
-| `employee.create` (fields: `get_submissions(action="schema", object_type, operation)`) | Create new employee | Onboarding new hire |
-| `employee.update` (fields: `get_submissions(action="schema", object_type, operation)`) | Update employee data | Promotion, transfer, manager change |
-| `employee.delete` (fields: `get_submissions(action="schema", object_type, operation)`) | Terminate employee | Resignation or termination |
+| `employee.create` | Create new employee | Onboarding new hire |
+| `employee.update` | Update employee data | Promotion, transfer, manager change |
+| `employee.delete` | Terminate employee | Resignation or termination |
 
 **Available Query Tools:**
 
@@ -356,7 +356,7 @@ The `metadata` JSONB field allows storing custom data without schema changes.
 
 Use the `employee.create` workflow to add new employees.
 
-**See:** employee.create definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="employee", operation="create")` returns the complete field list.
 
 ### Basic Employee
 
@@ -546,7 +546,7 @@ Store integration IDs and custom attributes:
 
 Use the `employee.update` workflow to modify existing employees.
 
-**See:** employee.update definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="employee", operation="update")` returns the complete field list.
 
 ### Update Basic Information
 
@@ -752,7 +752,7 @@ query("employee", query="John", filters={"legal_entity_id": 13, "status": "activ
 
 Use the `employee.delete` workflow to terminate or remove employees.
 
-**See:** employee.delete definition (fields: `get_submissions(action="schema", object_type, operation)`) for complete field details
+**Fields:** `get_submissions(action="schema", object_type="employee", operation="delete")` returns the complete field list.
 
 ### Soft Delete / Termination (Recommended)
 
@@ -1169,9 +1169,9 @@ Before constructing payloads, use search tools to get valid reference data:
 
 For complete field specifications, validation rules, and constraints:
 
-- employee.create (fields: `get_submissions(action="schema", object_type, operation)`) - All required and optional fields
-- employee.update (fields: `get_submissions(action="schema", object_type, operation)`) - Update operations and action patterns
-- employee.delete (fields: `get_submissions(action="schema", object_type, operation)`) - Termination and hard delete options
+- `employee.create`: All required and optional fields. Fields: `get_submissions(action="schema", object_type="employee", operation="create")`
+- `employee.update`: Update operations and action patterns. Fields: `get_submissions(action="schema", object_type="employee", operation="update")`
+- `employee.delete`: Termination and hard delete options. Fields: `get_submissions(action="schema", object_type="employee", operation="delete")`
 
 ---
 

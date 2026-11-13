@@ -353,6 +353,8 @@ Agents extract content from attachments on-demand using `read_attachment`:
 | JPEG, PNG, GIF, WebP | Claude Vision API | ~$0.01/image |
 | Plain text, CSV, HTML | Direct read | $0.00 |
 
+Besides text and figures, a PDF or image read returns `visual_evidence` (logos, issuing platform, stamps, handwriting); it is evidence about who issued the document, never a replacement for the seller in `metadata` (see `document-attachments.md`).
+
 Attachments are stored in Cloudflare R2 with org-scoped folders and 24-hour presigned URLs.
 
 > **`read_attachment` only fetches from allowed storage hosts** — R2 presigned URLs and direct R2 downloads (`*.r2.cloudflarestorage.com` plus the org's configured `R2_PUBLIC_URL`/endpoint host) work as normal. A raw external URL — including a link a customer pasted into an email — is rejected with a structured error, not fetched.

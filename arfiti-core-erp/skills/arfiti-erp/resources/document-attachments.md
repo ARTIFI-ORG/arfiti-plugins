@@ -76,6 +76,7 @@ Use this when a user:
 | Generate upload link | `submit` | `submit("attachment", "generate_upload_url", {...})` |
 | Confirm upload | `submit` | `submit("attachment", "confirm_upload", {...})` |
 | Delete attachment | `submit` | `submit("attachment", "delete", {...})` |
+| Read a stored document | `read_attachment` | `read_attachment(storage_url=..., content_type="application/pdf")` |
 | Search attachments | `query` | `query("attachment", query="invoice", {...})` |
 | Get attachment | `get` | `get("attachment", 123)` |
 | List attachments | `list` | `list("attachment", {"transaction_id": 456})` |
@@ -315,6 +316,21 @@ read_attachment(
 - Find the connector at runtime: `query("connector", filters={"provider": "gdrive"})` — use the active one for the entity.
 - **This is a PULL route only — it is not a way to transfer a file you hold.** It works when the document is already in the shared folder because a human or a scanner put it there. You cannot put one there yourself: the Drive MCP's `create_file` takes only `base64Content`/`textContent`, so "save it to Drive, then pull it" just moves the bytes through your context, which is the one thing that never works. When you hold a file and cannot reach the upload endpoint, hand the user the upload link instead.
 - **Never route by file size** — there is no "under X MB" rule. Route on who holds the bytes: yours on disk with egress → curl; already in the Drive folder → pull; anything else → the upload link.
+
+### Reading a Stored Document (`read_attachment`)
+
+Read the whole document first; the server handles length:
+
+```javascript
+read_attachment(storage_url="<storage_url from the attachment>", content_type="application/pdf")
+```
+
+- PDFs up to **200 pages** are read whole. Long ones come back with `extraction_method: "claude_document_chunked"`, `page_count`, and `reconciliation` showing which printed figure the line items add up to.
+- **`success: false` with an `incomplete` block means the bill was NOT read completely.** There are no amounts or line items in that answer; do not build a transaction from anything you saw elsewhere. Follow `incomplete.next_step`: read the `missing_pages` with `pages`, or tell the user which pages could not be read and why (`problems`).
+- `pages="3-7"` (at most 5 pages) returns the full text of those pages. Its figures are what those pages print, **not the document total** — never post a page-range total as the bill total.
+- Over 200 pages: read it in ranges with `pages` and say plainly that no whole-document check was made.
+- A long read takes minutes and costs about $2 per 100 pages; read a document once and reuse the result.
+- `visual_evidence` lists what the page shows beyond its text: logos, the platform or app that issued the document when it differs from the seller, stamps and watermarks (such as PAID), handwriting, alterations; each item has `kind`, `description`, `location`, `confidence`. `{"none_seen": true}` means nothing was seen. Use a logo or platform as a lead (for example, the seller may be a driver or merchant selling through that platform, and the platform may already be a vendor), **never as the seller**: the vendor is the legal seller in `metadata.vendor_name` and `vendor_details` (tax number, bank details). Ask the user when the two point to different vendors.
 
 ### 3. Confirm Upload
 

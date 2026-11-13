@@ -629,4 +629,4 @@ Poll `get_imports(action="status", import_id)` to track status: `pending_approva
 - [Document Attachments](document-attachments.md) - Attaching PDFs/images to transactions
 - [Vendor Management](vendor-management.md) - Vendor master data
 - [Customer Management](customer-management.md) - Customer master data
-- [Data Migration Specialist](../roles/data-migration-specialist.md) - Full system migration workflow
+- The `arfiti-core-implementation-consultant` plugin - Full system migration workflow
