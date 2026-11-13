@@ -767,6 +767,8 @@ manage_connectors(action="process_bank_lines", bank_account_id=5, legal_entity_i
 
 The `reconciliation_agent` runs on schedule or manual trigger, matching all unreconciled payments to invoices across all entities. No manual intervention needed for high-confidence matches.
 
+Where the organisation's reconciliation agent is set to the managed runtime, a scheduled job must say which payments a run covers, in its payload, and name a legal entity: `period` set to `previous_month`, `current_month` or `all_open` (every payment still unmatched, of any date), or `period_start` and `period_end`. A month bounds the payments only; open invoices and bills of any date are candidates. A job that names no period starts nothing and its event says what to set.
+
 ### Reviewing Manual Review Items
 
 Low-confidence matches (below 0.85) appear in the admin dashboard at `/runs/bank-reconciliation/[id]`. Actions available:
