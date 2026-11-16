@@ -41,6 +41,32 @@ never reason about whether an expense is recognised by looking at it.
 
 ---
 
+## In an organisation whose agents are managed (AR-1224)
+
+A submitted receipt does not go through the bill pipeline. The dispatcher hands
+the submission to the **managed bank agent** for that one charge: it reads the
+receipt, checks it belongs to the charge, and posts the charge (`CARD_EXPENSE`,
+the account chosen on the receipt's evidence) and matches it with
+`card_statement_line.match`. A charge left in `exception` by the classifier
+(`classifier_uncertain`) leaves it this way: the receipt is the evidence the
+classifier lacked. A person is asked only when the receipt does not fit the
+charge or does not settle the account.
+
+The status follows the ledger, whoever posts: the match moves the charge to
+`posted` (from `processing`, `uploaded` or `received`) when a receipt is on
+file; the page shows **Posted with receipt**. When the bank agent's work on
+the receipt ends (its run and any run continuing it are closed) with the charge
+unposted and no question waiting for a person, the charge is given back as
+`rejected` with the agent's reason, so the receipt can be replaced or sent
+again. A charge found already posted with its receipt on file is closed as
+`posted` at that point. A receipt that is a supplier
+invoice to the company is still listed for a bill session by the agent; the
+bill then settles against the posted charge through reconciliation.
+
+An external agent reaches the same outcome with `attach_receipt` (or the
+page), `read_attachment`, `submit("transaction", "post", CARD_EXPENSE with
+card_transaction_id)` and `submit("card_statement_line", "match")`.
+
 ## Attaching is not submitting
 
 **This is the single thing to get right.** Filing a document against a charge
@@ -356,9 +382,9 @@ two are legacy and no new charge will enter them.
 | `requested` | The collector has emailed the cardholder once | yes | yes |
 | `overdue` | Past the overdue threshold; final notice sent | yes | yes |
 | `uploaded` | File(s) held, **not submitted** — a draft | **yes** | yes |
-| `processing` | Submitted; the bill pipeline is working on it | no | no |
+| `processing` | Submitted; the bill pipeline (or, managed, the bank agent) is working on it | no | no |
 | `in_review` | A person must decide — unclear extraction, an approval step, or a no-receipt explanation | no | no |
-| `posted` | A bill was posted from it | no | **yes** |
+| `posted` | A bill was posted from it, or the charge was posted and matched with it on file | no | **yes** |
 | `reconciled` | That bill settled the charge in full | no | **yes** |
 | `rejected` | A person declined it — editable again so it can be replaced | **yes** | yes |
 | `waived` | An explanation was submitted instead of a document, and accepted | no | yes |
