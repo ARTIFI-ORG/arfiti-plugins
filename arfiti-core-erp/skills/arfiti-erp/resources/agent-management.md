@@ -208,6 +208,7 @@ Manage agent configurations using these tools:
 | `submit("agent_definition", "create", {...})` | Create a new agent definition (owner or admin) |
 | `submit("agent_definition", "update", {...})` | Update agent configuration (owner or admin) |
 | `submit("agent_definition", "enable", {...})` | Enable or disable an agent (owner or admin) |
+| `submit("agent_definition", "archive", {...})` | Archive an agent that is no longer used, or restore one (owner or admin). See "Archiving an agent that is no longer used" |
 | `manage_agents(action="regenerate_keys")` | Regenerate MCP API keys (owner or admin) for agents missing one, or (`force: true`, optionally `agent_type`) replace them. The new key keeps the previous runtime key's owner, whose roles are the agent's authority, and the earlier runtime key is revoked (a run still using it fails and is retried). An agent whose owner has left goes to the calling person (an agent caller cannot take it over); owner changes are listed under `owner_changed`, agents that got no key under `skipped`, and agents whose missing key another caller filled meanwhile under `already_filled` |
 | `get_agents(action="list_templates")` | List available agent templates |
 | `manage_agents(action="seed_definitions")` | Seed agents from templates (owner or admin) |
@@ -359,6 +360,66 @@ submit("scheduled_job", "update", {"job_id": N, "cron_expression": "0 9 * * *"})
 submit("scheduled_job", "enable", {"job_id": N, "is_enabled": false})
 submit("scheduled_job", "delete", {"job_id": N})
 ```
+
+### Archiving an agent that is no longer used
+
+Deleting an agent (dashboard only) removes a custom agent together with its run history,
+scheduled jobs, revisions and API keys. It is refused for a system agent, while a run is
+in progress, and while a request or other record refers to the agent. Archiving (AR-1211)
+is for an agent that should stop without losing anything: an owner or admin archives it,
+and it is left out of the dashboard's agent list, cannot be enabled, and nothing starts
+it. Nothing is deleted: run history, tasks, audit rows and scheduled jobs stay as they are.
+
+```python
+submit("agent_definition", "archive", {
+    "agent_type": "client_helper",        # or "definition_id": N; both must name the same agent
+    "archived": True,                     # default true; false restores
+    "reason": "Replaced by the bank agent"   # optional, at most 500 characters
+})
+```
+
+Archiving is refused while something can still start the agent. Each refusal says what
+to do first:
+
+| Refused when | Do this first |
+|---|---|
+| The agent is enabled | `submit("agent_definition", "enable", {"definition_id": N, "is_enabled": false})` |
+| The agent is set to the managed runtime | `submit("agent_definition", "set_runtime", {..., "runtime": "builtin"})` |
+| An enabled scheduled job names the agent (the refusal lists the job ids) | `submit("scheduled_job", "enable", {"job_id": N, "is_enabled": false})` or `submit("scheduled_job", "delete", {"job_id": N})` |
+| The agent is already archived, or was retired by the platform | Nothing: there is nothing to archive |
+
+`"archived": false` restores an agent this operation archived. The agent comes back
+disabled; switch it on with `agent_definition.enable`. An agent the platform retired
+(the ten retired built-in types, and any row migration 890 marked) is not restored.
+
+Reading an archived agent: `query("agent_definition")` and `get_entity("agent_definition", ...)`
+still return it, so it can be found by its `agent_type` and restored. The archive is
+recorded in the row's `config.retired`: `{"at": <UTC time>, "by": <user id>, "archived": true,
+"reason": ...}`. A retired agent's `config.retired` has no `archived: true`.
+
+While an agent is archived:
+
+- `agent_definition.enable`, `agent_definition.set_runtime` and the activation of a
+  revision are refused, each saying to restore the agent first.
+- No scheduled job can be created for it (`scheduled_job.create`) and none of its jobs
+  can be switched on (`scheduled_job.enable` with `is_enabled: true`). Its jobs are kept,
+  disabled, and can be switched on again after a restore.
+- No new API key is issued for it: `agent_api_key.create` and `agent_api_key.rotate`
+  (a rotation issues a new key with a new expiry) are refused. Keys it already has are
+  not revoked by archiving and keep working until they expire or you revoke them
+  (`submit("agent_api_key", "revoke", ...)`).
+- `agent_definition.update` keeps it archived: a `config` you send replaces the rest of
+  the config, and the row's `retired` entry is put back.
+
+`config.retired` is written only by `agent_definition.archive`. Creating an agent with
+`retired` in its `config` is refused, and so is an update whose `config.retired` differs
+from the one stored (a config you read from the row and send back is accepted). No
+revision holds the entry, so activating a revision never archives or restores an agent.
+
+A refusal is the gateway's saved answer for that request for 24 hours. After fixing the
+cause, send the request again with a new `idempotency_key` (the same payload without one
+returns the saved refusal, marked `idempotent_replay`). The same holds for archiving an
+agent again after restoring it.
 
 ### Monitoring
 
@@ -925,9 +986,9 @@ Manage email addresses associated with legal entities for agent email routing.
 | `query("entity_email", filters={...})` | List email addresses for an entity |
 | `get_entity("entity_email", id=X)` | Get email address details (replaces `get_entity_email_address`, MCP registration removed) |
 | `submit("entity_email", "create", {...})` | Create a new email address |
-| `submit("entity_email", "update", {...})` | Update email address config |
+| `submit("entity_email", "update", {...})` | Update `default_agent_type`, `routing_rules` or `is_active`. `email_type` cannot be changed: create a new address of the type you need and delete the old one |
 | `submit("entity_email", "delete", {...})` | Delete an email address |
-| `submit("entity_email", "verify", {...})` | Verify an email address |
+| `submit("entity_email", "verify", {...})` | Not supported: the table has no verification-token columns (see the note on `entity_email.verify` below). Verify provider-to-inbox delivery separately |
 | `query("entity_email", query=...)` | Look up which entity an email routes to |
 
 ### Examples
