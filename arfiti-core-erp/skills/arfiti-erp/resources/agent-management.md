@@ -734,6 +734,34 @@ submit("agent_definition", "set_runtime", {
 - `runtime: "builtin"` removes the mark; it does not switch the built-in runtime on.
 - Ask the person for the ids. Do not guess them, and never put a credential in the payload.
 
+A managed row that names no agent is **not set up** (a new organisation's rows start this
+way; the agent list says "Not set up"): an event addressed to it ends `failed` with a
+sentence that says so. Where the platform sets agents up itself (AR-1210, built but not
+deployed), an owner or an admin of every legal entity sets up all of the organisation's
+managed agents in one call, and onboarding runs the same:
+
+```python
+submit("managed_agents", "provision", {"organization_id": <the signed-in organisation>})
+```
+
+It creates the organisation's agents, vault, agent users and keys (the keys go into the
+vault and are never shown), assigns their roles and sets the rows last. Running it again
+finishes a run that stopped part way and changes nothing that is current; to run it again
+within a day, pass a new `idempotency_key`. Where the platform does not set agents up
+itself it is refused with the reason. Then retry the failed events with
+`submit("agent_event", "retry", {"event_id": "..."})`. `submit("managed_agents",
+"deprovision", {"organization_id": ...})` takes them down, for an organisation being
+deleted; do not run it otherwise.
+
+To make each managed agent's Standard instructions tab show what it runs, an owner or admin
+records them for every managed agent of the organisation in one call; no text goes in the
+payload (the server reads each agent from the agent service and the skill text from its own
+build, for the version in use):
+
+```python
+submit("managed_agents", "record_instructions", {"organization_id": <the signed-in organisation>})
+```
+
 The runs the platform started are read, not written:
 
 ```python
