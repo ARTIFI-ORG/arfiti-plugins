@@ -286,6 +286,18 @@ house bank per run.
 
 ### Transmitting a batch
 
+**The approval must still stand when the batch is sent (AR-1214, 2026-11-16).**
+Before a batch goes to a bank connector, the person recorded as its approver must
+still hold the authority the engine required when the decision was recorded:
+active membership, write authority, and access to the approval workflow's entity.
+If they left the company, were deactivated or lost that access, transmission is
+refused, the batch stays `approved` and nothing is sent: cancel the batch and
+propose the payments again. The check runs inside the step that claims the
+batch for sending, so a revocation cannot slip in between. A hand upload
+(`route: "file"`) is not refused for this, because it records money that already
+moved; generating the payment file for a hand upload does not recheck the
+approver either.
+
 Transmission is **not available through the MCP connector**, and neither is
 approving or editing a transmission that is waiting in an approval lane. After a batch is
 approved, the user transmits it from the admin dashboard (Runs →

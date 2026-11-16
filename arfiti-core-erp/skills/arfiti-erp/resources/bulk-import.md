@@ -399,6 +399,8 @@ manage_imports("opening_balances_with_subledger", {
 
 **How the subledger version works:** The system uses a clearing account (0000) to keep the GL balanced. Each open AR/AP item becomes its own posted transaction. The OPENING_ENTRY posts the clearing account instead of the AR/AP control accounts. The clearing account nets to zero. Result: same GL balances, but individual items in aging reports.
 
+**Both versions go through the organization's workflow.** `opening_balances` submits its OPENING_ENTRY as `transaction.post`; `opening_balances_with_subledger` runs as the operation `opening_balance.migrate`. The answer carries a `workflow_id`. If the organization's workflow holds it for approval, the answer is `status: "pending"` and nothing is posted until a person approves — tell the user, and do not resubmit. A refusal (`workflow_definition_missing`, `permission_denied`) means nothing was written. `validate_only=true` previews and needs no approval.
+
 ### Step 5: Verify
 
 ```javascript

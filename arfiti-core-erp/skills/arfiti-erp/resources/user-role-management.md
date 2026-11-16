@@ -38,6 +38,9 @@ its request identity. This does not change MCP tool response contracts.
 |----------|---------|-------------|
 | `role.create` | Create a custom role with permissions | Organization needs a role beyond the 7 built-in system roles |
 | `user_role.assign` | Assign a role to a user | Granting a user access to specific accounting operations |
+| `role.update` | Replace a custom role's permissions (and description) | Changing what an existing custom role allows |
+| `role.toggle` | Switch a custom role on or off (off ends its assignments) | Retiring a role, or bringing it back |
+| `user_role.remove` | End a person's assignment of a role | Taking a role away from someone |
 | `api_key.create` | Generate a new API key | Setting up programmatic access (Claude Desktop, CI/CD) |
 | `api_key.revoke` | Permanently revoke an API key | Rotating credentials or removing access |
 | `membership_role_default.save` | Choose which roles an invitation starts with for one membership level | The organisation wants, say, every Member invited with AP accountant ticked |
@@ -56,7 +59,8 @@ its request identity. This does not change MCP tool response contracts.
 | `get_entity("api_key", id=X)` | Get details of a specific API key |
 | `query("api_key")` | List all API keys for the organization |
 | `query("api_key", query="...")` | Search API keys by name or prefix |
-| `query("audit_log", filters={...})` | View audit trail entries |
+| `query("audit_log", filters={...})` | View audit trail entries; each row's `entry_point` (`dashboard`, `external_client`, `builtin_agent`, `scheduled_job`) and `client_id` (OAuth client, `api_key:<id>`, `agent:<type>`, `job:<id>`) say through what it arrived. Empty on rows before November 2026 |
+| `query("audit_log", filters={"action": "data_export"})` | Who exported which list from the dashboard: file name, page, columns, row count, entity (never the contents) |
 
 > **IMPORTANT — Schema Discovery Required**: Before calling `submit()` for any workflow below, you MUST first call `get_submissions(action='schema', object_type, operation)` to discover the exact required and optional fields. Each organization configures different field requirements. Never assume the fields listed below are complete — always check the schema first.
 
@@ -220,6 +224,8 @@ Use the `user_role.assign` workflow to grant a user a specific permission role.
 
 **If you are an agent, a role or access change waits for a person.** `role.create`, `user_role.assign`, `organization_user.invite`, `organization_user.update`, `organization_user.remove`, `organization_user.revoke_invite` and `membership_role_default.save` submitted from an agent return `status: "pending"`; an owner or admin approves on the dashboard. You cannot approve it with `manage_submissions(action="decide")`. Tell the user it is waiting for their approval. If the organisation's workflow has no approval step, the submission is refused; ask an owner or admin to add one.
 
+**A second owner or admin approves role and access changes by default** (change governance, AR-1217). `role.create`, `role.update`, `role.toggle`, `user_role.assign`, `user_role.remove`, `membership_role_default.save` and the `organization_user` membership and invitation operations return `status: "pending"` even when an owner or admin asks, and someone other than the person who asked approves them. When nobody else can approve (a sole owner), that person approves their own request; the approval records it. An organisation can change this in its policy (`change_governance.policy`, section `approvals`, group `access`): with `second_person` off, an owner's or admin's own change runs at once. With `dashboard_only` on, only an approval given on the dashboard counts; an approval through `manage_submissions(action="decide")` is refused with a sentence that says so. Tell the user where the request waits (Tasks on the dashboard) and who can approve it.
+
 ```
 submit("user_role", "assign", {
     "user_id": 42,
@@ -265,9 +271,10 @@ roles assigned to it, built from the same permission groups as a person's.
 
 ## Removing a Role from a User
 
-Use the `manage_organization` tool to remove a role assignment.
+Use `submit("user_role", "remove", ...)`, or `manage_organization(action="remove_role", ...)`, which submits the same operation. It is governed like assigning: by default a second owner or admin approves (a sole owner approves their own request), so the answer is usually `status: "pending"` with a `workflow_id`.
 
 ```
+submit("user_role", "remove", {"user_id": 42, "role_name": "controller"})
 manage_organization(action="remove_role", user_id=42, role_name="controller")
 ```
 
@@ -278,6 +285,19 @@ manage_organization(action="remove_role", user_id=42, role_name="controller")
 **Protection:** The system prevents removing the last admin role from an organization -- at least one user must always have admin access.
 
 `remove_role`, `list_roles` and `list_user_roles` need owner or admin membership of the current organization; RBAC permissions such as `admin:*` don't count.
+
+## Editing or Switching Off a Custom Role
+
+```
+submit("role", "update", {"role_name": "ap_clerk", "permissions": ["ap:read", "ap:write"], "description": "AP clerk"})
+submit("role", "toggle", {"role_name": "ap_clerk", "is_active": false})
+```
+
+- `permissions` is the role's complete list after the edit, not an addition.
+- System roles cannot be edited or switched off.
+- Switching a role off ends every assignment of it; switching it back on does not restore them.
+- A role held by an agent's own user cannot gain a wildcard or admin permission.
+- Owners and admins only; by default a second owner or admin approves.
 
 ---
 
@@ -691,9 +711,10 @@ require `admin:write`; execution additionally requires current **owner or admin
 organization membership**, so an accounting RBAC admin role alone is insufficient.
 The Admin member page submits these operations with the authenticated actor.
 Since migrations 833/834 the shipped `organization_user.update`, `.invite`, `.remove` and `.revoke_invite` definitions
-carry one "Owner or admin approves" step that is skipped on the green lane: a
-person's own change runs directly, an agent's change waits for an owner or admin
-(AR-460). Other configured approval steps defer the change. The member page reports a
+carry one "Owner or admin approves" step that is skipped on the green lane: an
+agent's change waits for an owner or admin (AR-460). Since AR-1217 a person's own
+change waits too when the organisation's change-governance rule for `access`
+needs a second person, which is the default; a sole owner approves their own. Other configured approval steps defer the change. The member page reports a
 pending submission instead of claiming it was applied.
 
 - Update requires `user_id` and `membership_role` (`owner`, `admin`, `accountant`,
@@ -806,6 +827,16 @@ Financial workflow completion (transactions and payroll) reloads the submitter's
 current tenant membership, role grants and entity scope before executor dispatch.
 Approval does not grant synthetic full write permissions. Removed membership or
 revoked domain authority blocks execution, including worker-driven completion.
+
+Every other workflow a person submitted is checked too (AR-1214, 2026-11-16):
+before its executor runs, the submitter must still be an active member and still
+hold the definition's `required_permission`. A person removed, deactivated or
+narrowed while their request waited for approval gets nothing written; the
+approver sees the refusal. An expense report whose employee left before it was
+approved is refused the same way; an admin can submit it again on the
+employee's behalf. An agent's own user is rechecked for membership and active
+status (removing or deactivating it stops its waiting requests); its permission
+is rechecked through the agent run that submitted, where there is one.
 
 
 ### Reversal read permissions (E2E-037, 2026-09-30)
