@@ -822,6 +822,30 @@ submit("reconciliation", "match", {
 // Remaining 50 will be matched by future payment
 ```
 
+### Several Matches in One Run
+
+Each call on its own writes one run. When you match several payments as one
+piece of work, record them as one run:
+
+```javascript
+// First match: open the run; the response returns reconciliation_run_id.
+submit("reconciliation", "match", { scope: "ar", legal_entity_id: 9,
+  source_transaction_id: 456, applications: [...], open_run: true })
+// Later matches, same entity and scope: join it.
+submit("reconciliation", "match", { scope: "ar", legal_entity_id: 9,
+  source_transaction_id: 457, applications: [...], reconciliation_run_id: 1701 })
+// After the last match: close it. A closed run is never reopened.
+submit("reconciliation", "finalize", { scope: "ar", legal_entity_id: 9, reconciliation_run_id: 1701 })
+```
+
+Only your own open run in the same entity and scope can be joined; the
+refusal says why otherwise (closed, opened by someone else, another entity).
+Not for `purchase_id` or `refund_transaction_id` matches. The run records who
+submitted: a person's matches show as Manual on the runs page, an agent signed
+in as its own user shows as Agent. A Managed Agents session may add
+`run_reference: {runtime: "managed_agents", session_id: "sesn_..."}` when it
+opens the run, to link the run to its session.
+
 ### Reverse a Match (Unmatch)
 
 **Inspect before unmatching.** A status label on a document (`paid`,
