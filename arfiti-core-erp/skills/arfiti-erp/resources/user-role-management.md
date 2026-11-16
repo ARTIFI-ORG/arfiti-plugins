@@ -40,6 +40,7 @@ its request identity. This does not change MCP tool response contracts.
 | `user_role.assign` | Assign a role to a user | Granting a user access to specific accounting operations |
 | `api_key.create` | Generate a new API key | Setting up programmatic access (Claude Desktop, CI/CD) |
 | `api_key.revoke` | Permanently revoke an API key | Rotating credentials or removing access |
+| `membership_role_default.save` | Choose which roles an invitation starts with for one membership level | The organisation wants, say, every Member invited with AP accountant ticked |
 
 **Available Read Tools:**
 
@@ -48,6 +49,7 @@ its request identity. This does not change MCP tool response contracts.
 | `get_organization(action="list_roles")` | List all system and custom roles for the organization |
 | `get_organization(action="list_user_roles", user_id=X)` | List roles assigned to a specific user |
 | `get_organization(action="list_user_roles")` | List role assignments for all users |
+| `query("membership_role_defaults")` | The organisation's default roles per membership level (empty if none saved) |
 | `get_organization(action="get_info")` | Get current organization details including membership |
 | `get_organization(action="list_orgs")` | List all organizations the current user belongs to |
 | `get_organization(action="get_rate_limit")` | Check current rate limit status |
@@ -216,7 +218,7 @@ Use the `user_role.assign` workflow to grant a user a specific permission role.
 
 **Only owners and admins can assign roles**, including to themselves. The check reads the caller's organization membership at execution. Anyone else gets `permission_denied` with "Only owners and admins can change roles in this organization. Ask one of them to make the change." Relay it and point the user to an owner or admin.
 
-**If you are an agent, a role or access change waits for a person.** `role.create`, `user_role.assign`, `organization_user.invite`, `organization_user.update`, `organization_user.remove` and `organization_user.revoke_invite` submitted from an agent return `status: "pending"`; an owner or admin approves on the dashboard. You cannot approve it with `manage_submissions(action="decide")`. Tell the user it is waiting for their approval. If the organisation's workflow has no approval step, the submission is refused; ask an owner or admin to add one.
+**If you are an agent, a role or access change waits for a person.** `role.create`, `user_role.assign`, `organization_user.invite`, `organization_user.update`, `organization_user.remove`, `organization_user.revoke_invite` and `membership_role_default.save` submitted from an agent return `status: "pending"`; an owner or admin approves on the dashboard. You cannot approve it with `manage_submissions(action="decide")`. Tell the user it is waiting for their approval. If the organisation's workflow has no approval step, the submission is refused; ask an owner or admin to add one.
 
 ```
 submit("user_role", "assign", {
@@ -438,6 +440,16 @@ Owner/admin membership is required at execution, in addition to the definition's
 `admin:write` permission. Only owners can grant owner membership. Approvals defer
 the grant and email. Optional `client_org_access` entries use `organization_id`
 and `role`; the actor must manage every linked client.
+
+**Start from the organisation's defaults.** Read
+`query("membership_role_defaults", filters={"membership_role": "user"})` and put
+those roles in `role_assignments` (scope `null` = the membership's entities), then
+confirm the list with the user before submitting. The defaults are the
+organisation's own choice and grant nothing by themselves; with none saved, ask
+which roles the person needs. Never invent a default. Owners and admins with access
+to every entity change them with
+`submit("membership_role_default", "save", {"membership_role": "user", "role_names": ["ap_accountant"]})`
+(`role_names: []` clears that level).
 
 `revoke_invite` and `resend_invite` take `{"invitation_id":123}`. Revocation is soft
 and covers linked child invitations; resend retries unsent delivery. Inspect
@@ -677,11 +689,11 @@ With migration 620 applied, `organization_user.update` and
 `organization_user.remove` are registered workflow operations. Their definitions
 require `admin:write`; execution additionally requires current **owner or admin
 organization membership**, so an accounting RBAC admin role alone is insufficient.
-The Admin member drawer submits these operations with the authenticated actor.
+The Admin member page submits these operations with the authenticated actor.
 Since migrations 833/834 the shipped `organization_user.update`, `.invite`, `.remove` and `.revoke_invite` definitions
 carry one "Owner or admin approves" step that is skipped on the green lane: a
 person's own change runs directly, an agent's change waits for an owner or admin
-(AR-460). Other configured approval steps defer the change. The drawer reports a
+(AR-460). Other configured approval steps defer the change. The member page reports a
 pending submission instead of claiming it was applied.
 
 - Update requires `user_id` and `membership_role` (`owner`, `admin`, `accountant`,
@@ -737,16 +749,20 @@ permissions and entity scope; the baseline does not supply missing domain policy
 
 ### Saving membership and permission roles in Admin
 
-The full member editor (`/team/{userId}/edit`) submits membership level, entity
-access, and permission-role assignments together. Use an owner/admin session in
-the intended organization. Selecting Member and AP Accountant does not itself
-apply the change: wait for “Team member updated”. A review-pending response means
+The member page (`/team/{userId}`; the old `/team/{userId}/edit` redirects there)
+submits membership level, entity access and, when a role box was changed,
+permission-role assignments together. Use an owner/admin session in the intended
+organization. Selecting a membership and ticking roles does not itself apply the
+change: Save does, and returns to Users & team. A review-pending response means
 the change has not yet been applied. Validation or permission errors leave saved
 authority unchanged; confirm effective MCP permissions with `get_info`.
 
-The membership field uses a native select. Existing Accountant memberships are
-preserved on unchanged saves; selecting Member does not automatically assign
-AP Accountant. Owner membership remains non-editable in this full-page form.
+Membership is a list of five levels. Existing Accountant memberships are
+preserved on unchanged saves. On an existing member, changing the membership
+does not change their roles; on an invitation it ticks the organization's saved
+defaults for that level, which the inviter can change. Owner membership remains
+non-editable on the page, and Owner/Admin show full accounting access instead of
+the roles list.
 
 
 Streamable HTTP role propagation: the context resolver prefers the current
@@ -852,21 +868,29 @@ transaction includes the schema and audit receipt. Local real-database tests cov
 creation, retry, identity/invitation denial and rollback.
 
 
-### Quick member editor: membership and accounting permissions
+### Member page: membership and accounting permissions
 
-The quick member drawer labels its selector **Membership level**. Membership
+The member page labels its selector **Membership level**. Membership
 controls workspace access; accounting operations additionally depend on assigned
 permission roles. Member and Accountant labels do not promise posting, period
 closing or other domain permissions by themselves.
 
-For an existing accepted member, **Manage accounting permissions** opens the
-existing `/team/{userId}/edit` form, including permission roles and their entity
-scopes. Save drawer changes before following that link. Quick saves continue to
-omit role assignments and therefore preserve the existing assignments.
-For a new invitation, **Invite with accounting permissions** opens `/team/invite`;
-unsaved drawer entries are not carried over. Pending invitations show guidance to
-manage roles after acceptance instead of linking to a nonexistent member record.
-This change does not alter role grants or server-side authorization.
+Since AR-1212 one member page is the only place to invite or edit a member:
+`/team/invite`, `/team/<id>` and, read-only, `/team/invitations/<id>`, opened from
+Configuration → Users & team. It asks for entity access once, the membership
+level, then shows the accounting permission roles inline. A ticked role covers the
+member's entity access (`entity_ids: null`, bounded by the membership) and can be
+narrowed to some of those entities, never widened. An invitation starts with the
+organisation's saved defaults for the membership level ticked
+(`query("membership_role_defaults")`); with none saved, nothing is ticked. A
+partner organisation can also grant client organisation access. An inviter limited
+to some entities is offered only those. A save of an existing member sends role
+assignments only when a box changed, so an untouched save leaves the roles (and any
+expiry on them) as they are. A pending invitation shows what it grants, read-only:
+to change it, revoke it and invite again. `/team/{userId}/edit`
+is the old editor URL and redirects to `/team/<id>`. All three pages are for owners
+and admins; anyone else goes to the dashboard. Server-side authorization
+is unchanged.
 
 
 ### Owner/admin entity limits
