@@ -15,7 +15,7 @@ Universal plugins that work with any chart of accounts and any country.
 | [arfiti-core-cost-allocation](./arfiti-core-cost-allocation) | Cost allocation across departments, projects, or dimensions. Standalone mode (from GL balances) and document-linked mode (from a specific bill/invoice with full traceability). | `/run-allocation` `/preview-allocation` |
 | [arfiti-core-erp](./arfiti-core-erp) | The operating manual for the Arfiti ERP inside Claude: the `submit` write gateway and its approval lanes, the read tools, the `get_*` / `manage_*` tool pairs, and a domain guide for each area. Skills and reference documents only; generated from the monorepo skill templates. | Skill `arfiti-erp` (no slash commands) |
 | [arfiti-core-implementation-consultant](./arfiti-core-implementation-consultant) | ERP migration consultant. Guides customers through the full migration journey: chart of accounts setup, opening balances with open transactions (individual AR invoices, AP bills, fixed assets), master data import, gap period transaction processing, and go-live verification. Supports 4 migration paths — Connector (Merit/QBO/SmartAccounts), CSV/Manual, Greenfield, and Hybrid. Features advisory intelligence that scans the balance sheet to detect what additional data is needed. | `/start-migration` `/migration-status` `/import-data` `/verify-migration` `/close-migration` |
-| [arfiti-core-reconciliation](./arfiti-core-reconciliation) | Payment-to-invoice reconciliation. Automated 6-pass matching via reconciliation agent, then guided manual matching for complex cases — N:N splits, partial payments, rounding write-offs. Supports AR and AP. | `/reconcile` `/match-payment` `/reconciliation-status` |
+| [arfiti-core-agent-procedures](./arfiti-core-agent-procedures) | The procedures Arfiti's own agents follow — bills, bank and card statement lines, payment reconciliation, vendors and customers, configuration, expense claims and checks, period close, billing usage — so your own Claude or Cowork does the same work the same way. Generated from the agents' procedures. | Skills `arfiti-bill-processing`, `arfiti-bank-statement-lines`, `arfiti-reconciliation`, `arfiti-period-close`, `arfiti-expense-claim` and 8 more (no slash commands) |
 | [arfiti-core-country-setup](./arfiti-core-country-setup) | Generates country-specific tax and payroll configuration templates. Researches VAT/GST rates, tax authorities, withholding taxes, and payroll rules to produce structured JSON for onboarding. | `/generate-country-template` |
 
 ### Estonia (EE)
@@ -34,14 +34,14 @@ More countries coming soon.
 ### Option 1: Clone the repository
 
 ```bash
-git clone https://github.com/ARTIFI-ORG/arfiti-plugins.git
+git clone https://github.com/arfiti-technologies/arfiti-plugins.git
 ```
 
 Add the plugin directory to your Claude Desktop project or Cursor workspace.
 
 ### Option 2: Download ZIP
 
-[Download latest ZIP](https://github.com/ARTIFI-ORG/arfiti-plugins/archive/refs/heads/main.zip)
+[Download latest ZIP](https://github.com/arfiti-technologies/arfiti-plugins/archive/refs/heads/main.zip)
 
 ### Option 3: Via Arfiti admin dashboard
 
@@ -109,7 +109,7 @@ support@arfiti.com · Documentation: https://arfiti.com/docs
 
 ## Publishing to the Anthropic directory
 
-This repository's contents are submitted to the Anthropic directory from `ARTIFI-ORG/arfiti-plugins`, which the publish workflow syncs and nobody edits by hand. Each plugin folder needs a README with a "What it runs and sends" section, a LICENSE and a `license` in `plugin.json`, all checked by `plugins/scripts/check_mcp_configs.py`. `arfiti-core-erp` is generated: edit `mcp-server/skill-templates/base`, run `plugins/scripts/build_core_plugin.py`, and commit both. The full process is in [GUIDE_PLUGINS.md](../docs/GUIDES/GUIDE_PLUGINS.md#anthropic-directory).
+This repository's contents are submitted to the Anthropic directory from `arfiti-technologies/arfiti-plugins`, which the publish workflow syncs and nobody edits by hand. Each plugin folder needs a README with a "What it runs and sends" section, a LICENSE and a `license` in `plugin.json`, all checked by `plugins/scripts/check_mcp_configs.py`. `arfiti-core-erp` is generated: edit `mcp-server/skill-templates/base`, run `plugins/scripts/build_core_plugin.py`, and commit both. The full process is in [GUIDE_PLUGINS.md](../docs/GUIDES/GUIDE_PLUGINS.md#anthropic-directory).
 
 ## Versioning (assigned when publishing)
 
@@ -118,7 +118,7 @@ unchanged version means users keep the stale cached copy even after reinstalling
 
 A pull request that changes a plugin does **not** bump its version. When `main` is
 published, `publish-plugins.yml` compares every plugin with the copy the public mirror
-(`ARTIFI-ORG/arfiti-plugins`) already serves, ignoring the version field, and gives
+(`arfiti-technologies/arfiti-plugins`) already serves, ignoring the version field, and gives
 each changed plugin the next patch above its published version
 (`plugin_versions.py --assign`). The mirror therefore always serves a new version for
 new content, and parallel pull requests no longer collide on one version number or on a

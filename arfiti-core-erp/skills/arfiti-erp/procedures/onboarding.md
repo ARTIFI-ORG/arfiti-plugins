@@ -157,7 +157,7 @@ Tell the user:
    - Configure projects, dimensions, or budgets
 
    Do NOT suggest:
-   - ❌ "Download the skill from the admin dashboard" — there is no skill package to download. The guide to the tools is the `arfiti-core-erp` plugin, and the completion response's `setup_info.plugins` names the marketplace (`ARTIFI-ORG/arfiti-plugins`) to install it and the country plugins from. Say that once, from the completion response; do not invent a download link.
+   - ❌ "Download the skill from the admin dashboard" — there is no skill package to download. The guide to the tools is the `arfiti-core-erp` plugin, and the completion response's `setup_info.plugins` names the marketplace (`arfiti-technologies/arfiti-plugins`) to install it and the country plugins from. Say that once, from the completion response; do not invent a download link.
    - ❌ "Add bank accounts (bank connectors available)" — don't push connectors unprompted during onboarding. Revolut Business is the bank connectivity, and it is set up from the admin dashboard's connector wizard (certificate + consent), not from chat. Only mention it if the user explicitly asks about bank integrations.
 
 ---
@@ -257,7 +257,7 @@ Check both `completed` and `skipped` counts. An empty migration task is skipped,
 
 ### After the final wave
 
-Use the completion response with the user’s preferred connected assistant. Install the plugins the response names (`setup_info.plugins`: add the marketplace `ARTIFI-ORG/arfiti-plugins`, install `arfiti-core-erp` first, then the country and domain plugins the organisation needs) and apply the project instructions through that client’s supported setup. Each plugin is installed separately; adding the marketplace installs none. An organisation that wants its own rules keeps a skill of its own beside the plugins: an update replaces edits made inside an installed plugin. Verify the chosen client connects to the intended organization; completed company setup does not certify that connection. Review any `needs_attention` items before relying on them.
+Use the completion response with the user’s preferred connected assistant. Install the plugins the response names (`setup_info.plugins`: add the marketplace `arfiti-technologies/arfiti-plugins`, install `arfiti-core-erp` first, then the country and domain plugins the organisation needs) and apply the project instructions through that client’s supported setup. Each plugin is installed separately; adding the marketplace installs none. An organisation that wants its own rules keeps a skill of its own beside the plugins: an update replaces edits made inside an installed plugin. Verify the chosen client connects to the intended organization; completed company setup does not certify that connection. Review any `needs_attention` items before relying on them.
 
 The Admin finish summary uses the label Assistant. Its external Claude link appears only when the recorded path is Claude; IDE or unknown paths finish at the dashboard. Do not treat the finish-screen link or label as proof of a working connection.
 
@@ -301,7 +301,7 @@ line on the initial organization step.
 ### Claude plugin setup
 
 In Claude, open Customize → Plugins → Add → Add marketplace and enter
-`ARTIFI-ORG/arfiti-plugins`, or upload a downloaded plugin ZIP in the Plugins tab.
+`arfiti-technologies/arfiti-plugins`, or upload a downloaded plugin ZIP in the Plugins tab.
 Plugins are available on Claude web and Desktop with a paid plan, subject to
 workspace policy. Hooks, sub-agents and local MCP servers require Cowork or
 Claude Code. Downloading a ZIP does not install or verify the plugin. The ZIP holds

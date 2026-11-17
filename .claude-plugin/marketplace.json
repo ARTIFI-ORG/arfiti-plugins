@@ -120,18 +120,18 @@
       ]
     },
     {
-      "name": "arfiti-core-reconciliation",
-      "source": "./arfiti-core-reconciliation",
-      "description": "Payment-to-invoice reconciliation. Automated 6-pass matching via reconciliation agent, then guided manual matching for complex cases: N:N splits, partial payments, rounding write-offs. Supports AR and AP.",
-      "version": "2.0.0",
+      "name": "arfiti-core-agent-procedures",
+      "source": "./arfiti-core-agent-procedures",
+      "description": "The procedures Arfiti's own agents follow: bills, bank and card lines, payment reconciliation, vendors and customers, configuration, expense claims, period close and billing usage, for your own Claude or Cowork through the Arfiti MCP server.",
+      "version": "1.0.0",
       "category": "accounting",
       "keywords": [
-        "reconciliation",
+        "bills",
+        "bank-reconciliation",
         "payment-matching",
-        "cash-application",
-        "AR",
-        "AP",
-        "invoices"
+        "expenses",
+        "period-close",
+        "agent-procedures"
       ]
     },
     {
@@ -153,7 +153,7 @@
       "name": "arfiti-core-erp",
       "source": "./arfiti-core-erp",
       "description": "Core operating skill for the Arfiti ERP: post, query, report and run workflows through the Arfiti MCP connector, with a domain guide for each area of the ledger.",
-      "version": "2.0.69",
+      "version": "2.0.70",
       "category": "accounting",
       "keywords": [
         "erp",

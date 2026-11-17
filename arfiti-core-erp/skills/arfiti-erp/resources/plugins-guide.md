@@ -29,10 +29,10 @@ You can accomplish most ERP tasks using just the base skill and its 37 resource 
 
 Plugins are published to the public marketplace:
 
-**Marketplace:** `ARTIFI-ORG/arfiti-plugins` (`https://github.com/ARTIFI-ORG/arfiti-plugins`)
+**Marketplace:** `arfiti-technologies/arfiti-plugins` (`https://github.com/arfiti-technologies/arfiti-plugins`)
 
-- **Claude (web, Desktop, Cowork):** Customize > Plugins > Add > Add marketplace, enter `ARTIFI-ORG/arfiti-plugins`, then install each plugin you need.
-- **Claude Code:** `/plugin marketplace add ARTIFI-ORG/arfiti-plugins`, then `/plugin install <plugin>@arfiti-plugins`.
+- **Claude (web, Desktop, Cowork):** Customize > Plugins > Add > Add marketplace, enter `arfiti-technologies/arfiti-plugins`, then install each plugin you need.
+- **Claude Code:** `/plugin marketplace add arfiti-technologies/arfiti-plugins`, then `/plugin install <plugin>@arfiti-plugins`.
 
 Adding the marketplace installs nothing: each plugin is installed separately. Start with `arfiti-core-erp` (this guide), then add the country and domain plugins the organisation needs. The admin dashboard's Plugins page (Administration > Plugins) lists the published catalogue; it is the same for every organisation.
 

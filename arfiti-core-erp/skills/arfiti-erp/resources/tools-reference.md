@@ -473,7 +473,7 @@ Read actions (`get_onboarding`): `check_status`, `get_checklist`, `get_support`,
 
 Write actions (`manage_onboarding`): `add_entity`, `get_summary`, `initialize_entity`, `load_demo_data`, `reset`, `run_wave`, `start`, `update_task`
 
-`get_summary` is a write action: when every task is done it finalizes onboarding. Its authority rule is unchanged. There is no skill package to download: this guide is the `arfiti-core-erp` plugin, installed from the marketplace `ARTIFI-ORG/arfiti-plugins`.
+`get_summary` is a write action: when every task is done it finalizes onboarding. Its authority rule is unchanged. There is no skill package to download: this guide is the `arfiti-core-erp` plugin, installed from the marketplace `arfiti-technologies/arfiti-plugins`.
 
 ```javascript
 manage_onboarding(action="start", country_code="US", accounting_standard="us_gaap_standard",
