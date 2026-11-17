@@ -113,6 +113,21 @@ submit("payment_batch", "create", {
 //            total_amount: 0, line_count: 0 }
 ```
 
+A payment with no bill or expense report behind it (an employee advance) is
+created with its lines in the same call, so the approval shows the payee and
+the amount. Each line takes the fields of `add_line` (no `batch_id`) and the
+same checks; one refused line refuses the whole create:
+
+```javascript
+submit("payment_batch", "create", {
+  legal_entity_id: 40, payment_method: "SEPA", payment_date: "2026-11-17", currency_code: "EUR",
+  lines: [{ master_employee_id: 412, amount: 1000, payment_memo: "Accountable advance, business trip" }]
+})
+```
+
+Creating a draft needs no approval (it moves no money); the approval that
+controls the payment is the one `submit` raises for the batch.
+
 **Required Fields:**
 
 | Field | Type | Description |
