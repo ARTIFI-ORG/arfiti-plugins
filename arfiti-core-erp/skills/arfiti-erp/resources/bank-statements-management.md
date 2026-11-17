@@ -40,11 +40,10 @@ ad-hoc writes. Preserve provider evidence and review each other stale line separ
 
 ## Agent callback and failure evidence
 
-Where the organisation's bank agent is set to the managed runtime (P-AR-42, built,
-not deployed), a managed agent does this work through the public tools and raises a
-review task when it cannot decide; see "How the managed agents work" in
-agent-management.md. The rest of this section describes the built-in pipeline, which
-still runs where the agent is not managed.
+The built-in bank and card pipeline is removed (P-AR-42, November 2026; built, not
+deployed). A managed agent does this work through the public tools and raises a review
+task when it cannot decide; see "How the managed agents work" in agent-management.md.
+The rest of this section describes runs the built-in pipeline left behind.
 
 For Bank pipeline 1.1.0, dependency completion means a stored, currently verified
 producer outcome. A completed activation or copied success flag is insufficient.
