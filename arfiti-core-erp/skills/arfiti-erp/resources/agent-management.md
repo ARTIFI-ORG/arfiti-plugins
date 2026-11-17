@@ -98,7 +98,7 @@ Since 11 November 2026 (AR-1187): `asset_creator`, `agent_architect` and the Est
 
 ## How the managed agents work, and working beside them
 
-Status: P-AR-42, built, not deployed. Read this before you do work an agent also does
+Status: P-AR-42, live in every production organisation since 13 November 2026. Read this before you do work an agent also does
 (bills, bank and card lines, matching payments, vendors and customers, chart and posting
 set-up, expense receipts, period close checks), and before you answer a person who asks
 "why did the agent do that" or "how do I make it do X".
