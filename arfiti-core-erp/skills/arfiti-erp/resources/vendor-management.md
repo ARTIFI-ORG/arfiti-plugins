@@ -216,7 +216,7 @@ Secure storage for vendor payment account details.
 - `metadata` (jsonb) - Additional account data
 - `deleted_at`, `deleted_by` - Soft delete tracking
 
-**Security:** Account numbers and routing numbers are encrypted at rest. Only authorized AP/Treasury users can view full account details. To find an account by its number, filter on it: `query("vendor_bank_account", filters={"account_number": "<number>"})` matches the exact number (spaces and dashes ignored); a partial number does not match.
+**Security:** Account numbers and routing numbers are encrypted at rest. `query` lists show a stored number as `********`; `get_entity` on one vendor bank account (or a vendor's related bank accounts) shows it masked, last four visible. Nobody reads the full number through these tools. To find an account by its number, filter on it: `query("vendor_bank_account", filters={"account_number": "<number>"})` matches the exact number (spaces and dashes ignored); a partial number does not match.
 
 ### Vendor Currencies (vendor_currencies table)
 
