@@ -627,6 +627,19 @@ not rewritten. Rerun aging after migration 648 to obtain a fresh snapshot; an
 existing report snapshot retains its original result. Control mismatches and
 missing history remain explicit failures of certification.
 
+**Proposals that were later confirmed (AR-1364, migration 909).** A
+`manual_review` proposal is recorded unapplied on the day a run proposes it;
+its confirmation takes effect on its documents' date, which can be earlier.
+As-of readers (AP/AR open items and aging, native carrying, settlement
+sections, and the application-event check) take, per reconciliation item, the
+latest history row that carries application state: an applied row, or an
+unapplied row recorded after the item was applied (an unapply). Rows recorded
+before an item was ever applied, such as a proposal's own row or an unmatched
+run row, are not used. Before 909 a confirmed proposal read as unapplied from
+the day it was proposed, so an aging or open-items report dated after that day
+showed a paid document as open. The history itself is unchanged; rerun aging
+to get a fresh snapshot (an existing snapshot keeps its result).
+
 A card settlement against a bill is undone by reversing its settlement journal (the
 card reclass). An ordinary undo is dated on the day it is done; a historical undo can
 date the reversal earlier. From that reversal's accounting date the settlement no
