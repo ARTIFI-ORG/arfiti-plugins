@@ -1847,6 +1847,8 @@ content remain separate acceptance work.
 
 ### Bank worklist read bindings (QA branch, not deployed)
 
+> **Retired (AR-1295, November 2026).** The built-in bank review lifecycle is removed: `services/banking/review_*`, `blocks/bank_task.py`, `bank_task_contract.py`, `bank_resolution.py`, their answer routes and the review hooks in the posting executors, the workflow engine and the job scheduler. `agent_request` create refuses a new `review_statement_lines` / `review_card_transactions` task owned by `bank_transaction_processor`, and respond refuses an answer to an existing one: cancel it instead. Existing tasks keep their history and still render. The managed bank agent asks with its own verification tasks. What follows is the record of the retired behaviour.
+
 For `review_statement_lines` and `review_card_transactions`, request reads now
 check stored `lines[].id` and `_bank_worklist.rows` keys against the corresponding
 business rows in the request entity. Statement-ID lists must resolve in that
@@ -2370,12 +2372,11 @@ production activation is included in this implementation.
 
 ### Connection-owned response resolution
 
-An internal resolution already running on an owned connection checks persisted
-Bank enrollment through that same connection before request locks. It does not
-require a separate global pool or treat an unavailable pool as legacy authority.
-An enrolled Bank request still requires its dedicated lifecycle transaction; a
-non-Bank bill clarification can proceed when its undispatched draft has no
-posting receipt. Dispatched bills and malformed receipt evidence still refuse.
+An internal resolution already running on an owned connection uses that same
+connection for its request locks; it does not require a separate global pool.
+A bill clarification can proceed when its undispatched draft has no posting
+receipt. (The Bank enrollment check was removed with the bank review lifecycle,
+AR-1295.) Dispatched bills and malformed receipt evidence still refuse.
 
 
 ### Locked tax period and uncertain posting outcomes

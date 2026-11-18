@@ -1604,6 +1604,8 @@ on or before it. Matching status is current, not a historical match-event snapsh
 
 ### Bank worklist read bindings (QA branch, not deployed)
 
+> **Retired (AR-1295, November 2026).** The built-in bank review lifecycle is removed: `services/banking/review_*`, `blocks/bank_task.py`, `bank_task_contract.py`, `bank_resolution.py`, their answer routes and the review hooks in the posting executors, the workflow engine and the job scheduler. `agent_request` create refuses a new `review_statement_lines` / `review_card_transactions` task owned by `bank_transaction_processor`, and respond refuses an answer to an existing one: cancel it instead. Existing tasks keep their history and still render. The managed bank agent asks with its own verification tasks. What follows is the record of the retired behaviour.
+
 For `review_statement_lines` and `review_card_transactions`, request reads now
 check stored `lines[].id` and `_bank_worklist.rows` keys against the corresponding
 business rows in the request entity. Statement-ID lists must resolve in that
