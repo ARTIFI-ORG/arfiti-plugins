@@ -525,6 +525,23 @@ or its `posted_transaction_id`):
 `submit("card_statement_line", "match", {"card_transaction_id": C,
 "gl_transaction_id": G, "legal_entity_id": X})`.
 
+**Documentation decisions are a person's.** `card_purchase.manage` actions
+`accept_evidence`, `waive`, `not_required` and `request_evidence` decide
+whether a purchase's receipt is enough, missing or not needed. The gateway
+refuses them for you whatever you send ("it is a finance person's review
+decision"), with or without the purchase's `evidence_fingerprint`. Do not
+submit them. A purchase's documentation is not reconciliation work: when its
+only open point is the receipt, leave it to the receipt follow-up. Only when
+your own work on a purchase cannot finish without such a decision (you
+settled it, and it still reads `documentation_state: "review"`), raise one
+`question` task for it ("Tasks for a person"), once: `subject` the
+`card_purchase`, `details` the evidence you read (`source_legs[].has_receipt`,
+`bills[].has_source_document`, what the bill says), and `options` with the
+decisions that fit (`accept_evidence` only when there is a receipt or a bill
+document). The person decides through their own agent under their own
+login; you do nothing with the answer except report it. A refusal you already got
+for one of these actions is this same question, never a `system_refusal`.
+
 **Refusals and approvals** follow "Refusals and unknown outcomes". A pending
 approval already sits with a person: record the workflow id and do not apply
 anything that depends on it (a match after a link that waits for approval).

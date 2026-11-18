@@ -44,7 +44,32 @@ entity: `link_existing_bill` and `request_settlement_review`. A link between
 different vendors still needs a person's approved settlement review. Every
 other action is refused for an agent; raise a review task for a person instead.
 
-Use the backend purchase workspace and shared matching decision; do not implement a competing card matcher in conversation. Preserve provider rows and show net purchase spend. Reference conflicts and competing candidates require review. A paid/settled item can still lack documentation; attach missing source evidence to the existing bill. Evidence review, waiver and grouping use `card_purchase.manage` with current version, evidence fingerprint and reason. Never infer write-off authority from matching tolerance.
+### Reviewing a purchase's documentation
+
+`accept_evidence`, `waive`, `not_required` and `request_evidence` are a finance
+person's decisions about the evidence as it stands. When you act for that
+person (they asked you to, under their own login):
+
+1. Read the purchase: `get_entity("card_purchase", <id>)`. It returns `version`,
+   `evidence_fingerprint`, `documentation_state`, `source_legs` (with
+   `has_receipt`) and `bills` (with `has_source_document`). `query` lists
+   `version` and `evidence_fingerprint` but not the evidence, so it is not
+   enough to review.
+2. Show the person that evidence and get their decision and reason. Accepting
+   needs a receipt on a card transaction or a linked bill with its source
+   document; with neither, the choice is `waive` or `not_required`.
+3. Submit `card_purchase.manage` with `expected_version` = the `version` and
+   `evidence_fingerprint` = the `evidence_fingerprint` you read.
+
+A refusal starting "Purchase changed since it was read" or "Evidence changed
+since it was read" means the purchase moved after you read it: read it again
+and show the person the new evidence before resubmitting. Never resubmit with
+the fresh values unseen. Reading the fingerprint gives no extra authority: an
+agent signed in as its own user is refused these four actions whether or not
+it sends one. The admin dashboard shows the documentation state but takes no
+review decision: this read-review-submit through MCP is the way.
+
+Use the backend purchase workspace and shared matching decision; do not implement a competing card matcher in conversation. Preserve provider rows and show net purchase spend. Reference conflicts and competing candidates require review. A paid/settled item can still lack documentation; attach missing source evidence to the existing bill. Evidence review and waiver use `card_purchase.manage` with the current version, evidence fingerprint and reason (above); grouping uses the current version and reason. Never infer write-off authority from matching tolerance.
 
 Receipt follow-up belongs to the purchase obligation, with one owner and deduplicated reminder stages. Automation and delivery are report-only until the entity rollout settings are explicitly enabled. Statement coverage and opening/movement/closing balance controls must pass independently of agent match counts. August deletion/replay requires its own reviewed manifest and explicit authorization through transaction.delete; implementation permission does not authorize it.
 
