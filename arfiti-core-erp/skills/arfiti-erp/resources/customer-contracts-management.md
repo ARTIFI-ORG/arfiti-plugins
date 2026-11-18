@@ -354,6 +354,11 @@ Customer signs 12-month SaaS contract (12,000 EUR)
 | `generate_report("amortization_schedule", {...})` | Amortization schedule report |
 | `query("customer", query="Acme")` | Find a customer by name |
 
+An AR invoice posted with `recurring_contract_id` must name a contract in the
+invoice's legal entity; otherwise it is refused with "Recurring contract N does
+not exist in this invoice's legal entity". An amortisation schedule related to
+a contract (`related_entity_type: "recurring_contract"`) is checked the same way.
+
 > **Note**: `revenue_schedule.*` workflow calls still work via backward-compat aliases. New code should use `amortization_schedule.*`.
 
 ---
