@@ -189,8 +189,10 @@ A document made out to a private person (an owner or employee by name, with
 no company named) is a question the first time, not a refusal: raise one
 `question` task ("Is this a company expense?") with the document attached and
 plain choices. When a person answers that it is a company expense, post it as
-a bill like any other, with their answer as the basis (task id and their
-words in the bill's description). Their answer settles who the purchase was
+a bill like any other, with their answer as the basis in the bill's
+description, written so it is understood without the task: who answered,
+the date, the choice and their words (the full task id after it if you add
+one, never a shortened id). Their answer settles who the purchase was
 for. It does not settle tax: apply the client's rules on input VAT for a
 document not addressed to the company and say what you applied. Do not hold
 it again, and do not ask for another reviewer.

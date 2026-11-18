@@ -88,8 +88,11 @@ You raised the task because you could not decide; now they have.
 - A concern you already told them about is settled by their answer. If you
   said "this invoice is made out to a private person" and they answer "it is
   a company expense, post it", post it. Record their answer as the basis of
-  the posting (task id and their words in the description or notes of what
-  you write), and report it. Do not hold the item, do not ask again in other
+  the posting in the description or notes of what you write, readable without
+  the task: who answered, the date, the choice they made and their own words
+  ("Approved as a company expense by Mari Tamm on 2026-11-18: 'it was a team
+  lunch'"). A task id, if you add one, is the full id, never a shortened one:
+  other agents and auditors read the record, not your task. Then report it. Do not hold the item, do not ask again in other
   words, and do not ask for a second reviewer, an administrator or "someone
   else": the organisation's own approval workflow decides who else must
   approve, not you.

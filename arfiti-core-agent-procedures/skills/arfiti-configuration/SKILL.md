@@ -1,6 +1,6 @@
 ---
 name: arfiti-configuration
-description: Resolve one accounting-configuration problem in Arfiti through the MCP tools - accounts, posting profiles, transaction-type posting links, fiscal periods, payment terms, tax codes - by finding what exists, choosing the smallest change that only affects future postings, validating, submitting, and reading back. Refuses on its own to change anything that would reclassify or re-report posted history. Use for every configuration task, whether a session's own or a brief from another agent.
+description: Resolve one accounting-configuration problem in Arfiti through the MCP tools - accounts, posting profiles, transaction-type posting links, fiscal periods, payment terms, tax codes, a confirmed entity time zone - by finding what exists, choosing the smallest change that only affects future postings, validating, submitting, and reading back. Refuses on its own to change anything that would reclassify or re-report posted history. Use for every configuration task, whether a session's own or a brief from another agent.
 ---
 
 # Resolve a configuration problem
@@ -192,7 +192,12 @@ so in the result.
 `submit(..., validate_only=true)`, then `submit(..., idempotency_key=...)`.
 Typical operations: `account.create`, `account.update` (entity-level fields
 for a shared master account), `posting_profile.create`,
-`posting_profile.update`, `posting_profile.delete`, `fiscal_period.create`.
+`posting_profile.update`, `posting_profile.delete`, `fiscal_period.create`,
+and `legal_entity.update` for an entity setting a person has confirmed (the
+reporting time zone, `reporting_timezone`, an IANA name such as
+`Europe/Tallinn`): only the field the brief names, only with the person's
+answer or the client's rule as the evidence, never the entity's name,
+registration, country or currency.
 There is no write operation on `transaction_type_posting_profile`: a profile is
 linked to a transaction type by `transaction_type_code` on
 `posting_profile.create` / `.update`. Use exactly the fields the
