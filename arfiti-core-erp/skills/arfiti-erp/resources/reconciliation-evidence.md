@@ -494,6 +494,28 @@ COMMIT. A second request finds nothing applied and changes nothing. Written-off
 variances, FX journals, native allocation receipts and matches across purchases
 refuse.
 
+**Which application history bounds the date (AR-1352, migration 908).** Only
+history that carries application state: an applied row, or an unapplied row
+recorded after its item was applied (an unapply), on the charge or the bill.
+The `unmatched` rows a reconciliation run keeps and `manual_review` proposals
+(including a proposal's row from before it was confirmed) do not count; before
+908 they did, so the earliest allowed date was the day a run last touched the
+documents. An undo can now carry the date of the settlement it reverses when
+that period is open. An unapply already recorded on the same charge or bill
+(an earlier undo) is a real change and still bounds the date, so a charge
+undone before keeps that undo's date as its floor. The refusal names the bound
+date: "date it on or after YYYY-MM-DD". The same bound applies to a bundle
+undo (`undo_bundle_receipt_id`).
+
+The unbundled undo's result carries `settlement_effective_date` (when the
+reversed applications took effect) and, when the undo falls in another fiscal
+period, a `warning`: settling the charge again is dated by its documents, so
+it lands in the settlement's period, not the undo's. The bundle undo's result
+has neither field. To correct a paid card bill inside one month (undo, edit,
+settle again), date the undo on `settlement_effective_date`, or on the date a
+refusal names when an earlier change on the documents is later. There is no
+default date; `undo_effective_date` stays required.
+
 ### Owned residual writeoff and dated undo
 
 The locally verified owned residual protocol covers same-currency, dated cash
