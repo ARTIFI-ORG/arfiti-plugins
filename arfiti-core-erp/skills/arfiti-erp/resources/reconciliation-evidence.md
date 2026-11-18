@@ -463,6 +463,37 @@ invent an accounting date policy. It is locally verified, not deployed; retained
 pipeline versions and current activation pins are unchanged.
 
 
+### Card match undo without a bundle receipt (AR-1274, migration 905)
+
+Card matches written by `reconciliation.match` (the July 2026 matches and the
+managed-agent matches since 16 Nov 2026) carry no bundle receipt. They are
+undone through the same `reconciliation.unmatch` workflow with
+`source_transaction_id`, `legal_entity_id`, an explicit `undo_effective_date`
+(YYYY-MM-DD), a `reason`, and optionally `reconciliation_run_id`; leave
+`undo_bundle_receipt_id` out. A match that a bundle applied still refuses here
+and names `undo_bundle_receipt_id`.
+
+Two shapes are reversed; anything else refuses without effects and needs a
+reviewed recovery:
+
+- card charge to bill with its CARD_EXPENSE_RECLASS journal: the journal is
+  reversed on the undo date, the bill gets back `applied_amount` (`amount_paid`
+  down, `amount_due` up) and the charge gets back `source_applied_amount`. A
+  match that recorded no card-side amount uses `applied_amount`, only when the
+  charge and the bill share one currency;
+- card charge to card charge refund offset: both charges are freed, nothing
+  is posted.
+
+A charge in a card purchase takes its purchase peers with it, as the undated
+path did. The date cannot be in the future, before the documents, the
+reclassification or the saved application history, and must fall in one open,
+unlocked period. The reversal, the restored amounts, the voided items, the
+dated history and an immutable `unbundled` row in `card_purchase_undo_receipts`
+commit together; the database validator checks the row at insert and again at
+COMMIT. A second request finds nothing applied and changes nothing. Written-off
+variances, FX journals, native allocation receipts and matches across purchases
+refuse.
+
 ### Owned residual writeoff and dated undo
 
 The locally verified owned residual protocol covers same-currency, dated cash
