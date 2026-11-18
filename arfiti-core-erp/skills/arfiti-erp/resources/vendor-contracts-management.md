@@ -154,7 +154,7 @@ This guide covers vendor contracts (prepaid expenses) and their amortization: cr
 | **Schedule prefix** | `EXP-YYYYMM-NNNN` |
 | **Automatic flow** | Bill processor detects prepaid lines -> creates vendor contract -> creates schedule |
 | **Manual flow** | User creates contract + schedule via `submit()` calls below |
-| **Workflow object types** | `recurring_contract` (create, update, terminate, renew), `amortization_schedule` (create, update, recognize, cancel) |
+| **Workflow object types** | `recurring_contract` (create, update, terminate, renew, delete), `amortization_schedule` (create, update, recognize, cancel) |
 | **Runs table** | `amortization_runs` -- every recognition caller gets a row here |
 
 ### Prepaid Expense Flow
@@ -197,6 +197,7 @@ After 12 months: schedule status = 'completed'
 | `submit("recurring_contract", "update", {...})` | Update contract details |
 | `submit("recurring_contract", "terminate", {...})` | Terminate a vendor contract |
 | `submit("recurring_contract", "renew", {...})` | Renew an expired contract |
+| `submit("recurring_contract", "delete", {contract_id, deletion_reason})` | Delete a contract that never billed and has nothing recorded against it (needs `ap:write`); any other contract is refused with the reason: terminate it instead |
 | `submit("amortization_schedule", "create", {...})` | Create an expense amortization schedule |
 | `submit("amortization_schedule", "recognize", {...})` | Run recognition (post JEs for due periods) |
 | `submit("amortization_schedule", "update", {...})` | Update schedule accounts or description |

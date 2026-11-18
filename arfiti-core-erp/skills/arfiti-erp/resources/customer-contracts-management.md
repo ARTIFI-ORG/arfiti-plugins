@@ -288,7 +288,7 @@ atomically, including concurrent recognizers. A no-work scan is not a failure.
 | **Schedule calculation** | `straight_line` with daily proration; other methods are not implemented by this executor |
 | **Frequencies** | `monthly`, `quarterly`, `annually` |
 | **Automatic flow** | billing_run_agent generates invoices; amortization_recognizer posts recognition JEs |
-| **Workflow types** | `recurring_contract` (create, activate, suspend, terminate, renew, amend), `amortization_schedule` (create, update, recognize, cancel), `billing_run` (execute, preview) |
+| **Workflow types** | `recurring_contract` (create, activate, suspend, terminate, renew, amend, delete), `amortization_schedule` (create, update, recognize, cancel), `billing_run` (execute, preview) |
 | **Backward compat** | `revenue_schedule.*` aliases route to the same `amortization_schedule.*` executors |
 | **Runs table** | `amortization_runs` -- every recognition caller gets a row |
 
@@ -340,6 +340,7 @@ Customer signs 12-month SaaS contract (12,000 EUR)
 | `submit("recurring_contract", "renew", {...})` | Renew for a new term |
 | `submit("recurring_contract", "amend", {...})` | Amend mid-term |
 | `submit("recurring_contract", "update", {...})` | Update contract fields |
+| `submit("recurring_contract", "delete", {contract_id, deletion_reason})` | Delete a contract that never billed and has no usage, invoices or other history (needs `ar:write`); any other contract is refused with the reason: terminate it instead |
 | `submit("contract_line", "create", {...})` | Add a line item |
 | `submit("contract_line", "update", {...})` | Update a line item |
 | `submit("amortization_schedule", "create", {...})` | Create a revenue recognition schedule |
