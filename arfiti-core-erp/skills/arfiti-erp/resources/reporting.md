@@ -80,7 +80,7 @@ generate_report("list", {"category": "financial"})
 
 | Parameter | Type | Used By | Description |
 |-----------|------|---------|-------------|
-| `legal_entity_id` | int | Single-entity reports | Required for most reports |
+| `legal_entity_id` | int | Single-entity reports | Required for most reports. Must be inside your entity scope: another entity is refused with `code: REPORT_SCOPE_FORBIDDEN` (aging and amortization reports included); say you lack access to that entity rather than retrying |
 | `entity_ids` | list[int] | Consolidated reports | List of entity IDs to combine |
 | `as_of_date` | str (YYYY-MM-DD) | Balance/point-in-time reports | Snapshot date |
 | `start_date` | str (YYYY-MM-DD) | Activity/period reports | Period start |

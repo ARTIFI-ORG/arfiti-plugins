@@ -17,6 +17,12 @@ These layers are independent. A user can be a "Viewer" membership (read-only das
 HTTP 403 for domain or target-entity permission denial, retaining a string
 `detail` reason. Treat this as missing authority, not a transient server failure.
 A null workflow `required_permission` does not bypass the shared domain floor.
+That floor covers contracts and their lines (customer contract: `ar:write`,
+vendor contract: `ap:write`, judged by the stored contract and its entity),
+every bank statement line operation (`accounting:write` or `banking:write`; AP-
+and AR-only roles cannot match bank lines) and creating an attachment (write
+authority over the record it is attached to). A refusal is `permission_denied`
+naming the missing permission; ask someone who holds it rather than retrying.
 The dashboard checks the shared domain and payroll record scope before enrichment,
 claim creation and cached replay. Current access loss denies a repeated request
 without exposing its earlier result. A preflight denial creates no execution or
