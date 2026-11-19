@@ -232,6 +232,10 @@ get_onboarding(action="get_checklist", status="pending")
 
 Resolve the failed task’s cause, then use manage_onboarding(action="update_task", task_key=THE_FAILED_KEY, new_status="pending") before running another wave. Pending tasks may have unmet dependencies; inspect get_summary instead of repeatedly running a blocked wave. Do not reset populated company data.
 
+### Country tasks left for configuration
+
+A country without shipped onboarding data leaves its tax, payroll and expense-rate tasks skipped, not failed, so onboarding can complete. `get_onboarding(action="get_checklist", status="skipped")` shows what each task's last onboarding-wave run reported in `result`: `needs_configuration: true` with the `section` and `reason` is a gap to configure through the governed operations (the `arfiti-core-country-setup` plugin does this with the user); `needs_configuration: false` means the section does not apply. Nothing was generated for these tasks — never fill them with assumed rates.
+
 ### User already created entity via admin dashboard
 
 If a legal entity exists but the checklist was never initialized, call `start` with `legal_entity_id=<existing_id>` and the wave runner will detect existing data and skip tasks that are already done.

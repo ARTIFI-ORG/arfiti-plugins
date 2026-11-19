@@ -103,11 +103,11 @@ These work with any chart of accounts and any country.
 ---
 
 #### Country Setup (`arfiti-core-country-setup`)
-**Purpose:** Generates country-specific tax and payroll configuration templates. Researches a country's tax system (VAT/GST rates, authorities, withholding taxes) and payroll rules to produce structured JSON templates.
+**Purpose:** Configures a live company for its country through the connector: tax codes, tax authorities and jurisdictions, registrations, filing forms and reporting calendars, withholding tax rates, payroll taxes and government payees, per-diem and mileage rates. It reads what exists, researches the gaps from official sources, confirms each value with the user, writes through `submit` and reads back. It also guides authoring a country payroll or VAT declaration plugin.
 
-**When to recommend:** When setting up a new country that doesn't have a pre-built template yet, or when verifying/updating tax rates for an existing country.
+**When to recommend:** When onboarding left country tax, payroll or rate tasks with `needs_configuration` (a country without shipped onboarding data), when a rate, deadline or withholding rule changes, or when a customer needs a payroll calculator or VAT return for a country without a country pack.
 
-**Commands:** `/generate-country-template`
+**Commands:** `/set-up-country`, `/author-country-plugin`
 
 ---
 
