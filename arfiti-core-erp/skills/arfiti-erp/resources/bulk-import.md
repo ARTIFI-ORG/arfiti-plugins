@@ -220,11 +220,17 @@ get_imports(action="status", import_id="uuid")
 | Option | Default | Description |
 |--------|---------|-------------|
 | `on_duplicate` | `"skip"` | `"skip"` = ignore, `"update"` = overwrite, `"error"` = fail |
-| `batch_size` | `100` | Records per database transaction |
+| `batch_size` | `100` | Records per processing batch; independent records commit separately and grouped imports retain their group transaction |
 | `stop_on_error` | `false` | Stop entire import on first error |
 | `validate_only` | `false` | Dry run — no business writes. Record-array previews persist no import tracking; CSV checks retain a check record, file hash and row results |
 | `defaults` | `{}` | Default values merged into every record |
 | `advisory_thresholds` | none | `fixed_asset` only: warning thresholds for this import — `original_cost_above`, `useful_life_months_above`, `salvage_ratio_above` (fraction, `0.5` = 50%). None set means no threshold warnings. Take the numbers from the firm's instructions; there are no built-in ones. A threshold warns, never refuses |
+
+With `stop_on_error: true`, a CSV worker starts no further batch after an error.
+A CSV check (`validate_only`) still reads every row.
+Earlier committed rows remain written. Inspect row results and counts even when
+the CSV job says `completed`; `total_records - processed_records` counts rows
+not attempted. Correct failed rows and use duplicate handling for any retry.
 
 ---
 
@@ -514,7 +520,7 @@ For a records-array `import.execute`, place `validate_only` inside `options`; a 
 
 ## Validation, partial results and transaction boundaries
 
-For a submitted **records array**, `options.validate_only` (or `manage_imports(action=<import type>, validate_only=true)`) validates without import tracking, approval requests or business writes. The response sets `validation_only=true`; `validated_records` counts valid records and `imported` is zero.
+For a submitted **records array**, `options.validate_only` (or `manage_imports(action=<import type>, validate_only=true)`) validates without import tracking, approval requests or business writes. The response sets `validation_only=true`; `validated_records` counts valid records and `imported` is zero. When any row is invalid it also sets `success=false` and lists the rows in `errors_detail`. Through `submit()` the dry run runs inside a database transaction that is always rolled back, so the answer carries `effect_outcome: no_effect` and the same request identity replays it; before AR-1346 a dry run with an invalid row was answered `posting_unknown`.
 
 Each independent imported record commits with its GL, workflow audit and external-link rows on one connection. A failed record rolls back its counts and IDs, and processing continues unless `stop_on_error=true`. Existing grouped imports retain group transactions. The synchronous record-array response reports `status="partial"` if some records succeeded, otherwise `status="failed"`; compatibility `success=true` may still represent partial success. A CSV job can report `completed` with rejected rows; inspect its `error_count` and row records. Inspect errors before retrying and use duplicate handling to avoid replaying committed records.
 

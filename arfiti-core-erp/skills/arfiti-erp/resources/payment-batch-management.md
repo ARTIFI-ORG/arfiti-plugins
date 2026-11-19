@@ -53,6 +53,8 @@ draft → pending_approval → approved → transmitted → completed
 draft/pending/approved → cancelled
 ```
 
+A successful `cancel` answers `success: true` with `status: "cancelled"` (the batch's new state) and `workflow_status: "approved"`. That is the done answer, not a failure; a replay returns it without cancelling again.
+
 | Status | Description | Allowed Actions |
 |--------|-------------|-----------------|
 | `draft` | Batch created, editable | add_line, remove_line, edit_line, submit, cancel |
