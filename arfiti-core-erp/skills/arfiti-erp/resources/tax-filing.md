@@ -105,6 +105,23 @@ the KMD goes to the VAT authority by the 20th and the TSD to the payroll
 authority by the 10th. Linking a payroll return to a VAT period would put the
 wrong deadline on the record, so it is refused.
 
+A wrong period is corrected, never worked around: `tax_reporting_period.update`
+changes an **open** period's `period_start`, `period_end`, `filing_due_date` or
+`notes`, and `tax_reporting_period.delete` (with a `reason`) removes an open
+period no return refers to. A locked or filed period is refused (unlock first
+only if the person asks); a period with a return keeps its dates, though its due
+date can still move. Onboarding creates monthly and quarterly calendars only;
+an annual or irregular calendar is created period by period with
+`tax_reporting_period.create`, and the due dates come from the authority, never
+from a guess.
+
+**Withholding tax rules** are entity records too:
+`withholding_tax_rate.create` / `.update` / `.deactivate`, read with
+`query("withholding_tax_rate")`. `withholding_rate` is a **percentage** (send
+15 for 15 %; a value between 0 and 1 is refused as a likely fraction). Record
+the official source in `metadata`. Nothing withholds automatically: the country
+plugin that prepares the payment or the return applies the rule.
+
 Late filing is permitted and simply flagged (`late_filing`, `days_late`) — the
 ERP has to be able to record a filing that really happened.
 
