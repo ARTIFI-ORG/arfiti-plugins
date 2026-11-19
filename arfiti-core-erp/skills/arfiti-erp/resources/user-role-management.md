@@ -356,11 +356,11 @@ submit("api_key", "create", {
 
 ```
 submit("api_key", "revoke", {
-    "api_key_id": 5
+    "key_id": 5
 })
 ```
 
-Permanently revokes the key. This action cannot be undone. The key immediately stops working.
+Permanently revokes the key. This action cannot be undone. The key stops working on its next request. Allowed while the organisation is still being set up, so an unused initial key can be revoked before onboarding completes. An agent's key is refused here: use `agent_api_key.revoke`. People can also revoke an ordinary key from its quick view under Configuration → API keys.
 
 ### Querying API Keys
 
@@ -611,7 +611,7 @@ This gives the user Controller access to Entity 1 and AR Accountant access to En
 2. Revoke it:
    ```
    submit("api_key", "revoke", {
-       "api_key_id": 5
+       "key_id": 5
    })
    ```
 3. Create a replacement:
