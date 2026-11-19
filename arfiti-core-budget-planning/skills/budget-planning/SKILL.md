@@ -195,20 +195,20 @@ versions = query("budget_version", filters={
 
 If multiple versions exist, show the user the options and ask which to copy.
 
-### Step 2: Create New Version with Copy
+### Step 2: Read Every Source Line
+
+There is no copy operation: `budget_version.create` refuses
+`copy_from_version_id` / `copy_lines`. Read all source lines, page by page,
+keeping each line's scope:
 
 ```python
-result = submit("budget_version", "create", {
-    "legal_entity_id": <entity_id>,
-    "version_name": "FY2026 Operating Budget",
-    "fiscal_year": 2026,
-    "scenario": "budget",
-    "version_type": "monthly",
-    "copy_from_version_id": <source_version_id>,
-    "copy_lines": true,
-    "notes": "Copied from FY2025 approved budget"
-})
+lines = query("budget_line", filters={"budget_version_id": <source_version_id>},
+              limit=200, offset=0)   # repeat with offset += 200 until every line is read
 ```
+
+Each row carries account, period, amount, currency, description, memo,
+`project_id` / `customer_id` / `vendor_id` and `dimension_combo_json`. Tell the
+user how many lines were read and their total.
 
 ### Step 3: Determine Adjustments
 
@@ -220,7 +220,7 @@ Ask the user what changes to apply:
 
 ### Step 4: Calculate Adjusted Amounts
 
-Fetch the copied lines, apply adjustments, and show a comparison:
+Apply the adjustments to the source lines and show a comparison:
 
 | Account | 2025 Budget | Adjustment | 2026 Budget | Change |
 |---------|-------------|------------|-------------|--------|
@@ -232,22 +232,33 @@ Fetch the copied lines, apply adjustments, and show a comparison:
 
 ### Step 5: User Confirmation
 
-**CP6 checkpoint**: Show comparison and ask for confirmation.
+**CP6 checkpoint**: Show comparison and ask for confirmation. Nothing has been
+written yet.
 
-### Step 6: Apply Adjustments
-
-Overwrite copied lines with adjusted amounts:
+### Step 6: Create the Version and Save the Lines
 
 ```python
-result = submit("budget_line", "bulk_upsert", {
-    "budget_version_id": <new_version_id>,
+result = submit("budget_version", "create", {
+    "legal_entity_id": <entity_id>,
+    "version_name": "FY2026 Operating Budget",
+    "fiscal_year": 2026,
+    "scenario": "budget",
+    "version_type": "monthly",         # required: the source version's granularity unless the user chose another
+    "currency_code": "EUR",            # required: the source version's currency
+    "notes": "Copied from FY2025 approved budget (version <source_version_id>), +5% on all lines"
+})
+
+submit("budget_line", "bulk_upsert", {
+    "budget_version_id": result["budget_version_id"],
     "lines": [
-        // adjusted lines — bulk_upsert matches on account+period and updates
+        # every adjusted source line, with its account, period, amount and the same
+        # project_id / customer_id / vendor_id and dimensions
     ]
 })
 ```
 
-**CP7 checkpoint**: Verify submission succeeded.
+**CP7 checkpoint**: Read the new version's lines back and confirm the line
+count and totals match the confirmed preview.
 
 ---
 
@@ -323,6 +334,7 @@ result = submit("budget_version", "create", {
     "fiscal_year": 2026,
     "scenario": "forecast",
     "version_type": "monthly",
+    "currency_code": "EUR",            # required: the entity's functional currency
     "notes": "Q2 forecast: Jan-Jun actuals + Jul-Dec projected (run rate method)"
 })
 

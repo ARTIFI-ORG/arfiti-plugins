@@ -95,13 +95,13 @@ Lanes are assigned by your organisation's workflow rules; the submit() result is
 | `id` | bigint | PK | System-generated ID | `5` |
 | `legal_entity_id` | integer | Yes | Legal entity ID | `13` |
 | `version_name` | varchar(100) | Yes | Budget name | `"FY2025 Operating Budget"` |
-| `version_type` | varchar(20) | Auto | Granularity | `"annual"`, `"quarterly"`, `"monthly"` |
+| `version_type` | varchar(20) | Yes (create) | Granularity | `"annual"`, `"quarterly"`, `"monthly"`, `"rolling"` |
 | `fiscal_year` | integer | Yes | Fiscal year | `2025` |
 | `status` | varchar(20) | Auto | Approval status | `"draft"`, `"submitted"`, `"approved"`, `"locked"`, `"archived"` |
 | `is_active` | boolean | Auto | Active flag | `true` |
 | `scenario` | varchar(50) | No | Budget scenario | `"budget"`, `"forecast"`, `"stretch"`, `"actual_snapshot"` |
 | `template_id` | bigint | No | FK to budget_templates | `1` |
-| `currency_code` | varchar(3) | Auto | Currency | `"USD"` |
+| `currency_code` | varchar(3) | Yes (create) | Currency of the amounts, normally the entity's functional currency | `"EUR"` |
 | `version_number` | integer | Auto | Sequential version | `1`, `2`, `3` |
 | `owner_user_id` | integer | No | Budget owner | `30` |
 | `notes` | text | No | Description/notes | `"Annual operating budget"` |
@@ -194,6 +194,9 @@ submit(object_type="budget_version", operation="create", data=JSON.stringify({
     notes: "Annual operating budget for 2025"
 }))
 // Tip: Use validate_only=true to check payload before submitting
+// version_type and currency_code are required: no granularity or currency is assumed.
+// notes is saved with the version; record the budget's assumptions there.
+// A field the operation does not declare is refused ("Extra inputs are not permitted").
 ```
 
 **Returns:**
@@ -216,47 +219,34 @@ submit(object_type="budget_version", operation="create", data=JSON.stringify({
 - `annual` - 1 period (high-level planning)
 - `quarterly` - 4 periods (Q1-Q4, executive reporting)
 - `monthly` - 12 periods (detailed operations)
+- `rolling` - 12 periods
 
-#### Copy Budget from Previous Year
+A version with custom periods (`budget_period`) uses their `period_number`
+values instead.
 
-Create a new budget by copying from previous version.
+#### Copy Budget from Previous Year, or Create a Forecast from a Budget
 
-```javascript
-submit(object_type="budget_version", operation="create", data=JSON.stringify({
-    legal_entity_id: 13,
-    version_name: "FY2025 Operating Budget",
-    fiscal_year: 2025,
-    scenario: "budget",
-    copy_from_version_id: 3,  // 2024 budget
-    copy_lines: true,  // Copy all budget lines
-    notes: "Rolled forward from 2024 baseline"
-}))
-```
+There is no copy operation: `budget_version.create` refuses
+`copy_from_version_id` / `copy_lines`. Copy in three supported steps, showing
+the user every amount before writing:
 
-**Returns:**
-```javascript
-{
-  success: true,
-  budget_version_id: 6,
-  version_number: 2,
-  copied_lines: true,
-  source_version_id: 3
-}
-```
-
-#### Create Forecast from Budget
-
-Create mid-year forecast based on approved budget.
+1. Read all source lines, page by page, with their scope:
+   `query("budget_line", filters={"budget_version_id": 3}, limit=200, offset=0)`
+   (rows carry account, period, amount, currency, description, memo,
+   project/customer/vendor and `dimension_combo_json`).
+2. Create the target version (`budget_version.create` with its own fiscal year,
+   scenario, `version_type`, `currency_code` and `notes`).
+3. Apply the agreed adjustment and save every line with one
+   `budget_line.bulk_upsert`, keeping each line's account, period, scope and
+   dimensions; read the target back to confirm the line count and totals.
 
 ```javascript
-submit(object_type="budget_version", operation="create", data=JSON.stringify({
-    legal_entity_id: 13,
-    version_name: "FY2025 Q2 Forecast",
-    fiscal_year: 2025,  // Same year
-    scenario: "forecast",  // Different scenario
-    copy_from_version_id: 5,  // Current budget
-    copy_lines: true,
-    notes: "Q2 forecast based on Q1 actuals"
+submit(object_type="budget_line", operation="bulk_upsert", data=JSON.stringify({
+    budget_version_id: 6,  // the new version
+    lines: [  // every source line, adjusted
+        {account_number: "4000", period_sequence: 1, amount: 52500.00,
+         dimensions: {department: "SALES"}}
+    ]
 }))
 ```
 
@@ -268,8 +258,7 @@ Update metadata (name, notes, owner).
 submit(object_type="budget_version", operation="update", data=JSON.stringify({
     budget_version_id: 5,
     version_name: "FY2025 Operating Budget v2",
-    notes: "Revised operating budget after Q1 review",
-    owner_user_id: 12
+    notes: "Revised operating budget after Q1 review"
 }))
 ```
 
@@ -561,10 +550,29 @@ Lines are matched by:
 - `project_id` (if specified)
 - `customer_id` (if specified)
 - `vendor_id` (if specified)
-- `dimension_combo_hash` (if dimensions specified)
+- dimensions (the resolved `dimension_combo_json`, if dimensions specified)
 
 If match exists → UPDATE amount/description
 If no match → INSERT new line
+
+**Line rules** (`create`, `update` and `bulk_upsert` alike, in a dry run and
+in the write; a refused request saves nothing and lists every reason, `Line N:`
+for bulk):
+- the account is an active, non-header account of the version's entity;
+- the amount is a finite number (`"NaN"`, `"Infinity"` and text are refused);
+- the period is one the version has: 1 for annual, 1-4 quarterly, 1-12
+  monthly/rolling, or a custom period's `period_number`;
+- a line currency, when given, equals the version currency;
+- dimensions resolve to eligible values for the entity (discover them with
+  `query("dimension_value", ...)`; an employee or payroll ID is not a
+  dimension value);
+- no two lines in one request share account, period and scope; `create`
+  refuses a second line for a key the version already has;
+- dimensions can be set only on a draft or submitted version.
+
+`update` checks only the fields it changes. `budget_version.update` refuses a
+`version_type` that strands existing lines and a `currency_code` change while
+the version has lines.
 
 ---
 
@@ -645,7 +653,13 @@ submit(object_type="budget_version", operation="create", data=JSON.stringify({
 
 #### Create Custom Period
 
-Define custom fiscal period (non-standard calendar).
+Define custom fiscal period (non-standard calendar). Dates are ISO dates and
+`period_end` may not be before `period_start`; a locked or archived version's
+periods cannot change. Once custom periods exist, lines use their
+`period_number` values and the budget vs actual report uses their dates. `period_number` is required and unique within the version; a
+period create, update or delete that would leave existing lines on a period
+the version no longer has is refused (move or delete those lines first).
+
 
 ```javascript
 submit(object_type="budget_period", operation="create", data=JSON.stringify({

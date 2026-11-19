@@ -10,13 +10,13 @@ result = submit("budget_version", "create", {
     "version_name": "FY2026 Operating Budget",     # Required: human-readable name
     "fiscal_year": 2026,                           # Required: year (2000-2100)
     "scenario": "budget",                          # Optional: budget (default), forecast, stretch, actual_snapshot
-    "version_type": "monthly",                     # Optional: monthly (default), quarterly, annual
-    "currency_code": "EUR",                        # Optional: defaults to entity currency
+    "version_type": "monthly",                     # Required: annual, quarterly, monthly or rolling
+    "currency_code": "EUR",                        # Required: normally the entity's functional currency
     "template_id": 1,                              # Optional: budget template reference
-    "notes": "Built from 2025 actuals + 5% growth", # Optional
-    "copy_from_version_id": 5,                     # Optional: clone lines from existing version
-    "copy_lines": true                             # Optional: copy all lines when cloning
+    "notes": "Built from 2025 actuals + 5% growth"  # Optional: saved with the version
 })
+# A field not listed here (for example copy_from_version_id) is refused.
+# To copy a budget, read its lines and bulk_upsert them into the new version.
 
 # Returns:
 # {
@@ -35,12 +35,10 @@ result = submit("budget_version", "create", {
 | `version_name` | Yes | Budget name (max 100 chars) |
 | `fiscal_year` | Yes | Year (2000-2100) |
 | `scenario` | No | `budget` (default), `forecast`, `stretch`, `actual_snapshot` |
-| `version_type` | No | `monthly` (default), `quarterly`, `annual` |
-| `currency_code` | No | ISO currency code, defaults to entity currency |
+| `version_type` | Yes | `annual`, `quarterly`, `monthly` or `rolling` |
+| `currency_code` | Yes | ISO currency code, normally the entity's functional currency |
 | `template_id` | No | FK to budget_templates |
-| `notes` | No | Description/notes text |
-| `copy_from_version_id` | No | Clone lines from this version |
-| `copy_lines` | No | If true, copies all lines from source version |
+| `notes` | No | Assumptions and source of the budget; saved with the version |
 
 ### Constraint
 Only ONE active (non-archived) version per `(legal_entity_id, fiscal_year, scenario)`. Archive old versions first if needed.
@@ -217,8 +215,9 @@ draft -> submitted -> approved -> locked -> archived
 Build all lines in a single `bulk_upsert` call. A typical operating budget might have 10-20 accounts x 12 months = 120-240 lines.
 
 ### Copy + Adjust
-1. `budget_version.create` with `copy_from_version_id` + `copy_lines: true`
-2. `budget_line.bulk_upsert` with adjusted amounts (matches existing lines and updates)
+1. Read every source line with `query("budget_line", filters={"budget_version_id": <source>})`, page by page
+2. Show the adjusted amounts and get the user's confirmation
+3. `budget_version.create` (with `version_type` and `currency_code`), then one `budget_line.bulk_upsert` with every adjusted line, keeping each line's project, party and dimensions
 
 ### Employee Budget with Dimensions
 Each employee gets separate lines tagged with `dimensions: {"employee_id": "67", "department": "ENG"}`. Multiple cost categories per employee (salary, taxes, benefits).
