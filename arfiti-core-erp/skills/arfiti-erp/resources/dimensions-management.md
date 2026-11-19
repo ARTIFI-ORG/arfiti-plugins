@@ -543,6 +543,8 @@ submit(object_type="dimension_value", operation="create", data=JSON.stringify({
 }))
 ```
 
+A value created with `is_global: false` and `legal_entity_id` is visible and assignable in that entity only: create writes its entity row in the same transaction, so `query("dimension_value")` for that entity and `account_dimension.assign` find it at once, and other entities never see it. (Before AR-1381 the entity row was not written and the value was visible nowhere.) To share it with another entity later, add that entity with `dimension_value.update` and its `legal_entity_id`. Its dimension type must be visible in the entity too. Its entity row carries its name, so rename it (or change its sort order) with `dimension_value.update` and that `legal_entity_id`; an update without the entity changes the master only. A scoped value can sit under a global parent or under a parent visible in the same entity; a value for every entity cannot sit under a parent limited to some entities.
+
 **Validation**:
 - code is unique within dimension type
 - dimension_type_name exists
