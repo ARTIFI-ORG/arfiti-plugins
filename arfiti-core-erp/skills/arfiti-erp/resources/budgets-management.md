@@ -222,7 +222,12 @@ submit(object_type="budget_version", operation="create", data=JSON.stringify({
 - `rolling` - 12 periods
 
 A version with custom periods (`budget_period`) uses their `period_number`
-values instead.
+values instead. The budget vs actual report compares the same periods: an
+annual version is one period for the whole fiscal year, a quarterly one four
+quarters, so an annual amount is never compared with one month of actuals.
+Its totals count completed periods only (`summary_basis: completed_periods`):
+an annual version reads 0.00 against 0.00 until the year ends, so for the year
+so far use the period rows, and say which basis you report.
 
 #### Copy Budget from Previous Year, or Create a Forecast from a Budget
 
