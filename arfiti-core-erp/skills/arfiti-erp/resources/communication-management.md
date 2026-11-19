@@ -43,16 +43,16 @@ The communication system handles **inbound email processing**, **outbound notifi
 | Tool | Purpose | When to Use |
 |------|---------|-------------|
 | `send_notification_email(to_emails, subject, body)` | Send email notification (requires write permission) | Alerting humans about findings, anomalies, or requests |
-| `get_entity("entity_email", id=X)` | Get email address details by ID (replaces `get_entity_email_address(address_id=X)`, MCP registration removed) | Looking up a specific email routing config |
-| `query("entity_email", query=X)` | Get email address details by address (text search on `email_address`) (replaces `get_entity_email_address(email_address=X)`, MCP registration removed) | Finding routing for a known address |
+| `get_entity("entity_email", id=X)` | Get email address details by ID | Looking up a specific email routing config |
+| `query("entity_email", query=X)` | Get email address details by address (text search on `email_address`) | Finding routing for a known address |
 | `query("entity_email", query)` | Get routing info for incoming email | Determining which entity/agent handles an address |
 | `read_attachment(storage_url, content_type)` | Extract content from an attachment (R2-hosted, or a connected file source via `connector://`) | Reading PDF/image/text attachments from emails, or a file in a connected Google Drive |
 | `query("entity_email", filters)` | List entity email addresses | Browsing all configured email addresses |
 | `query("entity_email", query)` | Search entity email addresses | Finding addresses by keyword |
 | `get_entity("entity_email", id=X)` | Get single entity email address | Retrieving full details of a configured address |
-| `submit("entity_email", "create", {...})` | Create entity email address | Setting up a new email routing |
-| `submit("entity_email", "update", {...})` | Update entity email address | Changing routing rules or agent type |
-| `submit("entity_email", "delete", {...})` | Delete entity email address | Removing an email routing |
+| `submit(object_type="entity_email", operation="create", data='{...}')` | Create entity email address | Setting up a new email routing |
+| `submit(object_type="entity_email", operation="update", data='{...}')` | Update entity email address | Changing routing rules or agent type |
+| `submit(object_type="entity_email", operation="delete", data='{...}')` | Delete entity email address | Removing an email routing |
 
 > **IMPORTANT — Schema Discovery Required**: Before calling `submit()` for any workflow below, you MUST first call `get_submissions(action='schema', object_type, operation)` to discover the exact required and optional fields. Each organization configures different field requirements. Never assume the fields listed below are complete — always check the schema first.
 
@@ -109,25 +109,25 @@ Each legal entity can have multiple email addresses for different purposes. When
 schema = get_submissions(action='schema', object_type="entity_email", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("entity_email", "create", {
+submit(object_type="entity_email", operation="create", data=JSON.stringify({
     legal_entity_id: 9,
     email_address: "bills.warehouse.acme@mail.arfiti.com",
     email_type: "bills",
     default_agent_type: "bill_processor",
     is_inbound: true,
     routing_rules: {"auto_process": true}
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
 ### Updating Entity Email Addresses
 
 ```javascript
-submit("entity_email", "update", {
+submit(object_type="entity_email", operation="update", data=JSON.stringify({
     id: 5,
     default_agent_type: "receipt_processor",
     routing_rules: {"auto_process": true, "require_approval": true}
-})
+}))
 ```
 
 ### Querying Entity Email Addresses
@@ -391,14 +391,14 @@ The admin dashboard provides an inbox view for managing communications:
 
 ```javascript
 // Step 1: Create the entity email address for bill processing
-submit("entity_email", "create", {
+submit(object_type="entity_email", operation="create", data=JSON.stringify({
     legal_entity_id: 9,
     email_address: "bills.warehouse.acme@mail.arfiti.com",
     email_type: "bills",
     default_agent_type: "bill_processor",
     is_inbound: true,
     routing_rules: {"auto_process": true}
-})
+}))
 
 // Step 2: Verify the address was created
 query("entity_email", query="bills.warehouse.acme@mail.arfiti.com")
@@ -446,10 +446,10 @@ query("entity_email", filters={"legal_entity_id": 9, "is_active": true})
 
 ```javascript
 // Switch from bill_processor to a different agent
-submit("entity_email", "update", {
+submit(object_type="entity_email", operation="update", data=JSON.stringify({
     id: 5,
     default_agent_type: "receipt_processor"
-})
+}))
 ```
 
 ### Scenario 6: Send a Short Report via Email
@@ -475,7 +475,7 @@ send_notification_email(
 5. **Attachments** are stored in R2 and extracted on-demand by agents (cost-efficient)
 6. **`send_notification_email`** is the tool for sending ad-hoc emails from agents. You write the subject and a plain-text body; the server adds the brand, "From the [agent] agent", the footer and the message reference. Leave `from_email` unset: the organisation's default sender is used. A `from_email` outside the organisation's verified sending domains is ignored, and the result says so in `from_email_ignored`
 7. **Workflow notifications** (task assigned, approved, rejected) happen automatically
-8. **Entity email CRUD** uses standard workflow pattern: `submit("entity_email", "create/update/delete", {...})`
+8. **Entity email CRUD** uses standard workflow pattern: `submit(object_type="entity_email", operation="create/update/delete", data='{...}')`
 
 ---
 

@@ -81,11 +81,11 @@ query("tax_code", filters={"tax_type": "sales", "is_active": true})
 # Returns: Only sales tax codes
 
 # Then use the ID in your workflow:
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=json.dumps({
     "transaction_type_code": "AR_INVOICE",
     "tax_code_id": 115,  # From search results above
     ...
-})
+}))
 ```
 
 ### Common Tax Code Queries
@@ -290,7 +290,7 @@ Create a new master tax code for organization-wide use.
 schema = get_submissions(action='schema', object_type="tax_code", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("tax_code", "create", {
+submit(object_type="tax_code", operation="create", data=JSON.stringify({
   tax_code: "SALES-US-CA",
   tax_name: "California Sales Tax",
   tax_type: "sales",
@@ -308,7 +308,7 @@ submit("tax_code", "create", {
   is_reverse_charge: false,
   is_global: true,
   is_active: true
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -327,7 +327,7 @@ submit("tax_code", "create", {
 Update existing tax code details (not rates - use tax_code_rate workflows).
 
 ```javascript
-submit("tax_code", "update", {
+submit(object_type="tax_code", operation="update", data=JSON.stringify({
   tax_code: "SALES-US-CA",
   tax_name: "California Sales and Use Tax",
   description: "CA sales and use tax - updated description",
@@ -336,7 +336,7 @@ submit("tax_code", "update", {
     reporting_code: "01",
     tax_authority_website: "https://www.cdtfa.ca.gov"
   }
-})
+}))
 ```
 
 #### Delete Tax Code
@@ -344,9 +344,9 @@ submit("tax_code", "update", {
 Soft-delete tax code (sets `is_active = false`).
 
 ```javascript
-submit("tax_code", "delete", {
+submit(object_type="tax_code", operation="delete", data=JSON.stringify({
   tax_code: "SALES-US-CA"
-})
+}))
 ```
 
 **Validation:**
@@ -363,7 +363,7 @@ submit("tax_code", "delete", {
 Create a new tax rate for a specific date range. Supports time-based rate changes and entity-specific rates.
 
 ```javascript
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 123,
     legal_entity_id: null,  // null = applies to all entities
     component_name: "primary",
@@ -376,14 +376,14 @@ submit("tax_code_rate", "create", {
     tax_account_number: null,  // null = use default from tax code
     is_compound: false,
     is_active: true
-})
+}))
 ```
 
 **Compound Tax Rate Example** (Canadian GST + PST):
 
 ```javascript
 // Step 1: Create GST rate (base)
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 456,
     component_name: "GST",
     component_type: "base",
@@ -392,10 +392,10 @@ submit("tax_code_rate", "create", {
     taxable_basis: "subtotal",
     effective_from: "2025-01-01",
     is_compound: false
-})
+}))
 
 // Step 2: Create PST rate (compound on GST)
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 456,
     component_name: "PST",
     component_type: "additional",
@@ -405,7 +405,7 @@ submit("tax_code_rate", "create", {
     taxable_basis: "total",  // Tax on subtotal + GST
     effective_from: "2025-01-01",
     is_compound: true
-})
+}))
 ```
 
 **Calculation:**
@@ -422,14 +422,14 @@ Total:     $1,123.50
 Update existing tax rate (typically to change end date when rate changes).
 
 ```javascript
-submit("tax_code_rate", "update", {
+submit(object_type="tax_code_rate", operation="update", data=JSON.stringify({
     tax_code_rate_id: 789,
     effective_to: "2024-12-31",  // End old rate
     metadata: {
       superseded_by: "rate-id-999",
       change_reason: "State legislation AB-123"
     }
-})
+}))
 ```
 
 #### Delete Tax Code Rate
@@ -437,9 +437,9 @@ submit("tax_code_rate", "update", {
 Soft-delete tax rate.
 
 ```javascript
-submit("tax_code_rate", "delete", {
+submit(object_type="tax_code_rate", operation="delete", data=JSON.stringify({
     tax_code_rate_id: 789
-})
+}))
 ```
 
 ---
@@ -451,7 +451,7 @@ submit("tax_code_rate", "delete", {
 Create a tax authority (government agency that collects taxes).
 
 ```javascript
-submit("tax_authority", "create", {
+submit(object_type="tax_authority", operation="create", data=JSON.stringify({
     code: "CA-CDTFA",
     name: "California Department of Tax and Fee Administration",
     jurisdiction_type: "state",
@@ -470,7 +470,7 @@ submit("tax_authority", "create", {
       filing_portal: "https://onlineservices.cdtfa.ca.gov",
       payment_methods: ["ach", "check", "online"]
     }
-})
+}))
 ```
 
 #### Update Tax Authority
@@ -478,7 +478,7 @@ submit("tax_authority", "create", {
 Update tax authority details.
 
 ```javascript
-submit("tax_authority", "update", {
+submit(object_type="tax_authority", operation="update", data=JSON.stringify({
     code: "CA-CDTFA",
     filing_frequency: "quarterly",
     contact_info: {
@@ -488,7 +488,7 @@ submit("tax_authority", "update", {
     metadata: {
       filing_portal: "https://new-portal.cdtfa.ca.gov"
     }
-})
+}))
 ```
 
 #### Delete Tax Authority
@@ -496,9 +496,9 @@ submit("tax_authority", "update", {
 Soft-delete tax authority.
 
 ```javascript
-submit("tax_authority", "delete", {
+submit(object_type="tax_authority", operation="delete", data=JSON.stringify({
     code: "CA-CDTFA"
-})
+}))
 ```
 
 ---
@@ -510,7 +510,7 @@ submit("tax_authority", "delete", {
 Create a tax jurisdiction (geographic area with specific tax rules).
 
 ```javascript
-submit("tax_jurisdiction", "create", {
+submit(object_type="tax_jurisdiction", operation="create", data=JSON.stringify({
     tax_authority_id: 789,
     parent_jurisdiction_id: null,  // null = top-level jurisdiction
     code: "US-CA",
@@ -523,24 +523,24 @@ submit("tax_jurisdiction", "create", {
       tax_district: "Statewide",
       special_rates: []
     }
-})
+}))
 ```
 
 **Hierarchical Jurisdiction Example** (County under State):
 
 ```javascript
 // Parent: California state
-submit("tax_jurisdiction", "create", {
+submit(object_type="tax_jurisdiction", operation="create", data=JSON.stringify({
     code: "US-CA",
     name: "California",
     jurisdiction_type: "state",
     country_code: "US",
     state_code: "CA"
-})
+}))
 // Returns: { jurisdiction_id: 100 }
 
 // Child: Los Angeles County
-submit("tax_jurisdiction", "create", {
+submit(object_type="tax_jurisdiction", operation="create", data=JSON.stringify({
     parent_jurisdiction_id: 100,
     code: "US-CA-LA",
     name: "Los Angeles County",
@@ -548,7 +548,7 @@ submit("tax_jurisdiction", "create", {
     country_code: "US",
     state_code: "CA",
     county_code: "LA"
-})
+}))
 ```
 
 #### Update Tax Jurisdiction
@@ -556,7 +556,7 @@ submit("tax_jurisdiction", "create", {
 Update jurisdiction details.
 
 ```javascript
-submit("tax_jurisdiction", "update", {
+submit(object_type="tax_jurisdiction", operation="update", data=JSON.stringify({
     code: "US-CA-LA",
     name: "Los Angeles County (Updated)",
     zip_code_pattern: "90001-90899,91001-91899",
@@ -564,7 +564,7 @@ submit("tax_jurisdiction", "update", {
       tax_district: "Central LA",
       special_rates: ["tourism_tax"]
     }
-})
+}))
 ```
 
 #### Delete Tax Jurisdiction
@@ -572,9 +572,9 @@ submit("tax_jurisdiction", "update", {
 Soft-delete jurisdiction.
 
 ```javascript
-submit("tax_jurisdiction", "delete", {
+submit(object_type="tax_jurisdiction", operation="delete", data=JSON.stringify({
     code: "US-CA-LA"
-})
+}))
 ```
 
 ---
@@ -586,7 +586,7 @@ submit("tax_jurisdiction", "delete", {
 Register a legal entity with a tax authority.
 
 ```javascript
-submit("tax_registration", "create", {
+submit(object_type="tax_registration", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     tax_authority_id: 789,
     jurisdiction_id: 101,
@@ -603,7 +603,7 @@ submit("tax_registration", "create", {
       filing_method: "electronic",
       prepayment_required: false
     }
-})
+}))
 ```
 
 > **Note:** When `registration_type` is `"vat"`, the `registration_number` is automatically synced to `legal_entities.tax_id` (if not already set). This means `tax_registration.create` with a VAT type is equivalent to `legal_entity.update` with `is_vat_registered: true` and `tax_id`.
@@ -612,22 +612,22 @@ submit("tax_registration", "create", {
 
 ```javascript
 // Sales tax registration
-submit("tax_registration", "create", {
+submit(object_type="tax_registration", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     tax_authority_id: 789,
     registration_number: "SR-123456789",
     registration_type: "sales_tax",
     filing_frequency: "monthly"
-})
+}))
 
 // Use tax registration (same authority, different type)
-submit("tax_registration", "create", {
+submit(object_type="tax_registration", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     tax_authority_id: 789,
     registration_number: "UT-987654321",
     registration_type: "use_tax",
     filing_frequency: "quarterly"
-})
+}))
 ```
 
 #### Update Tax Registration
@@ -635,7 +635,7 @@ submit("tax_registration", "create", {
 Update registration details (e.g., change filing frequency).
 
 ```javascript
-submit("tax_registration", "update", {
+submit(object_type="tax_registration", operation="update", data=JSON.stringify({
     registration_id: 202,
     filing_frequency: "quarterly",
     next_filing_date: "2025-04-15",
@@ -644,7 +644,7 @@ submit("tax_registration", "update", {
       threshold_change_date: "2025-01-01",
       new_threshold: "quarterly under $100k annual sales"
     }
-})
+}))
 ```
 
 #### Delete Tax Registration
@@ -652,9 +652,9 @@ submit("tax_registration", "update", {
 Soft-delete (deactivate) registration.
 
 ```javascript
-submit("tax_registration", "delete", {
+submit(object_type="tax_registration", operation="delete", data=JSON.stringify({
     registration_id: 202
-})
+}))
 ```
 
 ---
@@ -668,7 +668,7 @@ Customer tax profiles are managed through the **customer.create** and **customer
 When creating a new customer, include tax profiles in the `customer_tax_profiles` array:
 
 ```javascript
-submit("customer", "create", {
+submit(object_type="customer", operation="create", data=JSON.stringify({
     customer_name: "Acme Corp",
     global_customer_id: "CUST-000456",
     legal_entity_ids: [13],
@@ -685,13 +685,13 @@ submit("customer", "create", {
         notes: "Standard taxable customer"
       }
     ]
-})
+}))
 ```
 
 **Tax-Exempt Customer Example** (Resale Certificate):
 
 ```javascript
-submit("customer", "create", {
+submit(object_type="customer", operation="create", data=JSON.stringify({
     customer_name: "Reseller Inc",
     global_customer_id: "CUST-000789",
     legal_entity_ids: [13],
@@ -707,13 +707,13 @@ submit("customer", "create", {
         notes: "Valid resale certificate on file"
       }
     ]
-})
+}))
 ```
 
 **Reverse Charge VAT Example** (EU B2B):
 
 ```javascript
-submit("customer", "create", {
+submit(object_type="customer", operation="create", data=JSON.stringify({
     customer_name: "German GmbH",
     global_customer_id: "CUST-000999",
     legal_entity_ids: [13],
@@ -728,7 +728,7 @@ submit("customer", "create", {
         notes: "EU B2B customer - reverse charge applies"
       }
     ]
-})
+}))
 ```
 
 #### Update Customer Tax Profile
@@ -736,7 +736,7 @@ submit("customer", "create", {
 Use `customer.update` with `_action: "update"` to modify existing tax profiles:
 
 ```javascript
-submit("customer", "update", {
+submit(object_type="customer", operation="update", data=JSON.stringify({
     global_customer_id: "CUST-000789",
     customer_tax_profiles: [
       {
@@ -747,7 +747,7 @@ submit("customer", "update", {
         notes: "Updated resale certificate"
       }
     ]
-})
+}))
 ```
 
 #### Delete Customer Tax Profile
@@ -755,7 +755,7 @@ submit("customer", "update", {
 Use `customer.update` with `_action: "delete"` to soft-delete a tax profile:
 
 ```javascript
-submit("customer", "update", {
+submit(object_type="customer", operation="update", data=JSON.stringify({
     global_customer_id: "CUST-000789",
     customer_tax_profiles: [
       {
@@ -763,7 +763,7 @@ submit("customer", "update", {
         legal_entity_id: 13  // Identifies which profile to delete
       }
     ]
-})
+}))
 ```
 
 ---
@@ -791,14 +791,14 @@ const total = taxable_amount + tax_amount;
 **Database Representation:**
 ```javascript
 // Tax code setup
-submit("tax_code", "create", {
+submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "SALES-US-NY",
     tax_name: "New York Sales Tax",
     tax_type: "sales",
     default_rate: 0.07,
     is_tax_inclusive: false,
     is_compound: false
-})
+}))
 ```
 
 ---
@@ -845,16 +845,16 @@ const invoice_total = taxable_amount + total_tax;
 **Database Representation:**
 ```javascript
 // Create master tax code
-submit("tax_code", "create", {
+submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "GST-PST-BC",
     tax_name: "BC GST + PST",
     tax_type: "sales",
     is_compound: true
-})
+}))
 // Returns: { tax_code_id: 456 }
 
 // Create GST rate (base)
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 456,
     component_name: "GST",
     component_type: "base",
@@ -863,10 +863,10 @@ submit("tax_code_rate", "create", {
     taxable_basis: "subtotal",
     is_compound: false,
     effective_from: "2025-01-01"
-})
+}))
 
 // Create PST rate (compound)
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 456,
     component_name: "PST",
     component_type: "additional",
@@ -876,7 +876,7 @@ submit("tax_code_rate", "create", {
     taxable_basis: "total",
     is_compound: true,
     effective_from: "2025-01-01"
-})
+}))
 ```
 
 ---
@@ -913,14 +913,14 @@ console.log(`Gross: €${gross_amount.toFixed(2)}`);
 
 **Database Representation:**
 ```javascript
-submit("tax_code", "create", {
+submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "VAT-EU-IE",
     tax_name: "Ireland VAT",
     tax_type: "vat",
     default_rate: 0.23,
     is_tax_inclusive: true,  // ← Key field
     is_compound: false
-})
+}))
 ```
 
 **Invoice Calculation:**
@@ -966,7 +966,7 @@ const invoice_amount = 1000.00;
 **Database Representation:**
 ```javascript
 // Create reverse charge tax code
-submit("tax_code", "create", {
+submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "VAT-EU-RC",
     tax_name: "EU Reverse Charge VAT",
     tax_type: "vat",
@@ -974,10 +974,10 @@ submit("tax_code", "create", {
     is_reverse_charge: true,  // ← Key field
     is_recoverable: true,
     is_active: true
-})
+}))
 
 // Set up customer for reverse charge (via customer.create or customer.update)
-submit("customer", "update", {
+submit(object_type="customer", operation="update", data=JSON.stringify({
     global_customer_id: "CUST-000999",
     customer_tax_profiles: [
       {
@@ -988,7 +988,7 @@ submit("customer", "update", {
         taxable_in_jurisdiction: true
       }
     ]
-})
+}))
 ```
 
 **Invoice Behavior:**
@@ -1076,35 +1076,35 @@ LEFT JOIN legal_entities entity
 **Implementation:**
 ```javascript
 // Step 1: Create hierarchical jurisdictions
-submit("tax_jurisdiction", "create", {
+submit(object_type="tax_jurisdiction", operation="create", data=JSON.stringify({
     code: "US-CA",
     name: "California",
     jurisdiction_type: "state",
     country_code: "US",
     state_code: "CA"
-})
+}))
 // Returns: { jurisdiction_id: 100 }
 
-submit("tax_jurisdiction", "create", {
+submit(object_type="tax_jurisdiction", operation="create", data=JSON.stringify({
     parent_jurisdiction_id: 100,
     code: "US-CA-LA",
     name: "Los Angeles County",
     jurisdiction_type: "county",
     county_code: "LA"
-})
+}))
 // Returns: { jurisdiction_id: 101 }
 
-submit("tax_jurisdiction", "create", {
+submit(object_type="tax_jurisdiction", operation="create", data=JSON.stringify({
     parent_jurisdiction_id: 101,
     code: "US-CA-LA-CITY",
     name: "City of Los Angeles",
     jurisdiction_type: "city",
     city_code: "LOS-ANGELES"
-})
+}))
 // Returns: { jurisdiction_id: 102 }
 
 // Step 2: Create combined tax code
-submit("tax_code", "create", {
+submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "SALES-US-CA-LA-CITY",
     tax_name: "Los Angeles Combined Sales Tax",
     tax_type: "sales",
@@ -1115,11 +1115,11 @@ submit("tax_code", "create", {
     city: "Los Angeles",
     default_rate: 0.0875,  // Combined rate
     default_tax_account_number: "2210"
-})
+}))
 // Returns: { tax_code_id: 789 }
 
 // Step 3: Create component rates (for detailed reporting)
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 789,
     component_name: "California State",
     component_type: "base",
@@ -1128,9 +1128,9 @@ submit("tax_code_rate", "create", {
     taxable_basis: "subtotal",
     effective_from: "2025-01-01",
     tax_account_number: "2210-CA-STATE"
-})
+}))
 
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 789,
     component_name: "LA County",
     component_type: "additional",
@@ -1139,9 +1139,9 @@ submit("tax_code_rate", "create", {
     taxable_basis: "subtotal",
     effective_from: "2025-01-01",
     tax_account_number: "2210-CA-COUNTY"
-})
+}))
 
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 789,
     component_name: "LA City",
     component_type: "additional",
@@ -1150,7 +1150,7 @@ submit("tax_code_rate", "create", {
     taxable_basis: "subtotal",
     effective_from: "2025-01-01",
     tax_account_number: "2210-CA-CITY"
-})
+}))
 ```
 
 **Invoice Calculation:**
@@ -1176,7 +1176,7 @@ const invoice_total = 1000.00 + 87.50;  // $1,087.50
 ```javascript
 // Step 1: Add tax profile with exemption to the existing customer
 // (customer_tax_profiles is managed via customer.create/update, not a standalone object type)
-submit("customer", "update", {
+submit(object_type="customer", operation="update", data=JSON.stringify({
     customer_id: 456,
     customer_tax_profiles: [
       {
@@ -1199,7 +1199,7 @@ submit("customer", "update", {
         }
       }
     ]
-})
+}))
 ```
 
 **Invoice Behavior:**
@@ -1241,17 +1241,17 @@ const exempt_customers = query("customer", filters={"tax_exempt": true})
 **Implementation:**
 ```javascript
 // Step 1: End old rate on June 30th
-submit("tax_code_rate", "update", {
+submit(object_type="tax_code_rate", operation="update", data=JSON.stringify({
     tax_code_rate_id: 100,
     effective_to: "2025-06-30",
     metadata: {
       superseded_by_rate_id: 101,
       change_reason: "State Bill SB-456 - rate increase"
     }
-})
+}))
 
 // Step 2: Create new rate effective July 1st
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 123,
     component_name: "primary",
     component_type: "base",
@@ -1264,7 +1264,7 @@ submit("tax_code_rate", "create", {
       supersedes_rate_id: 100,
       change_reason: "State Bill SB-456 - rate increase"
     }
-})
+}))
 ```
 
 **Transaction Behavior:**
@@ -1310,7 +1310,7 @@ LIMIT 1;
 **Implementation:**
 ```javascript
 // Step 1: Create reverse charge tax code
-submit("tax_code", "create", {
+submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "VAT-EU-RC",
     tax_name: "EU Reverse Charge VAT",
     tax_type: "vat",
@@ -1320,10 +1320,10 @@ submit("tax_code", "create", {
     is_recoverable: true,
     default_tax_account_number: "2220",
     is_active: true
-})
+}))
 
 // Step 2: Add reverse-charge tax profile to the existing customer
-submit("customer", "update", {
+submit(object_type="customer", operation="update", data=JSON.stringify({
     customer_id: 999,
     customer_tax_profiles: [
       {
@@ -1341,7 +1341,7 @@ submit("customer", "update", {
         }
       }
     ]
-})
+}))
 ```
 
 **Invoice Behavior:**
@@ -1389,7 +1389,7 @@ const service_amount = 10000.00;
 **Implementation:**
 ```javascript
 // Step 1: Create master tax code
-submit("tax_code", "create", {
+submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "GST-PST-BC",
     tax_name: "British Columbia GST + PST",
     tax_type: "sales",
@@ -1398,11 +1398,11 @@ submit("tax_code", "create", {
     state_province: "British Columbia",
     is_compound: true,
     default_tax_account_number: "2210"
-})
+}))
 // Returns: { tax_code_id: 456 }
 
 // Step 2: Create GST rate (federal base tax)
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 456,
     component_name: "GST",
     component_type: "base",
@@ -1412,10 +1412,10 @@ submit("tax_code_rate", "create", {
     effective_from: "2025-01-01",
     is_compound: false,
     tax_account_number: "2210-GST"
-})
+}))
 
 // Step 3: Create PST rate (provincial compound tax)
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 456,
     component_name: "PST",
     component_type: "additional",
@@ -1426,7 +1426,7 @@ submit("tax_code_rate", "create", {
     effective_from: "2025-01-01",
     is_compound: true,
     tax_account_number: "2210-PST"
-})
+}))
 ```
 
 **Invoice Calculation:**
@@ -1480,7 +1480,7 @@ console.log(`Total:        $${invoice_total.toFixed(2)}`);
 **Implementation:**
 ```javascript
 // Step 1: Create VAT tax code
-submit("tax_code", "create", {
+submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "VAT-EU-IE",
     tax_name: "Ireland VAT Standard Rate",
     tax_type: "vat",
@@ -1490,7 +1490,7 @@ submit("tax_code", "create", {
     default_tax_account_number: "2220",
     country_code: "IE",
     is_active: true
-})
+}))
 ```
 
 **Invoice Calculation:**
@@ -1569,7 +1569,7 @@ query("tax_code", filters={legal_entity_id: 13, tax_type: "vat", is_active: true
 
 ### Rates and calculation
 
-There is no separate tool for a tax code's rate history or for calculating tax on a line. The rate in force is applied when a transaction is posted through `submit("transaction", "post", ...)`; validate a line first with `submit(..., validate_only=true)`, and read the posted `tax_amount` from `get_entity("transaction", id=...)`.
+There is no separate tool for a tax code's rate history or for calculating tax on a line. The rate in force is applied when a transaction is posted through `submit(object_type="transaction", operation="post", ...)`; validate a line first with `submit(..., validate_only=true)`, and read the posted `tax_amount` from `get_entity("transaction", id=...)`.
 
 ---
 
@@ -1593,16 +1593,16 @@ Always use effective date ranges to handle rate changes:
 
 ```javascript
 // DO: End old rate, create new rate
-submit("tax_code_rate", "update", {
+submit(object_type="tax_code_rate", operation="update", data=JSON.stringify({
     tax_code_rate_id: 100,
     effective_to: "2025-06-30"  // End old rate
-})
+}))
 
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 123,
     rate: 0.0725,  // New rate
     effective_from: "2025-07-01"
-})
+}))
 
 // DON'T: Update existing rate in place
 // This loses historical rate information
@@ -1613,7 +1613,7 @@ submit("tax_code_rate", "create", {
 Always track exemption certificates with expiration:
 
 ```javascript
-submit("customer", "update", {
+submit(object_type="customer", operation="update", data=JSON.stringify({
     customer_id: 456,
     customer_tax_profiles: [
       {
@@ -1629,7 +1629,7 @@ submit("customer", "update", {
         }
       }
     ]
-})
+}))
 
 // Set up alerts for expiring certificates (30 days before)
 ```
@@ -1640,23 +1640,23 @@ Use `calculation_order` and `applies_on_component` for clarity:
 
 ```javascript
 // Base tax (order 1)
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     component_name: "GST",
     rate: 0.05,
     calculation_order: 1,
     taxable_basis: "subtotal",
     is_compound: false
-})
+}))
 
 // Compound tax (order 2, applies on GST)
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     component_name: "PST",
     rate: 0.07,
     calculation_order: 2,
     applies_on_component: "GST",
     taxable_basis: "total",  // subtotal + GST
     is_compound: true
-})
+}))
 ```
 
 ### Tax Authority Registration
@@ -1664,7 +1664,7 @@ submit("tax_code_rate", "create", {
 Always track registration with filing frequency:
 
 ```javascript
-submit("tax_registration", "create", {
+submit(object_type="tax_registration", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     tax_authority_id: 789,
     registration_number: "123456789",
@@ -1675,7 +1675,7 @@ submit("tax_registration", "create", {
       online_account_id: "CA-123456",
       filing_method: "electronic"
     }
-})
+}))
 ```
 
 ### Multi-Jurisdiction Tax
@@ -1684,23 +1684,23 @@ Break down component rates for accurate reporting:
 
 ```javascript
 // Combined rate (for quick calculation)
-submit("tax_code", "create", {
+submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "SALES-US-CA-LA-CITY",
     default_rate: 0.0875  // Combined: 7.25% + 1% + 0.5%
-})
+}))
 
 // Component rates (for detailed reporting)
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     component_name: "California State",
     rate: 0.0725,
     tax_account_number: "2210-CA-STATE"  // Separate GL account
-})
+}))
 
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     component_name: "LA County",
     rate: 0.01,
     tax_account_number: "2210-CA-COUNTY"  // Separate GL account
-})
+}))
 ```
 
 ### Tax-Inclusive Pricing
@@ -1711,18 +1711,18 @@ It follows how prices are quoted, not the country:
 ```javascript
 // Business-to-business (contracts, SaaS, services): prices are NET, tax on top.
 // This is the default — leave the flag off, in the EU as everywhere else.
-submit("tax_code", "create", {
+submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "VAT-EE-STD",
     default_rate: 24
     // is_tax_inclusive defaults to false
-})
+}))
 
 // Consumer / retail price lists where the shelf price includes VAT:
-submit("tax_code", "create", {
+submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "VAT-EE-RETAIL",
     default_rate: 24,
     is_tax_inclusive: true  // ← only when the entered amounts are gross
-})
+}))
 ```
 
 Resolution when an invoice line is posted: an explicit `is_tax_inclusive` on
@@ -1736,14 +1736,14 @@ Set up both tax code and customer profile:
 
 ```javascript
 // Tax code with reverse charge flag
-submit("tax_code", "create", {
+submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "VAT-EU-RC",
     is_reverse_charge: true,
     is_recoverable: true
-})
+}))
 
 // Customer profile with VAT number
-submit("customer", "update", {
+submit(object_type="customer", operation="update", data=JSON.stringify({
     customer_id: 999,
     customer_tax_profiles: [
       {
@@ -1753,7 +1753,7 @@ submit("customer", "update", {
         vat_number: "DE123456789",  // ← Required
       }
     ]
-})
+}))
 ```
 
 ---
@@ -1765,26 +1765,26 @@ submit("customer", "update", {
 **Wrong:**
 ```javascript
 // DON'T: Update existing rate
-submit("tax_code_rate", "update", {
+submit(object_type="tax_code_rate", operation="update", data=JSON.stringify({
     tax_code_rate_id: 100,
     rate: 0.0725  // Changed from 0.07
-})
+}))
 // Problem: Loses historical rate, affects past transactions
 ```
 
 **Correct:**
 ```javascript
 // DO: End old rate, create new rate
-submit("tax_code_rate", "update", {
+submit(object_type="tax_code_rate", operation="update", data=JSON.stringify({
     tax_code_rate_id: 100,
     effective_to: "2025-06-30"
-})
+}))
 
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 123,
     rate: 0.0725,
     effective_from: "2025-07-01"
-})
+}))
 // Result: Historical transactions use 0.07, new transactions use 0.0725
 ```
 
@@ -1795,11 +1795,11 @@ submit("tax_code_rate", "create", {
 **Wrong:**
 ```javascript
 // DON'T: treat "EU" as "prices include VAT"
-submit("tax_code", "create", {
+submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "VAT-EE-STD",
     default_rate: 24,
     is_tax_inclusive: true
-})
+}))
 // Problem: a €7/user contract billed as 72 × €7 = €504.00 GROSS
 //   → net €406.45 + VAT €97.55. The customer is under-billed by 24%.
 ```
@@ -1807,11 +1807,11 @@ submit("tax_code", "create", {
 **Correct:**
 ```javascript
 // DO: B2B prices are net; VAT goes on top
-submit("tax_code", "create", {
+submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "VAT-EE-STD",
     default_rate: 24
     // is_tax_inclusive stays false
-})
+}))
 // Result: 72 × €7 = €504.00 net + €120.96 VAT = €624.96 (correct!)
 ```
 
@@ -1825,26 +1825,26 @@ where the amounts you enter are the shelf price including VAT.
 **Wrong:**
 ```javascript
 // DON'T: Create compound tax without calculation_order
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     component_name: "PST",
     rate: 0.07,
     is_compound: true
     // Missing: calculation_order, applies_on_component
-})
+}))
 // Problem: System doesn't know which tax to compound on
 ```
 
 **Correct:**
 ```javascript
 // DO: Specify calculation_order and applies_on_component
-submit("tax_code_rate", "create", {
+submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     component_name: "PST",
     rate: 0.07,
     calculation_order: 2,  // ← After GST (order 1)
     applies_on_component: "GST",  // ← Tax on GST
     taxable_basis: "total",  // ← Subtotal + GST
     is_compound: true
-})
+}))
 ```
 
 ---
@@ -1854,7 +1854,7 @@ submit("tax_code_rate", "create", {
 **Wrong:**
 ```javascript
 // DON'T: Create exemption without expiry
-submit("customer", "update", {
+submit(object_type="customer", operation="update", data=JSON.stringify({
     customer_id: 456,
     customer_tax_profiles: [
       {
@@ -1865,14 +1865,14 @@ submit("customer", "update", {
         // Missing: exemption_certificate_expiry
       }
     ]
-})
+}))
 // Problem: No alert when certificate expires
 ```
 
 **Correct:**
 ```javascript
 // DO: Always set expiry date
-submit("customer", "update", {
+submit(object_type="customer", operation="update", data=JSON.stringify({
     customer_id: 456,
     customer_tax_profiles: [
       {
@@ -1887,7 +1887,7 @@ submit("customer", "update", {
         }
       }
     ]
-})
+}))
 ```
 
 ---
@@ -1897,7 +1897,7 @@ submit("customer", "update", {
 **Wrong:**
 ```javascript
 // DON'T: Enable reverse charge without validating VAT number
-submit("customer", "update", {
+submit(object_type="customer", operation="update", data=JSON.stringify({
     customer_id: 999,
     customer_tax_profiles: [
       {
@@ -1907,7 +1907,7 @@ submit("customer", "update", {
         vat_number: "DE123456789"  // Not validated!
       }
     ]
-})
+}))
 // Problem: Invalid VAT number = compliance risk
 ```
 
@@ -1921,7 +1921,7 @@ submit("customer", "update", {
 // (vat_validation_status, validation_source, vies_*) are dropped on save:
 // nothing verified them.
 
-submit("customer", "update", {
+submit(object_type="customer", operation="update", data=JSON.stringify({
     customer_id: 999,
     customer_tax_profiles: [
       {
@@ -1931,7 +1931,7 @@ submit("customer", "update", {
         vat_number: "DE123456789",
       }
     ]
-})
+}))
 ```
 
 ---
@@ -1941,19 +1941,19 @@ submit("customer", "update", {
 **Wrong:**
 ```javascript
 // DON'T: Hard delete tax code
-submit("tax_code", "delete", {
+submit(object_type="tax_code", operation="delete", data=JSON.stringify({
   tax_code: "SALES-US-CA"
-})
+}))
 // Problem: Breaks historical transactions
 ```
 
 **Correct:**
 ```javascript
 // DO: Soft delete (deactivate)
-submit("tax_code", "update", {
+submit(object_type="tax_code", operation="update", data=JSON.stringify({
     tax_code: "SALES-US-CA",
     is_active: false  // ← Soft delete
-})
+}))
 // Result: Historical transactions still reference valid code
 ```
 
@@ -2065,15 +2065,15 @@ An active registration today alone is insufficient for a historical deduction.
 
 ### Enabling VAT Registration
 
-Use `submit("tax_registration", "create", ...)` — NOT `legal_entity.update` (there is no `is_vat_registered` field on the legal entity).
+Use `submit(object_type="tax_registration", operation="create", ...)` — NOT `legal_entity.update` (there is no `is_vat_registered` field on the legal entity).
 
 ```
-submit("tax_registration", "create", {
+submit(object_type="tax_registration", operation="create", data=JSON.stringify({
     "legal_entity_id": 13,
     "registration_type": "vat",
     "registration_number": "IE1234567T",
     "effective_from": "2026-04-01"
-})
+}))
 ```
 
 If the user is creating a new entity via `add_entity`, pass `is_vat_registered=true` + `tax_id="..."` at creation time — `add_entity` will insert the `entity_tax_registrations` row for you.
@@ -2083,11 +2083,11 @@ If the user is creating a new entity via `add_entity`, pass `is_vat_registered=t
 Soft-deactivate the active registration:
 
 ```
-submit("tax_registration", "update", {
+submit(object_type="tax_registration", operation="update", data=JSON.stringify({
     "registration_id": <id>,
     "is_active": false,
     "effective_to": "2026-04-24"
-})
+}))
 ```
 
 ### Non-VAT Entity Behavior
@@ -2102,7 +2102,7 @@ submit("tax_registration", "update", {
 
 The VAT check uses the **transaction date**, so backdated entries respect historical VAT status.
 
-See [Entity Management](entity-management.md) for the full `submit("legal_entity", "update", ...)` docs (note: VAT is managed via `tax_registration`, not via `legal_entity.update`).
+See [Entity Management](entity-management.md) for the full `submit(object_type="legal_entity", operation="update", ...)` docs (note: VAT is managed via `tax_registration`, not via `legal_entity.update`).
 
 ---
 
@@ -2128,7 +2128,7 @@ See [Entity Management](entity-management.md) for the full `submit("legal_entity
 
 10. **Registration Tracking**: Track tax registrations with filing frequency and due dates
 
-11. **VAT Registration**: Managed via `submit("tax_registration", "create" | "update", ...)` (NOT `legal_entity.update`) — affects tax posting behavior for the entity
+11. **VAT Registration**: Managed via `submit(object_type="tax_registration", operation="create" | "update", ...)` (NOT `legal_entity.update`) — affects tax posting behavior for the entity
 
 ---
 

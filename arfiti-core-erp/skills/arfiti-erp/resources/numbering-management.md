@@ -21,11 +21,11 @@ Transaction numbers share one namespace per organization/entity, across transact
 
 | Tool | Purpose | When to Use |
 |------|---------|-------------|
-| `submit(object_type="number_series", operation="allocate", data={"legal_entity_id":.., "series_type":..})` | Get next number and increment counter (replaces `get_next_number(legal_entity_id, series_type)`, MCP registration removed) | Generating a master data number (rarely needed -- workflows auto-generate) |
+| `submit(object_type="number_series", operation="allocate", data=JSON.stringify({"legal_entity_id":.., "series_type":..}))` | Get next number and increment counter | Generating a master data number (rarely needed -- workflows auto-generate) |
 | `query("number_series", filters)` | List number series with filters | Browsing configured master data series |
 | `query("number_series", query)` | Search number series | Finding series by type or prefix |
 | `get_entity("number_series", id=X)` | Get single number series | Looking up a specific series config |
-| `submit("number_series", "create", {...})` | Create new number series | Adding a custom master data series |
+| `submit(object_type="number_series", operation="create", data='{...}')` | Create new number series | Adding a custom master data series |
 | `get_submissions(action='schema', object_type="number_series", operation="create")` | Get creation field schema | Checking required fields before creating |
 
 > **IMPORTANT — Schema Discovery Required**: Before calling `submit()` for any workflow below, you MUST first call `get_submissions(action='schema', object_type, operation)` to discover the exact required and optional fields. Each organization configures different field requirements. Never assume the fields listed below are complete — always check the schema first.
@@ -46,11 +46,11 @@ Transaction numbers are generated automatically by the workflow system when you 
 
 ```javascript
 // You just submit -- numbering is automatic
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
     transaction_type_code: "AR_INVOICE",
     legal_entity_id: 9,
     // ... other fields
-})
+}))
 // Result includes transaction_number: "AR-000013"
 ```
 
@@ -60,19 +60,19 @@ Master data numbers are also generated automatically by workflows. When you crea
 
 ```javascript
 // You just submit -- numbering is automatic
-submit("vendor", "create", {
+submit(object_type="vendor", operation="create", data=JSON.stringify({
     vendor_name: "Acme Corp",
     email: "ap@acme.com"
-})
+}))
 // Result includes global_vendor_id: "VEND-000042"
 ```
 
 ### Manual Number Generation (Rare)
 
-Use `submit(object_type="number_series", operation="allocate", data={...})` only when you need a number outside the normal workflow process:
+Use `submit(object_type="number_series", operation="allocate", data=JSON.stringify({...}))` only when you need a number outside the normal workflow process:
 
 ```javascript
-submit(object_type="number_series", operation="allocate", data={"legal_entity_id": 9, "series_type": "customer"})
+submit(object_type="number_series", operation="allocate", data=JSON.stringify({"legal_entity_id": 9, "series_type": "customer"}))
 // Response:
 // {
 //   "success": true,
@@ -93,11 +93,11 @@ Per-entity configuration of a transaction type (enable/disable, number prefix an
 ```javascript
 // Change the prefix and enable a type for one entity
 submit(object_type="transaction_type_setting", operation="update",
-       data={"transaction_type_setting_id": 12, "number_prefix": "INV-", "is_enabled": true})
+       data=JSON.stringify({"transaction_type_setting_id": 12, "number_prefix": "INV-", "is_enabled": true}))
 
 // Add a settings row for a type this entity doesn't have configured yet
 submit(object_type="transaction_type_setting", operation="create",
-       data={"legal_entity_id": 9, "transaction_type_code": "AP_INVOICE", "is_enabled": true})
+       data=JSON.stringify({"legal_entity_id": 9, "transaction_type_code": "AP_INVOICE", "is_enabled": true}))
 ```
 
 Rules:
@@ -281,13 +281,13 @@ Use this when you need a number series for a custom master data type that is not
 schema = get_submissions(action='schema', object_type="number_series", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("number_series", "create", {
+submit(object_type="number_series", operation="create", data=JSON.stringify({
     legal_entity_id: 9,
     series_type: "work_order",
     prefix: "WO-",
     starting_number: 1,
     padding: 6
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -369,13 +369,13 @@ Gaps do not indicate data loss or errors.
 
 ```javascript
 // Create a project numbering series
-submit("number_series", "create", {
+submit(object_type="number_series", operation="create", data=JSON.stringify({
     legal_entity_id: 9,
     series_type: "project",
     prefix: "PRJ-",
     starting_number: 1,
     padding: 4
-})
+}))
 // First number: PRJ-0001
 ```
 
@@ -391,7 +391,7 @@ query("number_series", filters={"legal_entity_id": 9, "series_type": "customer"}
 
 ```javascript
 // Only use this when you need a number outside the workflow system
-submit(object_type="number_series", operation="allocate", data={"legal_entity_id": 9, "series_type": "expense_report"})
+submit(object_type="number_series", operation="allocate", data=JSON.stringify({"legal_entity_id": 9, "series_type": "expense_report"}))
 // Response: {"success": true, "number": "EXPR-000003", "numeric_value": 3}
 ```
 
@@ -428,7 +428,7 @@ Once the `number_series` allocate call is made, the counter increments and the n
 6. **Gaps are normal**: Expected in accounting and do not indicate errors
 7. **11 master data series** are auto-created for every new entity (customer, vendor, employee, item, fixed_asset, expense_report, recurring_contract, sale, bank_statement, budget_version, journal_entry)
 8. **28 transaction types** have numbering built into `transaction_type_settings`
-9. **`submit(object_type="number_series", operation="allocate", ...)`** (replaces `get_next_number`, MCP registration removed) is rarely needed -- use it only for manual number generation outside workflows
+9. **`submit(object_type="number_series", operation="allocate", ...)`** is rarely needed -- use it only for manual number generation outside workflows
 
 ---
 

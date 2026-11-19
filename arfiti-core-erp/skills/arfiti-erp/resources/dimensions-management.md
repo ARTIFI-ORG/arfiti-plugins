@@ -264,14 +264,14 @@ Organization (Company 63)
 schema = get_submissions(action='schema', object_type="dimension_type", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("dimension_type", "create", {
+submit(object_type="dimension_type", operation="create", data=JSON.stringify({
     name: "customer_segment",
     display_name: "Customer Segment",
     applies_to: ["customer", "transaction"],
     description: "Customer segmentation for analysis",
     hierarchy_depth: 2,
     is_required: false
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -344,21 +344,21 @@ submit("dimension_type", "create", {
 **Example: Update Master**:
 
 ```javascript
-submit("dimension_type", "update", {
+submit(object_type="dimension_type", operation="update", data=JSON.stringify({
     dimension_type_name: "project",
     description: "Updated: Project-based revenue tracking",
     is_required: true
-})
+}))
 ```
 
 **Example: Entity Override**:
 
 ```javascript
-submit("dimension_type", "update", {
+submit(object_type="dimension_type", operation="update", data=JSON.stringify({
     dimension_type_name: "department",
     legal_entity_id: 13,
     display_name: "Business Unit"  // Entity 13 sees "Business Unit" instead
-})
+}))
 ```
 
 **Returns**:
@@ -404,31 +404,31 @@ submit("dimension_type", "update", {
 **Example: Soft Delete**:
 
 ```javascript
-submit("dimension_type", "delete", {
+submit(object_type="dimension_type", operation="delete", data=JSON.stringify({
     dimension_type_name: "product_line",
     deletion_reason: "Consolidating dimension types",
     hard_delete: false
-})
+}))
 ```
 
 **Example: Hard Delete**:
 
 ```javascript
-submit("dimension_type", "delete", {
+submit(object_type="dimension_type", operation="delete", data=JSON.stringify({
     dimension_type_name: "test_dimension",
     deletion_reason: "Test dimension - never used",
     hard_delete: true  // Fails if type has any values
-})
+}))
 ```
 
 **Example: Delete Entity Override**:
 
 ```javascript
-submit("dimension_type", "delete", {
+submit(object_type="dimension_type", operation="delete", data=JSON.stringify({
     dimension_type_name: "department",
     legal_entity_id: 9,  // Only delete Entity 9's override, master unchanged
     deletion_reason: "Reverting to standard department display"
-})
+}))
 ```
 
 **Validation**:
@@ -489,58 +489,58 @@ submit("dimension_type", "delete", {
 **Example: Flat Value**:
 
 ```javascript
-submit("dimension_value", "create", {
+submit(object_type="dimension_value", operation="create", data=JSON.stringify({
     dimension_type_name: "department",
     code: "ENG",
     name: "Engineering",
     description: "Engineering department",
     sort_order: 1
-})
+}))
 ```
 
 **Example: Hierarchical Values**:
 
 ```javascript
 // Step 1: Create root value
-submit("dimension_value", "create", {
+submit(object_type="dimension_value", operation="create", data=JSON.stringify({
     dimension_type_name: "location",
     code: "USA",
     name: "United States",
     sort_order: 1
-})
+}))
 // Result: level=1, full_path="USA"
 
 // Step 2: Create child value
-submit("dimension_value", "create", {
+submit(object_type="dimension_value", operation="create", data=JSON.stringify({
     dimension_type_name: "location",
     code: "WEST",
     name: "West Region",
     parent_code: "USA",  // Links to parent
     sort_order: 1
-})
+}))
 // Result: level=2, full_path="USA/WEST"
 
 // Step 3: Create grandchild value
-submit("dimension_value", "create", {
+submit(object_type="dimension_value", operation="create", data=JSON.stringify({
     dimension_type_name: "location",
     code: "CA",
     name: "California",
     parent_code: "WEST",
     sort_order: 1
-})
+}))
 // Result: level=3, full_path="USA/WEST/CA"
 ```
 
 **Example: Entity-Specific Value**:
 
 ```javascript
-submit("dimension_value", "create", {
+submit(object_type="dimension_value", operation="create", data=JSON.stringify({
     dimension_type_name: "department",
     code: "APAC-OPS",
     name: "APAC Operations",
     is_global: false,         // Entity-specific
     legal_entity_id: 15       // Only visible to Entity 15
-})
+}))
 ```
 
 **Validation**:
@@ -619,7 +619,7 @@ submit("dimension_value", "create", {
 **Example: Update Master**:
 
 ```javascript
-submit("dimension_value", "update", {
+submit(object_type="dimension_value", operation="update", data=JSON.stringify({
     dimension_type_name: "department",
     code: "ENG",
     name: "Engineering & Technology",
@@ -627,19 +627,19 @@ submit("dimension_value", "update", {
       "manager": "Alice Johnson",
       "headcount": 45
     }
-})
+}))
 ```
 
 **Example: Entity Override**:
 
 ```javascript
-submit("dimension_value", "update", {
+submit(object_type="dimension_value", operation="update", data=JSON.stringify({
     dimension_type_name: "department",
     code: "SALES",
     legal_entity_id: 13,
     name_override: "Revenue Operations",
     description_override: "Sales and revenue generation team"
-})
+}))
 ```
 
 **Returns**:
@@ -686,34 +686,34 @@ submit("dimension_value", "update", {
 **Example: Soft Delete**:
 
 ```javascript
-submit("dimension_value", "delete", {
+submit(object_type="dimension_value", operation="delete", data=JSON.stringify({
     dimension_type_name: "department",
     code: "OLD_DEPT",
     deletion_reason: "Department merged with Engineering",
     hard_delete: false
-})
+}))
 ```
 
 **Example: Hard Delete**:
 
 ```javascript
-submit("dimension_value", "delete", {
+submit(object_type="dimension_value", operation="delete", data=JSON.stringify({
     dimension_type_name: "department",
     code: "TEST",
     deletion_reason: "Test value - never used",
     hard_delete: true  // Fails if value is used or has children
-})
+}))
 ```
 
 **Example: Delete Entity Override**:
 
 ```javascript
-submit("dimension_value", "delete", {
+submit(object_type="dimension_value", operation="delete", data=JSON.stringify({
     dimension_type_name: "department",
     code: "SALES",
     legal_entity_id: 13,  // Only delete Entity 13's override
     deletion_reason: "Reverting to standard sales display"
-})
+}))
 ```
 
 **Validation**:
@@ -786,7 +786,7 @@ Use the `dimension_type.import` workflow to bulk import dimension types.
 **Example**:
 
 ```javascript
-submit("dimension_type", "import", {
+submit(object_type="dimension_type", operation="import", data=JSON.stringify({
     records: [
       {
         name: "department",
@@ -814,7 +814,7 @@ submit("dimension_type", "import", {
       on_duplicate: "update",
       validate_only: false
     }
-})
+}))
 ```
 
 **Import Options**:
@@ -911,7 +911,7 @@ Use the `dimension_value.import` workflow to bulk import dimension values.
 **Example: Flat Values**:
 
 ```javascript
-submit("dimension_value", "import", {
+submit(object_type="dimension_value", operation="import", data=JSON.stringify({
     records: [
       {
         dimension_type_name: "department",
@@ -941,13 +941,13 @@ submit("dimension_value", "import", {
     options: {
       on_duplicate: "skip"
     }
-})
+}))
 ```
 
 **Example: Hierarchical Values**:
 
 ```javascript
-submit("dimension_value", "import", {
+submit(object_type="dimension_value", operation="import", data=JSON.stringify({
     records: [
       // Level 1: Root values
       {
@@ -1007,7 +1007,7 @@ submit("dimension_value", "import", {
     options: {
       on_duplicate: "skip"
     }
-})
+}))
 ```
 
 **Import Options**:
@@ -1164,7 +1164,7 @@ query("dimension_value", query="Engineering")
 
 ```javascript
 // Step 1: Create dimension types
-submit("dimension_type", "import", {
+submit(object_type="dimension_type", operation="import", data=JSON.stringify({
     records: [
       {
         name: "department",
@@ -1188,10 +1188,10 @@ submit("dimension_type", "import", {
         is_required: false
       }
     ]
-})
+}))
 
 // Step 2: Create department values
-submit("dimension_value", "import", {
+submit(object_type="dimension_value", operation="import", data=JSON.stringify({
     records: [
       {
         dimension_type_name: "department",
@@ -1218,10 +1218,10 @@ submit("dimension_value", "import", {
         sort_order: 4
       }
     ]
-})
+}))
 
 // Step 3: Create location hierarchy
-submit("dimension_value", "import", {
+submit(object_type="dimension_value", operation="import", data=JSON.stringify({
     records: [
       // Level 1
       { dimension_type_name: "location", code: "USA", name: "United States", sort_order: 1 },
@@ -1232,7 +1232,7 @@ submit("dimension_value", "import", {
       { dimension_type_name: "location", code: "CA", name: "California", parent_code: "WEST", sort_order: 1 },
       { dimension_type_name: "location", code: "NY", name: "New York", parent_code: "EAST", sort_order: 1 }
     ]
-})
+}))
 ```
 
 **Result**:
@@ -1248,20 +1248,20 @@ submit("dimension_value", "import", {
 
 ```javascript
 // Step 1: Hide project dimension from Entity 9
-submit("dimension_type", "update", {
+submit(object_type="dimension_type", operation="update", data=JSON.stringify({
     dimension_type_name: "project",
     legal_entity_id: 9,
     is_visible: false
-})
+}))
 
 // Step 2: Rename department value for Entity 13
-submit("dimension_value", "update", {
+submit(object_type="dimension_value", operation="update", data=JSON.stringify({
     dimension_type_name: "department",
     code: "SALES",
     legal_entity_id: 13,
     name_override: "Revenue Operations",
     description_override: "Sales and revenue generation team"
-})
+}))
 ```
 
 **Result**:
@@ -1279,7 +1279,7 @@ submit("dimension_value", "update", {
 
 ```javascript
 // Step 1: Create 3 regional dimension types
-submit("dimension_type", "import", {
+submit(object_type="dimension_type", operation="import", data=JSON.stringify({
     records: [
       {
         name: "location_us",
@@ -1300,7 +1300,7 @@ submit("dimension_type", "import", {
         hierarchy_depth: 3
       }
     ]
-})
+}))
 
 // Step 2: Populate values (100 US, 200 EU, 150 APAC)
 // ... bulk import for each region ...
@@ -1308,28 +1308,28 @@ submit("dimension_type", "import", {
 // Step 3: Hide irrelevant types per entity
 
 // US entities (9, 13) - hide EU and APAC
-submit("dimension_type", "update", {
+submit(object_type="dimension_type", operation="update", data=JSON.stringify({
     dimension_type_name: "location_eu",
     legal_entity_id: 9,
     is_visible: false
-})
-submit("dimension_type", "update", {
+}))
+submit(object_type="dimension_type", operation="update", data=JSON.stringify({
     dimension_type_name: "location_apac",
     legal_entity_id: 9,
     is_visible: false
-})
+}))
 
 // EU entities (10, 14) - hide US and APAC
-submit("dimension_type", "update", {
+submit(object_type="dimension_type", operation="update", data=JSON.stringify({
     dimension_type_name: "location_us",
     legal_entity_id: 10,
     is_visible: false
-})
-submit("dimension_type", "update", {
+}))
+submit(object_type="dimension_type", operation="update", data=JSON.stringify({
     dimension_type_name: "location_apac",
     legal_entity_id: 10,
     is_visible: false
-})
+}))
 ```
 
 **Result**:
@@ -1349,7 +1349,7 @@ const legacyData = [
   // ... 500 records from legacy system ...
 ]
 
-submit("dimension_value", "import", {
+submit(object_type="dimension_value", operation="import", data=JSON.stringify({
     records: legacyData.map(record => ({
       dimension_type_name: "cost_center",
       code: record.cost_center_code,
@@ -1366,7 +1366,7 @@ submit("dimension_value", "import", {
       batch_size: 100,
       stop_on_error: false
     }
-})
+}))
 ```
 
 **Result**:
@@ -1468,7 +1468,7 @@ Pass `account_dimensions` in the payload to assign default dimensions during acc
 
 ```javascript
 // Create account with default dimensions
-submit("account", "create", {
+submit(object_type="account", operation="create", data=JSON.stringify({
     account_number: "6100",
     account_name: "Cloud Infrastructure",
     account_type: "expense",
@@ -1481,17 +1481,17 @@ submit("account", "create", {
       // also accepted: { master_dimension_type_id, master_dimension_value_id },
       // or legacy { dimension_type_id, dimension_value_id } read in the EFFECTIVE namespace
     ]
-})
+}))
 
 // Update account dimensions (_action: add | update | delete — delete needs only the type)
-submit("account", "update", {
+submit(object_type="account", operation="update", data=JSON.stringify({
     account_number: "6100",
     legal_entity_id: 13,
     account_dimensions: [
       { _action: "add", type_code: "location", value_code: "TLL" },
       { _action: "delete", type_code: "cost_center" }
     ]
-})
+}))
 ```
 
 **Approach 2: Via `account_dimension.assign` workflow**
@@ -1499,12 +1499,12 @@ submit("account", "update", {
 Use the dedicated workflow for standalone dimension assignment:
 
 ```javascript
-submit("account_dimension", "assign", {
+submit(object_type="account_dimension", operation="assign", data=JSON.stringify({
     account_id: 45,
     legal_entity_id: 13,
     dimension_type: "department",
     dimension_value: "ENG"          // legacy dimension_type_id/dimension_value_id still accepted (effective namespace)
-})
+}))
 ```
 
 **Result**: All transactions to account 6100 default to department=ENG, cost_center=CC-200
@@ -1515,14 +1515,14 @@ Dimensions can be assigned to customers for automatic transaction tagging:
 
 ```javascript
 // Create customer with dimensions
-submit("customer", "create", {
+submit(object_type="customer", operation="create", data=JSON.stringify({
     customer_name: "ACME Corp",
     dimensions: {
       location: "US-NYC",
       business_segment: "B2B",
       customer_segment: "Enterprise"
     }
-})
+}))
 ```
 
 **Result**: All customer transactions inherit these dimensions (can be overridden at transaction level)
@@ -1533,13 +1533,13 @@ Dimensions can be assigned to vendors:
 
 ```javascript
 // Create vendor with dimensions
-submit("vendor", "create", {
+submit(object_type="vendor", operation="create", data=JSON.stringify({
     vendor_name: "Cloud Provider Inc",
     dimensions: {
       cost_center: "CC-300",
       location: "US-CA"
     }
-})
+}))
 ```
 
 ### Budgets

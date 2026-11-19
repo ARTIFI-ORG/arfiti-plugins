@@ -21,10 +21,10 @@ This resource explains how to post transactions in the AI-Native ERP system usin
 The V5 Unified Ledger uses a **single universal workflow** for ALL transaction posting:
 
 ```
-Post:    submit("transaction", "post", {...})    → Router → Type-Specific Executor → GL Posting → Complete
-Update:  submit("transaction", "update", {...})  → TransactionUpdateExecutor → Header/Line Update → Complete
-Delete:  submit("transaction", "delete", {...})  → TransactionDeleteExecutor → Snapshot + Hard DELETE → Complete
-Reverse: submit("transaction", "reverse", {...}) → TransactionReverseExecutor → Reversing GL Lines → Complete
+Post:    submit(object_type="transaction", operation="post", data='{...}')    → Router → Type-Specific Executor → GL Posting → Complete
+Update:  submit(object_type="transaction", operation="update", data='{...}')  → TransactionUpdateExecutor → Header/Line Update → Complete
+Delete:  submit(object_type="transaction", operation="delete", data='{...}')  → TransactionDeleteExecutor → Snapshot + Hard DELETE → Complete
+Reverse: submit(object_type="transaction", operation="reverse", data='{...}') → TransactionReverseExecutor → Reversing GL Lines → Complete
 ```
 
 **Key Concepts:**
@@ -91,11 +91,11 @@ options:
 
 | Operation | When | Effect |
 |---|---|---|
-| `submit('transaction', 'reverse', …)` | Real money moved, production data | Posts an offsetting `REV-…` entry. Original stays. |
-| `submit('transaction', 'cancel', …)` | Unposted documents only | `status='void'`, audit row written. Posted documents require an explicit dated reversal. |
-| `submit('transaction', 'delete', { …, force: true })` | Test / agent-cleanup data only | Hard-delete bypassing the non-zero-amount block. Audit-logged. |
-| `submit('reconciliation', 'auto_match', { scope: 'vendor' \| 'customer', … })` | The payment is real and an invoice exists | Links payment to invoice via `reconciliation_items`. **No deletion.** |
-| `submit('bank_statement', 'void', …)` then `submit('bank_statement', 'delete', …)` | The whole statement was a mistake | Reverses every linked GL transaction, then hard-deletes the statement (CASCADE removes lines). Clean up the resulting `REV-…` rows by deleting either half — `reversal_pair_deleted` removes both. |
+| `submit(object_type="transaction", operation="reverse", …)` | Real money moved, production data | Posts an offsetting `REV-…` entry. Original stays. |
+| `submit(object_type="transaction", operation="cancel", …)` | Unposted documents only | `status='void'`, audit row written. Posted documents require an explicit dated reversal. |
+| `submit(object_type="transaction", operation="delete", data=JSON.stringify({ …, force: true }))` | Test / agent-cleanup data only | Hard-delete bypassing the non-zero-amount block. Audit-logged. |
+| `submit(object_type="reconciliation", operation="auto_match", data=JSON.stringify({ scope: 'vendor' \| 'customer', … }))` | The payment is real and an invoice exists | Links payment to invoice via `reconciliation_items`. **No deletion.** |
+| `submit(object_type="bank_statement", operation="void", …)` then `submit(object_type="bank_statement", operation="delete", …)` | The whole statement was a mistake | Reverses every linked GL transaction, then hard-deletes the statement (CASCADE removes lines). Clean up the resulting `REV-…` rows by deleting either half — `reversal_pair_deleted` removes both. |
 
 **Don't**: try `transaction.delete` without `force: true` on a non-zero
 payment and conclude there's a `payment_applications` table somewhere — there
@@ -152,7 +152,7 @@ isn't. The error wording was historical leftover; the real constraint is
 | `OPENING_ENTRY` | Opening balance entry | Setting up opening balances for new periods or entities |
 | `CLOSING_ENTRY` | Period closing entry | Year-end income summary close to retained earnings |
 
-> **OPENING_ENTRY: Do NOT post via `submit("transaction", "post")`.**
+> **OPENING_ENTRY: Do NOT post via `submit(object_type="transaction", operation="post")`.**
 > Always use `manage_imports("opening_balances", ...)` or `manage_imports("opening_balances_with_subledger", ...)` instead.
 > These tools handle validation, auto-balancing, fiscal period checks, and optional subledger records (individual AR/AP items, fixed assets).
 > See [Bulk Import: Opening Balance](bulk-import.md#opening-balance-import) for the complete workflow.
@@ -237,13 +237,13 @@ isn't. The error wording was historical leftover; the real constraint is
 schema = get_submissions(action='schema', object_type="transaction", operation="post")
 
 // Step 2: Submit with discovered fields
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
   "transaction_type_code": "<TYPE_CODE>",
   "legal_entity_id": <entity_id>,
   "currency_code": "<ISO_4217>",           // REQUIRED for all transaction types
   // Type-specific fields...
   "lines": [...]
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -303,7 +303,7 @@ Each transaction type requires different header and line fields. The table below
 
 **Example 1: Domestic Purchase with VAT (Estonia)**
 ```javascript
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
   "transaction_type_code": "AP_INVOICE",
   "legal_entity_id": 10,
   "vendor_id": 123,
@@ -330,12 +330,12 @@ submit("transaction", "post", {
       }
     }
   ]
-})
+}))
 ```
 
 **Example 2: EU B2B Purchase (Reverse Charge)**
 ```javascript
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
   "transaction_type_code": "AP_INVOICE",
   "legal_entity_id": 10,
   "vendor_id": 456,
@@ -358,12 +358,12 @@ submit("transaction", "post", {
       }
     }
   ]
-})
+}))
 ```
 
 **Example 3: Non-EU Purchase (Reverse Charge)**
 ```javascript
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
   "transaction_type_code": "AP_INVOICE",
   "legal_entity_id": 10,
   "vendor_id": 789,
@@ -386,7 +386,7 @@ submit("transaction", "post", {
       }
     }
   ]
-})
+}))
 ```
 
 ### Tax Code Selection Guide
@@ -442,7 +442,7 @@ agent's reverse-charge code selection respects scope.
 
 **Example:**
 ```javascript
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
   "transaction_type_code": "AR_INVOICE",
   "legal_entity_id": 10,
   "customer_id": 456,
@@ -465,7 +465,7 @@ submit("transaction", "post", {
       }
     }
   ]
-})
+}))
 ```
 
 ### Journal Entry
@@ -518,7 +518,7 @@ Header-level fields cover the simple "one transaction, one party" case. Line-lev
 
 **Example:**
 ```javascript
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
   "transaction_type_code": "JOURNAL_ENTRY",
   "legal_entity_id": 10,
   "transaction_date": "2025-01-31",
@@ -540,12 +540,12 @@ submit("transaction", "post", {
       "description": "Accrued utilities payable"
     }
   ]
-})
+}))
 ```
 
 **Example with line-level partner refs (multi-vendor JE):**
 ```javascript
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
   "transaction_type_code": "JOURNAL_ENTRY",
   "legal_entity_id": 10,
   "transaction_date": "2025-01-31",
@@ -560,7 +560,7 @@ submit("transaction", "post", {
     {"account_number": "6500", "debit": 0, "credit": 2000,
      "description": "Net adjustment"}
   ]
-})
+}))
 ```
 
 ---
@@ -570,12 +570,12 @@ submit("transaction", "post", {
 To reverse any posted transaction, use `transaction.reverse`:
 
 ```javascript
-submit("transaction", "reverse", {
+submit(object_type="transaction", operation="reverse", data=JSON.stringify({
   "transaction_id": 71,
   "legal_entity_id": 4,
   "reversal_date": "2024-12-31",
   "reversal_reason": "Replacing with corrected opening balances"
-})
+}))
 ```
 
 ### Required Fields
@@ -635,13 +635,13 @@ To edit a posted transaction's header fields and/or replace its GL lines, use `t
 ### Header-Only Update (no GL impact)
 
 ```javascript
-submit("transaction", "update", {
+submit(object_type="transaction", operation="update", data=JSON.stringify({
   "transaction_id": 123,
   "legal_entity_id": 10,
   "description": "Corrected description",
   "reference_number": "INV-2025-0042",
   "edit_reason": "Typo in original description"
-})
+}))
 ```
 
 ### Custom Fields (any period)
@@ -653,12 +653,12 @@ journal entries). Set them at posting with `"custom_fields": {"key": value}`
 on `transaction.post`. To correct one afterwards, send only the fields:
 
 ```javascript
-submit("transaction", "update", {
+submit(object_type="transaction", operation="update", data=JSON.stringify({
   "transaction_id": 123,
   "legal_entity_id": 10,
   "custom_fields": {"po_reference": "PO-4471"},
   "custom_fields_clear": ["approved_by"]
-})
+}))
 ```
 
 A custom-fields-only update (optionally with `edit_reason`) is allowed in an
@@ -673,7 +673,7 @@ All rules (register, types, required fields, transactions, filters, import, merg
 ### Full Line Replacement (GL lines rewritten)
 
 ```javascript
-submit("transaction", "update", {
+submit(object_type="transaction", operation="update", data=JSON.stringify({
   "transaction_id": 123,
   "legal_entity_id": 10,
   "lines": [
@@ -681,7 +681,7 @@ submit("transaction", "update", {
     {"account_number": "2000", "debit": 0, "credit": 800, "description": "AP - vendor"}
   ],
   "edit_reason": "Wrong amount on original posting"
-})
+}))
 ```
 
 ### Required Fields
@@ -744,11 +744,11 @@ submit("transaction", "update", {
 To permanently remove a posted transaction, use `transaction.delete`. The full transaction data is preserved in the workflow audit trail.
 
 ```javascript
-submit("transaction", "delete", {
+submit(object_type="transaction", operation="delete", data=JSON.stringify({
   "transaction_id": 123,
   "legal_entity_id": 10,
   "deletion_reason": "Duplicate entry created by mistake"
-})
+}))
 ```
 
 ### Required Fields
@@ -1319,7 +1319,7 @@ generate_report("ap_aging", {
 **Pattern 1: Preflight Data → Post Transaction**
 ```
 1. parallel query() calls → get accounts, vendors, tax codes, payment terms concurrently
-2. submit("transaction", "post", {...}) → post the transaction with valid reference IDs
+2. submit(object_type="transaction", operation="post", data='{...}') → post the transaction with valid reference IDs
 ```
 
 **Pattern 2: Analytics → Drill Down → Details**
@@ -1339,7 +1339,7 @@ generate_report("ap_aging", {
 ```
 1. query("transaction", query="Acme") → find by text
 2. get_entity("transaction", id=123) → full details with related data
-3. submit("transaction", "update", {...}) → edit the transaction
+3. submit(object_type="transaction", operation="update", data='{...}') → edit the transaction
 ```
 
 **Pattern 5: Report Discovery → Generate**
@@ -1438,7 +1438,7 @@ Transaction numbers are **auto-generated** by the system based on `transaction_t
 | `TAX_PAYMENT` | `TXPAY-` | `TXPAY-000001` |
 | Reversals | `REV-` | `REV-000012` |
 
-**Important:** `submit(object_type="number_series", operation="allocate", data={...})` (replaces `get_next_number()`, MCP registration removed) uses the separate `number_series` table, which covers master data types only (vendor, customer, employee, expense_report, fixed_asset, item, etc.). Transaction numbers are generated automatically during posting and do not use this allocation call.
+**Important:** `submit(object_type="number_series", operation="allocate", data=JSON.stringify({...}))` uses the separate `number_series` table, which covers master data types only (vendor, customer, employee, expense_report, fixed_asset, item, etc.). Transaction numbers are generated automatically during posting and do not use this allocation call.
 
 ---
 

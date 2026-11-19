@@ -77,14 +77,14 @@ Create a new exchange rate with automatic inverse rate calculation. When you cre
 schema = get_submissions(action='schema', object_type="exchange_rate", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "EUR",
     to_currency: "USD",
     rate: "1.0850",
     effective_date: "2025-01-15",
     rate_type: "spot",
     source: "manual"
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 
 // Response:
@@ -145,27 +145,27 @@ submit("exchange_rate", "create", {
 
 ```javascript
 // Example 1: Create spot rate for EUR→USD
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "EUR",
     to_currency: "USD",
     rate: "1.0850",
     effective_date: "2025-01-15",
     rate_type: "spot",
     source: "manual"
-})
+}))
 
 // Example 2: Create monthly average rate
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "GBP",
     to_currency: "USD",
     rate: "1.2650",
     effective_date: "2025-01-01",
     rate_type: "average",
     source: "manual"
-})
+}))
 
 // Example 3: Create entity-specific contract rate
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "JPY",
     to_currency: "USD",
     rate: "0.0067",
@@ -173,17 +173,17 @@ submit("exchange_rate", "create", {
     rate_type: "contract",
     source: "manual",
     legal_entity_id: 13  // Entity-specific rate
-})
+}))
 
 // Example 4: Create budget rate for planning
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "CAD",
     to_currency: "USD",
     rate: "0.7400",
     effective_date: "2025-01-01",
     rate_type: "budget",
     source: "manual"
-})
+}))
 ```
 
 **Validation Errors:**
@@ -233,11 +233,11 @@ submit("exchange_rate", "create", {
 Update an existing exchange rate. When you update the `rate`, the system automatically recalculates and updates the inverse rate.
 
 ```javascript
-submit("exchange_rate", "update", {
+submit(object_type="exchange_rate", operation="update", data=JSON.stringify({
     exchange_rate_id: 42,
     rate: "1.0920",
     source: "ecb"
-})
+}))
 
 // Response:
 {
@@ -273,24 +273,24 @@ submit("exchange_rate", "update", {
 
 ```javascript
 // Example 1: Update rate only
-submit("exchange_rate", "update", {
+submit(object_type="exchange_rate", operation="update", data=JSON.stringify({
     exchange_rate_id: 42,
     rate: "1.0920"
-})
+}))
 
 // Example 2: Update source only
-submit("exchange_rate", "update", {
+submit(object_type="exchange_rate", operation="update", data=JSON.stringify({
     exchange_rate_id: 42,
     source: "ecb"
-})
+}))
 
 // Example 3: Update multiple fields
-submit("exchange_rate", "update", {
+submit(object_type="exchange_rate", operation="update", data=JSON.stringify({
     exchange_rate_id: 42,
     rate: "1.0920",
     rate_type: "average",
     source: "ecb"
-})
+}))
 ```
 
 **Validation Errors:**
@@ -321,9 +321,9 @@ submit("exchange_rate", "update", {
 Delete an exchange rate and its automatic inverse. **Warning:** This operation deletes both the forward rate (e.g., EUR→USD) and the inverse rate (USD→EUR).
 
 ```javascript
-submit("exchange_rate", "delete", {
+submit(object_type="exchange_rate", operation="delete", data=JSON.stringify({
     exchange_rate_id: 42
-})
+}))
 
 // Response:
 {
@@ -352,9 +352,9 @@ submit("exchange_rate", "delete", {
 
 ```javascript
 // Delete EUR→USD rate (also deletes USD→EUR inverse)
-submit("exchange_rate", "delete", {
+submit(object_type="exchange_rate", operation="delete", data=JSON.stringify({
     exchange_rate_id: 42
-})
+}))
 ```
 
 **Validation Errors:**
@@ -636,7 +636,7 @@ convert_currency(amount=150000.00, from_currency="JPY", to_currency="USD", effec
 {
   "error": "Exchange rate not found",
   "message": "No rate available for EUR/USD on or before 2025-01-15",
-  "suggestion": "Use submit('exchange_rate', 'create', {...}) to create the rate"
+  "suggestion": "Use submit(object_type="exchange_rate", operation="create", data='{...}') to create the rate"
 }
 
 // Error: Invalid amount
@@ -668,34 +668,34 @@ As a finance team member, I need to enter daily spot rates for all currency pair
 
 ```javascript
 // Step 1: Create EUR→USD rate for today
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "EUR",
     to_currency: "USD",
     rate: "1.0850",
     effective_date: "2025-01-15",
     rate_type: "spot",
     source: "manual"
-})
+}))
 
 // Step 2: Create GBP→USD rate for today
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "GBP",
     to_currency: "USD",
     rate: "1.2650",
     effective_date: "2025-01-15",
     rate_type: "spot",
     source: "manual"
-})
+}))
 
 // Step 3: Create JPY→USD rate for today
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "JPY",
     to_currency: "USD",
     rate: "0.0067",
     effective_date: "2025-01-15",
     rate_type: "spot",
     source: "manual"
-})
+}))
 
 // All inverse rates (USD→EUR, USD→GBP, USD→JPY) are created automatically!
 ```
@@ -708,14 +708,14 @@ As an accountant, I need to revalue foreign currency balances using monthly aver
 
 ```javascript
 // Step 1: Create monthly average rate for January 2025
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "EUR",
     to_currency: "USD",
     rate: "1.0820",  // Average of all daily rates in January
     effective_date: "2025-01-31",
     rate_type: "average",
     source: "manual"
-})
+}))
 
 // Step 2: Find the open EUR balances to revalue: the receivables and
 // payables still owed at month end. The aging reports list them with their
@@ -737,7 +737,7 @@ As a procurement manager, I have a 1-year contract with a UK supplier at a locke
 
 ```javascript
 // Create contract rate for the full year
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "GBP",
     to_currency: "USD",
     rate: "1.2800",  // Locked-in contract rate
@@ -745,7 +745,7 @@ submit("exchange_rate", "create", {
     rate_type: "contract",
     source: "manual",
     legal_entity_id: 13  // Entity-specific contract
-})
+}))
 
 // When creating AP invoices for this supplier, use contract rate
 // The system will use rate_type: "contract" for entity 13
@@ -759,23 +759,23 @@ As a finance director, I'm creating the FY2026 budget and need to use assumed ex
 
 ```javascript
 // Create budget rates for FY2026
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "EUR",
     to_currency: "USD",
     rate: "1.1000",  // Budgeted rate
     effective_date: "2026-01-01",
     rate_type: "budget",
     source: "manual"
-})
+}))
 
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "GBP",
     to_currency: "USD",
     rate: "1.3000",  // Budgeted rate
     effective_date: "2026-01-01",
     rate_type: "budget",
     source: "manual"
-})
+}))
 
 // Use budget rates for variance analysis:
 // Compare actual spot rates vs budget rates to see FX impact on budget
@@ -793,10 +793,10 @@ query("exchange_rate", filters={ from_currency: "EUR", to_currency: "USD" }, dat
 // Response shows exchange_rate_id: 42 with rate: "1.0850"
 
 // Step 2: Update the rate
-submit("exchange_rate", "update", {
+submit(object_type="exchange_rate", operation="update", data=JSON.stringify({
     exchange_rate_id: 42,
     rate: "1.0920"  // Corrected rate
-})
+}))
 // Inverse rate (USD→EUR) is automatically recalculated
 ```
 
@@ -839,14 +839,14 @@ query("exchange_rate", filters={
   date_filters={effective_date: {from: "2025-01-15", to: "2025-01-15"}})
 
 // Step 2: If no rate exists, create it
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "EUR",
     to_currency: "USD",
     rate: "1.0850",
     effective_date: "2025-01-15",
     rate_type: "spot",
     source: "manual"
-})
+}))
 
 // Step 3: Convert invoice amount
 convert_currency(amount=10000.00, from_currency="EUR", to_currency="USD", effective_date="2025-01-15")
@@ -923,14 +923,14 @@ Enter exchange rates daily (or fetch from API when integration is available) to 
 ```javascript
 // Daily rate entry routine
 ["EUR", "GBP", "JPY", "CAD", "CHF"].forEach(currency => {
-  submit("exchange_rate", "create", {
+  submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
       from_currency: currency,
       to_currency: "USD",
       rate: getRateFromExternalSource(currency),
       effective_date: today,
       rate_type: "spot",
       source: "manual"
-  })
+  }))
 })
 ```
 
@@ -967,7 +967,7 @@ Use entity-specific rates for long-term contracts to avoid affecting other entit
 
 ```javascript
 // ✅ CORRECT: Entity-specific contract rate
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "GBP",
     to_currency: "USD",
     rate: "1.2800",
@@ -975,7 +975,7 @@ submit("exchange_rate", "create", {
     rate_type: "contract",
     source: "manual",
     legal_entity_id: 13  // Only applies to entity 13
-})
+}))
 ```
 
 ### 5. Automatic Inverse Rates
@@ -984,19 +984,19 @@ The system automatically creates inverse rates. Never manually create inverse ra
 
 ```javascript
 // ✅ CORRECT: Create one direction only
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "EUR",
     to_currency: "USD",
     rate: "1.0850"
-})
+}))
 // System automatically creates USD→EUR = 0.9217
 
 // ❌ WRONG: Don't manually create inverse
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "USD",
     to_currency: "EUR",
     rate: "0.9217"  // Don't do this!
-})
+}))
 ```
 
 ### 6. Rate Precision
@@ -1071,14 +1071,14 @@ schedule_exchange_rate_updates({
 **Solution:**
 ```javascript
 // Create the missing rate
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "EUR",
     to_currency: "USD",
     rate: "1.0850",
     effective_date: "2025-01-15",
     rate_type: "spot",
     source: "manual"
-})
+}))
 ```
 
 ---
@@ -1111,17 +1111,17 @@ query("exchange_rate", filters={
 **Option 1: Update the rate (affects future transactions only)**
 ```javascript
 // Update the rate going forward
-submit("exchange_rate", "update", {
+submit(object_type="exchange_rate", operation="update", data=JSON.stringify({
     exchange_rate_id: 42,
     rate: "1.0850"  // Corrected rate
-})
+}))
 // Note: This does NOT update existing transactions
 ```
 
 **Option 2: Manual journal entry to correct transactions**
 ```javascript
 // Create correcting journal entry for FX difference
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
     transaction_type_code: "JOURNAL_ENTRY",
     transaction_date: "2025-01-15",
     description: "FX rate correction for EUR→USD",
@@ -1137,7 +1137,7 @@ submit("transaction", "post", {
         credit: 50.00
       }
     ]
-})
+}))
 ```
 
 ---
@@ -1150,7 +1150,7 @@ submit("transaction", "post", {
 
 **Solution:** Create the appropriate rate type:
 ```javascript
-submit("exchange_rate", "create", {
+submit(object_type="exchange_rate", operation="create", data=JSON.stringify({
     from_currency: "GBP",
     to_currency: "USD",
     rate: "1.2800",
@@ -1158,7 +1158,7 @@ submit("exchange_rate", "create", {
     rate_type: "contract",  // Must match transaction request
     source: "manual",
     legal_entity_id: 13
-})
+}))
 ```
 
 ---

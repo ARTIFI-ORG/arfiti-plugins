@@ -163,8 +163,8 @@ Employees can be assigned to one or more legal entities with different roles:
 **Tip:** You can have multiple addresses of different types. Use both `address_type` and boolean flags for flexibility.
 
 **How to write one:** either the `employee_addresses` block on
-`submit("employee", "create"|"update", ...)` (with `_action`: add / update /
-delete), or the dedicated `submit("employee_address", "create"|"update"|"delete", ...)`
+`submit(object_type="employee", operation="create"|"update", ...)` (with `_action`: add / update /
+delete), or the dedicated `submit(object_type="employee_address", operation="create"|"update"|"delete", ...)`
 workflow when the employee already exists. Both write the same rows. Setting
 `is_primary` clears the flag on the employee's other addresses.
 
@@ -365,7 +365,7 @@ Use the `employee.create` workflow to add new employees.
 schema = get_submissions(action='schema', object_type="employee", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("employee", "create", '{...}')
+submit(object_type="employee", operation="create", data='{...}')
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -800,7 +800,7 @@ Permanently removes all employee data:
 If a terminated employee is rehired, use the `employee.reactivate` workflow:
 
 ```javascript
-submit("employee", "reactivate", '{
+submit(object_type="employee", operation="reactivate", data='{
     "global_employee_id": "EMP-000001",
     "legal_entity_id": 13
 }')
@@ -818,7 +818,7 @@ submit("employee", "reactivate", '{
 If manager assignments become out of sync (e.g., after bulk imports or manager changes), rebuild the hierarchy tree:
 
 ```javascript
-submit("employee_hierarchy", "rebuild", '{
+submit(object_type="employee_hierarchy", operation="rebuild", data='{
     "legal_entity_id": 13
 }')
 ```
@@ -844,7 +844,7 @@ For importing multiple employees at once:
 Use the `employee.import` workflow:
 
 ```javascript
-submit("employee", "import", {
+submit(object_type="employee", operation="import", data=JSON.stringify({
     "legal_entity_id": 13,
     "records": [
       {
@@ -876,7 +876,7 @@ submit("employee", "import", {
       "stop_on_error": false,
       "validate_only": false
     }
-})
+}))
 ```
 
 ### Import Options
@@ -962,13 +962,13 @@ The importer performs comprehensive validation:
 Test your import without making changes:
 
 ```javascript
-submit("employee", "import", {
+submit(object_type="employee", operation="import", data=JSON.stringify({
     "legal_entity_id": 13,
     "records": [...],
     "options": {
       "validate_only": true
     }
-})
+}))
 ```
 
 This returns validation errors without creating any employees.
@@ -1380,10 +1380,10 @@ Universal JSONB shape that country tax-filing plugins read at filing time. No pe
 **Set it via update:**
 
 ```python
-submit("employee", "update", {
+submit(object_type="employee", operation="update", data=json.dumps({
     "employee_id": <id>,
     "metadata": { "tax_filing": { "country": "EE", "residency": "resident", "basic_exemption_code": "610" } }
-})
+}))
 ```
 
 Visible on the employee detail page → Payroll tab → "Tax filing settings" card.

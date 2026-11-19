@@ -64,8 +64,8 @@ invoice to the company is still listed for a bill session by the agent; the
 bill then settles against the posted charge through reconciliation.
 
 An external agent reaches the same outcome with `attach_receipt` (or the
-page), `read_attachment`, `submit("transaction", "post", CARD_EXPENSE with
-card_transaction_id)` and `submit("card_statement_line", "match")`.
+page), `read_attachment`, `submit(object_type="transaction", operation="post", data=…)` (a CARD_EXPENSE with
+`card_transaction_id`) and `submit(object_type="card_statement_line", operation="match")`.
 
 ## Attaching is not submitting
 
@@ -241,24 +241,24 @@ from a shared drive), file it against the charge and then submit it:
 //    resume at step 3. Use this shape when the user is doing the uploading.
 
 // 2. File it against the charge. The charge is now 'uploaded' — a draft.
-submit("card_transaction", "attach_receipt", {
+submit(object_type="card_transaction", operation="attach_receipt", data=JSON.stringify({
   card_transaction_id: 123,
   legal_entity_id: 9,
   file_name: "bolt-receipt.pdf",
   content_type: "application/pdf",
   source_url: "<the R2 reference from step 1>",
   business_purpose: "Client meeting travel"   // optional
-})
+}))
 
 // 3. SUBMIT IT. Without this the charge stays a draft and stays chased.
 //    A submission hands over ONE document. Omit receipt_ids only when the
 //    charge has exactly one receipt; with several, name the one that IS the
 //    receipt for this charge.
-submit("card_transaction", "submit_receipt", {
+submit(object_type="card_transaction", operation="submit_receipt", data=JSON.stringify({
   card_transaction_id: 123,
   legal_entity_id: 9
   // receipt_ids: [456]   // required once the charge has more than one receipt
-})
+}))
 // → { receipt_status: "processing", agent_event_ids: [...] }
 ```
 
@@ -292,11 +292,11 @@ The slip was lost, or the merchant issued none. Submit an **explanation
 instead of a document** — same operation, different field:
 
 ```javascript
-submit("card_transaction", "submit_receipt", {
+submit(object_type="card_transaction", operation="submit_receipt", data=JSON.stringify({
   card_transaction_id: 123,
   legal_entity_id: 9,
   no_receipt_reason: "Parking meter issued no receipt."
-})
+}))
 // → { receipt_status: "in_review", agent_request_id: "..." }
 ```
 
@@ -310,12 +310,12 @@ refused: a charge with a document attached needs no excuse.
 ### Deciding a no-receipt explanation (privileged roles only)
 
 ```javascript
-submit("card_transaction", "review_receipt", {
+submit(object_type="card_transaction", operation="review_receipt", data=JSON.stringify({
   card_transaction_id: 123,
   legal_entity_id: 9,
   decision: "accept"            // or "reject"
   // note: "..."                // REQUIRED when decision is "reject"
-})
+}))
 ```
 
 - **accept** → `waived`, unless a bill is genuinely applied against this
@@ -345,11 +345,11 @@ deadlocked: submit, attach, delete and review all refused it.
 ### Removing one you filed by mistake
 
 ```javascript
-submit("card_transaction", "delete_receipt", {
+submit(object_type="card_transaction", operation="delete_receipt", data=JSON.stringify({
   card_transaction_id: 123,
   receipt_id: 456,
   legal_entity_id: 9
-})
+}))
 ```
 
 All three ids must agree — a receipt is only removable through the charge it
@@ -501,9 +501,9 @@ thresholds.
 Almost always an attach with no submit. Check for `uploaded`, and submit:
 
 ```javascript
-submit("card_transaction", "submit_receipt", {
+submit(object_type="card_transaction", operation="submit_receipt", data=JSON.stringify({
   card_transaction_id: 123, legal_entity_id: 9
-})
+}))
 ```
 
 ### "The receipt does not match the charge"

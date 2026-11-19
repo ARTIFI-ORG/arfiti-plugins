@@ -426,7 +426,7 @@ customer_item_pricing (
 schema = get_submissions(action='schema', object_type="customer_item_pricing", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("customer_item_pricing", "create", {
+submit(object_type="customer_item_pricing", operation="create", data=JSON.stringify({
     "legal_entity_id": 13,
     "customer_id": 456,
     "item_id": 101,
@@ -434,7 +434,7 @@ submit("customer_item_pricing", "create", {
     "effective_from": "2025-01-01",
     "effective_to": "2025-12-31",
     "notes": "Annual volume discount - 20% off"
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -619,10 +619,10 @@ Reversal-and-rebill is supported: once the original transaction is reversed (sta
 `billing_run.cancel` automates reverse-and-rebill. For the given run it reverses every posted invoice, rolls each affected contract's `next_billing_date` back to that run's `period_start` (and clears `last_billed_date`), and marks the run cancelled. A later `billing_run.execute` then re-bills the same period with convention-correct dates (see `billing_timing`).
 
 ```python
-submit("billing_run", "cancel", {
+submit(object_type="billing_run", operation="cancel", data=json.dumps({
     "billing_run_id": 123,
     "cancel_reason": "Wrong invoice date — re-billing"  # optional
-})
+}))
 ```
 
 - **Atomic:** the reversals run inside the cancel's transaction — if any step fails, the whole cancel rolls back (no partial state).
@@ -640,10 +640,10 @@ submit("billing_run", "cancel", {
 `billing_run.delete` is the housekeeping counterpart to cancel: where cancel keeps the run as history, delete removes the run record and its `billing_run_contracts` junction rows entirely — for purging cancelled/failed/phantom runs that clutter the billing-runs list.
 
 ```python
-submit("billing_run", "delete", {
+submit(object_type="billing_run", operation="delete", data=json.dumps({
     "billing_run_id": 11,
     "delete_reason": "Phantom €0 run — clutter"  # optional
-})
+}))
 # Returns: { "success": true, "deleted": true, "run_number": "BR-000010", ... }
 ```
 
@@ -669,7 +669,7 @@ Applies to both `usage` and `fixed` line types. Tier name (when present) appears
 
 No template syntax to learn — the engine unconditionally appends `(period_start to period_end)` after whatever's in `recurring_contract_lines.item_description`. Matches the convention used by NetSuite, Xero, and QuickBooks for subscription/recurring lines.
 
-To rewrite the line description on an already-issued invoice (e.g. bare lines from before this change), use `submit("transaction", "update", {...})`.
+To rewrite the line description on an already-issued invoice (e.g. bare lines from before this change), use `submit(object_type="transaction", operation="update", data='{...}')`.
 
 ### Customer Data Propagation
 
@@ -725,19 +725,19 @@ If `unit_of_measure` is not provided in the payload, it auto-populates from the 
 
 **Example: Single Usage Record**
 ```javascript
-submit("contract_usage", "record", {
+submit(object_type="contract_usage", operation="record", data=JSON.stringify({
     "contract_line_id": 456,
     "usage_date": "2025-01-15",           // Maps to usage_period_start
     "quantity": 4,
     "unit_of_measure": "entities",         // Optional if line has usage_metric set
     "external_reference_id": "usage-2025-01-15-entities",  // Deduplication
     "source": "api"                        // Optional: workflow, api, import
-})
+}))
 ```
 
 **Example: Batch Import (1000+ records)**
 ```javascript
-submit("contract_usage", "batch_record", {
+submit(object_type="contract_usage", operation="batch_record", data=JSON.stringify({
     "legal_entity_id": 13,
     "source_system": "metrics_api",        // Identifies the source
     "batch_description": "January API usage import",
@@ -756,7 +756,7 @@ submit("contract_usage", "batch_record", {
             "unit_of_measure": "api_calls"
         }
     ]
-})
+}))
 
 // Response:
 {
@@ -935,21 +935,21 @@ Tier: Standard ($0.10 per API call)
 **Recording Usage for Tier Matching:**
 ```javascript
 // Record entity count
-submit("contract_usage", "record", {
+submit(object_type="contract_usage", operation="record", data=JSON.stringify({
         "contract_line_id": 456,
         "usage_date": "2025-01-15",
         "quantity": 4,                          // Customer has 4 entities
         "unit_of_measure": "entities"           // Metric name matches tier condition
-    })
+    }))
 )
 
 // Record storage usage
-submit("contract_usage", "record", {
+submit(object_type="contract_usage", operation="record", data=JSON.stringify({
         "contract_line_id": 456,
         "usage_date": "2025-01-15",
         "quantity": 2.5,
         "unit_of_measure": "storage_gb"
-    })
+    }))
 )
 ```
 
@@ -1109,7 +1109,7 @@ correct price applies from (Andrew, 1 and 3 Nov 2026):
 ### Amendment Workflow
 
 ```javascript
-submit("recurring_contract", "amend", {
+submit(object_type="recurring_contract", operation="amend", data=JSON.stringify({
     "contract_id": 789,
     "amendment_type": "upgrade",
     "effective_date": "2025-01-15",
@@ -1118,7 +1118,7 @@ submit("recurring_contract", "amend", {
     ],
     "prorate": true,
     "amendment_reason": "Customer upgraded to Premium"
-})
+}))
 ```
 
 ---
@@ -1129,21 +1129,21 @@ submit("recurring_contract", "amend", {
 
 ```javascript
 // Give ACME Corp 20% off Widget Pro
-submit("customer_item_pricing", "create", {
+submit(object_type="customer_item_pricing", operation="create", data=JSON.stringify({
     "legal_entity_id": 13,
     "customer_id": 456,
     "item_id": 101,
     "discount_percent": 20.00,
     "effective_from": "2025-01-01",
     "notes": "Key account discount"
-})
+}))
 ```
 
 ### Use Case 2: Monthly SaaS Subscription
 
 ```javascript
 // 1. Create contract
-submit("recurring_contract", "create", {
+submit(object_type="recurring_contract", operation="create", data=JSON.stringify({
     "legal_entity_id": 13,
     "customer_id": 456,
     "contract_name": "Standard SaaS Plan",
@@ -1151,29 +1151,29 @@ submit("recurring_contract", "create", {
     "billing_frequency": "monthly",
     "currency_code": "USD",
     "auto_renew": true
-})
+}))
 
 // 2. Add subscription line
-submit("contract_line", "create", {
+submit(object_type="contract_line", operation="create", data=JSON.stringify({
     "contract_id": 789,
     "master_item_id": 101,
     "line_type": "fixed",
     "item_description": "Standard Plan",
     "unit_price": 100.00,
     "gl_account_number": "4000"
-})
+}))
 
 // 3. Activate contract
-submit("recurring_contract", "activate", {
+submit(object_type="recurring_contract", operation="activate", data=JSON.stringify({
     "contract_id": 789
-})
+}))
 ```
 
 ### Use Case 3: API Platform with Usage
 
 ```javascript
 // Add usage-based line with overage pricing
-submit("contract_line", "create", {
+submit(object_type="contract_line", operation="create", data=JSON.stringify({
     "contract_id": 789,
     "master_item_id": 102,
     "line_type": "tiered",
@@ -1183,26 +1183,26 @@ submit("contract_line", "create", {
         {"min_quantity": 0, "max_quantity": 10000, "price": 0.00},
         {"min_quantity": 10001, "max_quantity": null, "price": 0.10}
     ]
-})
+}))
 
 // Result:
 // - 8,000 calls = $0 (included)
 // - 15,000 calls = 5,000 overage x $0.10 = $500
 
 // Record usage data daily
-submit("contract_usage", "record", {
+submit(object_type="contract_usage", operation="record", data=JSON.stringify({
     "contract_line_id": line_id,
     "usage_date": "2025-01-15",
     "quantity": 1250,
     "external_reference_id": "api-2025-01-15"
-})
+}))
 ```
 
 ### Use Case 4: Prepaid Wallet
 
 ```javascript
 // Create wallet with $5,000 and auto-reload
-submit("prepaid_wallet", "create", {
+submit(object_type="prepaid_wallet", operation="create", data=JSON.stringify({
     "customer_id": 456,
     "legal_entity_id": 13,
     "currency_code": "USD",
@@ -1210,19 +1210,19 @@ submit("prepaid_wallet", "create", {
     "auto_reload": true,
     "reload_threshold": 1000.00,
     "reload_amount": 5000.00
-})
+}))
 ```
 
 ### Use Case 5: Run Monthly Billing
 
 ```javascript
 // Generate all monthly invoices for a legal entity
-submit("billing_run", "execute", {
+submit(object_type="billing_run", operation="execute", data=JSON.stringify({
     "legal_entity_id": 1,
     "billing_date": "2025-01-01",
     "auto_post_invoices": true,
     "notes": "January monthly billing run"
-})
+}))
 ```
 
 ---
@@ -1759,8 +1759,8 @@ A platform checkout (Stripe today) needs five choices: payment terms, the
 dunning schedule, which items the plan and add-ons are, their revenue accounts,
 and the tax code for the customer. They come from one setting on the billing
 entity, `config_settings` key `platform_billing`, edited through
-`submit("config_setting", "create" | "update", {"legal_entity_id": <billing entity>,
-"config_key": "platform_billing", "config_value": {...}})`:
+`submit(object_type="config_setting", operation="create" | "update", data=JSON.stringify({"legal_entity_id": <billing entity>,
+"config_key": "platform_billing", "config_value": {...}}))`:
 
 - `payment_terms_code` and `dunning_schedule_days` (positive whole days in
   ascending order);

@@ -1332,11 +1332,11 @@ Real indexed column. Country tax-filing plugins translate the slug to a country-
 **Override** by passing `payment_classification_slug` explicitly:
 
 ```python
-submit("employee_compensation", "create", {
+submit(object_type="employee_compensation", operation="create", data=json.dumps({
     "employee_id": 50, "compensation_type": "salary",
     "payment_classification_slug": "board_fee",   # explicit — for board members
     ...
-})
+}))
 ```
 
 ### `master_employees.metadata.tax_filing.*`
@@ -1350,7 +1350,7 @@ Per-employee filing attributes:
 - `pension_fund_id` (FK to master_vendors)
 - `tax_treaty_country`, `treaty_rate_override`
 
-Set via `submit("employee", "update", { metadata: { tax_filing: { ... } } })`. Country plugins fall back to sensible defaults when fields are missing; explicit values are recommended for production filings.
+Set via `submit(object_type="employee", operation="update", data=JSON.stringify({ metadata: { tax_filing: { ... } } }))`. Country plugins fall back to sensible defaults when fields are missing; explicit values are recommended for production filings.
 
 ### `DIVIDEND_PAYMENT` transaction type
 

@@ -2,8 +2,8 @@
 
 This resource explains how to process multiple transactions at once using the import workflow. Use this when a user provides a CSV file, PDF with multiple invoices, or verbally describes a batch of transactions.
 
-> **CRITICAL: For 4+ transactions, ALWAYS use `submit("transaction", "import", {"records": [...], "legal_entity_id": 12})`.
-> NEVER loop `submit("transaction", "post", {...})` for multiple transactions.
+> **CRITICAL: For 4+ transactions, ALWAYS use `submit(object_type="transaction", operation="import", data=JSON.stringify({"records": [...], "legal_entity_id": 12}))`.
+> NEVER loop `submit(object_type="transaction", operation="post", data='{...}')` for multiple transactions.
 > The import system is 10x faster: pre-cached lookups, batch validation, async processing, dimension caching.
 > Looping individual posts has no caching and processes each record from scratch.**
 
@@ -14,7 +14,7 @@ This resource explains how to process multiple transactions at once using the im
 The bulk import system handles ALL transaction types through a single entry point:
 
 ```
-submit("transaction", "import", {"records": [...], "legal_entity_id": 12})
+submit(object_type="transaction", operation="import", data=JSON.stringify({"records": [...], "legal_entity_id": 12}))
   -> ImportExecutor -> TransactionImporter -> Per-record executor -> GL Posting
 ```
 
@@ -41,7 +41,7 @@ submit("transaction", "import", {"records": [...], "legal_entity_id": 12})
 | Data migration from external system | Map fields → use external_id references → import |
 | Monthly recurring entries | Build from template → import batch |
 
-**For 1-3 transactions**, use individual `submit("transaction", "post", {...})` calls instead.
+**For 1-3 transactions**, use individual `submit(object_type="transaction", operation="post", data='{...}')` calls instead.
 
 ---
 
@@ -52,7 +52,7 @@ submit("transaction", "import", {"records": [...], "legal_entity_id": 12})
 schema = get_submissions(action='schema', object_type="transaction", operation="import")
 
 // Step 2: Submit with discovered fields
-submit("transaction", "import", {
+submit(object_type="transaction", operation="import", data=JSON.stringify({
     legal_entity_id: 12,
     records: [
       {
@@ -92,7 +92,7 @@ submit("transaction", "import", {
         }
       }
     }
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -190,11 +190,11 @@ All 30+ types defined in the transaction workflow definition are supported. Comm
 Before importing, run a preflight check to discover required fields for a transaction type. Required fields are company-specific (configured in the workflow definition), so always check before building records.
 
 ```javascript
-submit("transaction", "import", {
+submit(object_type="transaction", operation="import", data=JSON.stringify({
     _operation: "preflight",
     transaction_type_code: "AP_INVOICE",
     legal_entity_id: 12
-})
+}))
 // Returns: required_header_fields, required_line_fields,
 //          optional_header_fields, optional_line_fields
 ```
@@ -274,7 +274,7 @@ Shall I proceed with the import?
 ### Step 5: Submit Import
 
 ```javascript
-submit("transaction", "import", {
+submit(object_type="transaction", operation="import", data=JSON.stringify({
     legal_entity_id: 12,
     records: records,
     options: {
@@ -285,7 +285,7 @@ submit("transaction", "import", {
         dimensions: { location: "TLL" }
       }
     }
-})
+}))
 ```
 
 ### Step 6: Report Results
@@ -321,13 +321,13 @@ For PDF invoices, process one at a time with attachment:
 ```javascript
 // For each extracted invoice:
 // 1. Post the transaction
-submit("transaction", "post", { ... })
+submit(object_type="transaction", operation="post", data='{ ... }')
 
 // 2. Create attachment metadata
-submit("attachment", "create", { ... })
+submit(object_type="attachment", operation="create", data='{ ... }')
 
 // 3. Generate upload link
-submit("attachment", "generate_upload_url", { ... })
+submit(object_type="attachment", operation="generate_upload_url", data='{ ... }')
 ```
 
 **See**: [Document Attachments](document-attachments.md) for the complete 5-step attachment workflow.
@@ -389,14 +389,14 @@ Import vendors, customers, employees, accounts with `external_id` in metadata:
 
 ```javascript
 // Import vendors with external IDs
-submit("vendor", "import", {
+submit(object_type="vendor", operation="import", data=JSON.stringify({
     records: [{
       vendor_name: "Acme Corp",
       email: "ap@acme.com",
       payment_terms_code: "NET30",
       metadata: { external_id: "QB-VEND-1234" }
     }]
-})
+}))
 ```
 
 ### Step 2: Import Transactions Using External IDs
@@ -404,7 +404,7 @@ submit("vendor", "import", {
 Reference entities by their external IDs:
 
 ```javascript
-submit("transaction", "import", {
+submit(object_type="transaction", operation="import", data=JSON.stringify({
     legal_entity_id: 12,
     records: [{
       transaction_type_code: "AP_INVOICE",
@@ -422,7 +422,7 @@ submit("transaction", "import", {
       }]
     }],
     options: { on_duplicate: "skip" }
-})
+}))
 ```
 
 **Supported external ID fields:**
@@ -529,11 +529,11 @@ MCP has a 30-second timeout. Each transaction involves 30-50 database queries (v
 
 ```javascript
 // Step 1: Submit large import (>50 records)
-const result = submit("transaction", "import", {
+const result = submit(object_type="transaction", operation="import", data=JSON.stringify({
     legal_entity_id: 12,
     records: largeRecordArray,  // 200 records
     options: { on_duplicate: "skip" }
-})
+}))
 // Returns: { success: true, import_id: "uuid", async: true, status: "importing",
 //            message: "Import of 200 transaction records started in background..." }
 

@@ -57,13 +57,13 @@ Lanes are assigned by your organisation's workflow rules; the submit() result is
 Use when allocating GL balances without linking to a specific source transaction.
 
 ```
-submit("allocation_run", "create", {
+submit(object_type="allocation_run", operation="create", data=JSON.stringify({
     "legal_entity_id": 12,
     "run_date": "2026-03-16",
     "period_name": "2026-03",
     "description": "March IT overhead allocation",
     "allocation_type": "cost_allocation"
-})
+}))
 ```
 
 ### Document-Linked (From Source Transaction)
@@ -71,14 +71,14 @@ submit("allocation_run", "create", {
 Use when allocating costs from a specific document (e.g., AP invoice). Provides full traceability and prevents double-allocation.
 
 ```
-submit("allocation_run", "create", {
+submit(object_type="allocation_run", operation="create", data=JSON.stringify({
     "legal_entity_id": 12,
     "run_date": "2026-03-16",
     "period_name": "2026-03",
     "description": "Allocate Slack costs from EE-BILL000527",
     "allocation_type": "cost_allocation",
     "source_transaction_id": 1002
-})
+}))
 ```
 
 Returns `source_transaction_number` for confirmation.
@@ -135,7 +135,7 @@ Returns `source_transaction_number` for confirmation.
 ### Example: Fixed Percentage Split
 
 ```
-submit("allocation_run", "submit_lines", {
+submit(object_type="allocation_run", operation="submit_lines", data=JSON.stringify({
     "allocation_run_id": 42,
     "lines": [
         {
@@ -173,7 +173,7 @@ submit("allocation_run", "submit_lines", {
             "dimension_1_value": "SALES"
         }
     ]
-})
+}))
 ```
 
 ---
@@ -183,13 +183,13 @@ submit("allocation_run", "submit_lines", {
 ### Approve
 
 ```
-submit("allocation_run", "approve", {"allocation_run_id": 42})
+submit(object_type="allocation_run", operation="approve", data=JSON.stringify({"allocation_run_id": 42}))
 ```
 
 ### Execute (Post GL Entry)
 
 ```
-submit("allocation_run", "execute", {"allocation_run_id": 42})
+submit(object_type="allocation_run", operation="execute", data=JSON.stringify({"allocation_run_id": 42}))
 ```
 
 Maps allocation_type to transaction type:
@@ -202,10 +202,10 @@ Returns `transaction_id` and `transaction_number` of the posted GL journal entry
 ### Void (Reverse)
 
 ```
-submit("allocation_run", "void", {
+submit(object_type="allocation_run", operation="void", data=JSON.stringify({
     "allocation_run_id": 42,
     "void_reason": "Incorrect percentages, will recalculate"
-})
+}))
 ```
 
 Creates a reversing GL journal entry. Frees up source account amounts for re-allocation.
@@ -213,10 +213,10 @@ Creates a reversing GL journal entry. Frees up source account amounts for re-all
 ### Reject
 
 ```
-submit("allocation_run", "reject", {
+submit(object_type="allocation_run", operation="reject", data=JSON.stringify({
     "allocation_run_id": 42,
     "rejection_reason": "Percentages don't match board-approved split"
-})
+}))
 ```
 
 ---
@@ -229,19 +229,19 @@ A source transaction with multiple expense lines can be allocated independently 
 # Invoice has: Account 60002 = 120.00, Account 61000 = 350.00
 
 # Allocation run 1: Allocate only account 60002
-submit("allocation_run", "create", {
+submit(object_type="allocation_run", operation="create", data=JSON.stringify({
     "legal_entity_id": 12,
     "run_date": "2026-03-16",
     "source_transaction_id": 2001
-})
+}))
 # Submit lines with source account_number: "60002"
 
 # Allocation run 2: Allocate only account 61000 (later)
-submit("allocation_run", "create", {
+submit(object_type="allocation_run", operation="create", data=JSON.stringify({
     "legal_entity_id": 12,
     "run_date": "2026-03-20",
     "source_transaction_id": 2001  # Same source, different account
-})
+}))
 # Submit lines with source account_number: "61000"
 ```
 

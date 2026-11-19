@@ -28,14 +28,14 @@ a dimension, not a custom field (dimensions-management resource).
 ## Define a field (admin)
 
 ```javascript
-submit("custom_field", "create", {
+submit(object_type="custom_field", operation="create", data=JSON.stringify({
   "key": "po_reference",            // lowercase letters, digits, _; starts with a letter
   "label": "PO reference",
   "field_type": "text",             // text | decimal | boolean | date | choice
   "applies_to": ["transaction"],
   "transaction_types": ["AP_INVOICE", "AP_CREDIT_MEMO"],   // optional, transactions only
   "constraints": {"max_length": 40}
-})
+}))
 ```
 
 - Types and limits: `text` (`max_length`), `decimal` (`scale`, `min`, `max`;
@@ -58,10 +58,10 @@ submit("custom_field", "create", {
 ## Set values
 
 ```javascript
-submit("customer", "create", {..., "custom_fields": {"contract_number": "C-2026-017"}})
-submit("customer", "update", {"customer_id": 42,
+submit(object_type="customer", operation="create", data=JSON.stringify({..., "custom_fields": {"contract_number": "C-2026-017"}}))
+submit(object_type="customer", operation="update", data=JSON.stringify({"customer_id": 42,
                               "custom_fields": {"credit_score": "720.50"},
-                              "custom_fields_clear": ["review_date"]})
+                              "custom_fields_clear": ["review_date"]}))
 ```
 
 - A write is a **patch**: keys left out are unchanged. `custom_fields_clear`
@@ -92,9 +92,9 @@ submit("customer", "update", {"customer_id": 42,
   `edit_reason`):
 
   ```javascript
-  submit("transaction", "update", {"transaction_id": 123, "legal_entity_id": 10,
+  submit(object_type="transaction", operation="update", data=JSON.stringify({"transaction_id": 123, "legal_entity_id": 10,
                                    "custom_fields": {"po_reference": "PO-4471"},
-                                   "edit_reason": "PO number corrected"})
+                                   "edit_reason": "PO number corrected"}))
   ```
 
   Allowed in an open, closed or VAT-locked period; it changes nothing else and
@@ -134,7 +134,7 @@ query("project", filters={"custom_fields.sponsor": {"exists": True}})
   "winner" | "loser"}`.
 - History: master records' changes are in `query("master_activity")` (employee
   personal data masked); transaction corrections are in the transaction's
-  activity. Erasure requests use `submit("master_activity", "redact", …)`.
+  activity. Erasure requests use `submit(object_type="master_activity", operation="redact", …)`.
 
 ## In the dashboard
 

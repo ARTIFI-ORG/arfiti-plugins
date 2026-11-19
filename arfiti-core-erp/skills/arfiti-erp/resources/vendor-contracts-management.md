@@ -193,15 +193,15 @@ After 12 months: schedule status = 'completed'
 
 | Tool | Purpose |
 |------|---------|
-| `submit("recurring_contract", "create", {...})` | Create a vendor contract |
-| `submit("recurring_contract", "update", {...})` | Update contract details |
-| `submit("recurring_contract", "terminate", {...})` | Terminate a vendor contract |
-| `submit("recurring_contract", "renew", {...})` | Renew an expired contract |
-| `submit("recurring_contract", "delete", {contract_id, deletion_reason})` | Delete a contract that never billed and has nothing recorded against it (needs `ap:write`); any other contract is refused with the reason: terminate it instead |
-| `submit("amortization_schedule", "create", {...})` | Create an expense amortization schedule |
-| `submit("amortization_schedule", "recognize", {...})` | Run recognition (post JEs for due periods) |
-| `submit("amortization_schedule", "update", {...})` | Update schedule accounts or description |
-| `submit("amortization_schedule", "cancel", {...})` | Cancel outstanding planned lines |
+| `submit(object_type="recurring_contract", operation="create", data='{...}')` | Create a vendor contract |
+| `submit(object_type="recurring_contract", operation="update", data='{...}')` | Update contract details |
+| `submit(object_type="recurring_contract", operation="terminate", data='{...}')` | Terminate a vendor contract |
+| `submit(object_type="recurring_contract", operation="renew", data='{...}')` | Renew an expired contract |
+| `submit(object_type="recurring_contract", operation="delete", data=JSON.stringify({contract_id, deletion_reason}))` | Delete a contract that never billed and has nothing recorded against it (needs `ap:write`); any other contract is refused with the reason: terminate it instead |
+| `submit(object_type="amortization_schedule", operation="create", data='{...}')` | Create an expense amortization schedule |
+| `submit(object_type="amortization_schedule", operation="recognize", data='{...}')` | Run recognition (post JEs for due periods) |
+| `submit(object_type="amortization_schedule", operation="update", data='{...}')` | Update schedule accounts or description |
+| `submit(object_type="amortization_schedule", operation="cancel", data='{...}')` | Cancel outstanding planned lines |
 | `get_entity("recurring_contract", id=X)` | Get contract details |
 | `query("recurring_contract", filters={"legal_entity_id": X})` | List contracts (`party_type` is not a query filter: customer and vendor contracts come back together) |
 | `generate_report("amortization_schedule", {"kind": "expense", ...})` | List/summarize expense schedules |
@@ -224,7 +224,7 @@ vendors = query("vendor", query="Anthropic", filters={"legal_entity_id": 75})
 vendor_id = vendors.results[0].master_vendor_id
 
 // Step 3: Create the contract
-submit("recurring_contract", "create", {
+submit(object_type="recurring_contract", operation="create", data=JSON.stringify({
   party_type: "vendor",
   vendor_id: vendor_id,
   legal_entity_id: 75,
@@ -235,7 +235,7 @@ submit("recurring_contract", "create", {
   total_contract_value: 12000.00,
   currency_code: "EUR",
   notes: "Prepaid annual API credits"
-})
+}))
 // Returns: { recurring_contract_id: 5, contract_number: "CON-000002", party_type: "vendor" }
 ```
 
@@ -267,7 +267,7 @@ accounts = query("account", query="software", filters={"legal_entity_id": 75})
 expense_account_id = accounts.results[0].master_account_id  // 6960 Software & Subscriptions
 
 // Step 3: Create the schedule
-submit("amortization_schedule", "create", {
+submit(object_type="amortization_schedule", operation="create", data=JSON.stringify({
   kind: "expense",                          // revenue or expense
   schedule_type: "straight_line",
   legal_entity_id: 75,
@@ -283,7 +283,7 @@ submit("amortization_schedule", "create", {
   description: "Amortize annual Claude API subscription",
   // Optional: dimensions snapshot (auto-resolved from source line if omitted)
   dimensions: { "department": "ENG", "project": "INFRA" }
-})
+}))
 // Returns schedule_id, schedule_code, periods, total_amount, first_period_amount,
 // period_amounts: [{period_start, period_end, amount}, ...], status.
 // amount_per_period is null when period amounts differ (daily proration/stubs).
@@ -327,11 +327,11 @@ Recognition posts journal entries for all schedule lines with `period_end <= as_
 
 ```javascript
 // Recognize due expense lines for entity 75 through February
-submit("amortization_schedule", "recognize", {
+submit(object_type="amortization_schedule", operation="recognize", data=JSON.stringify({
   legal_entity_id: 75,
   as_of_date: "2025-02-28",
   kind_filter: "expense"
-})
+}))
 // Returns: { run_id, run_number, status, recognized_count, total_amount,
 //            posted_transactions, errors, ... }
 // Amounts follow the actual daily-prorated schedule lines.
@@ -339,21 +339,21 @@ submit("amortization_schedule", "recognize", {
 
 **Targeted recognition** (for retries or specific schedules):
 ```javascript
-submit("amortization_schedule", "recognize", {
+submit(object_type="amortization_schedule", operation="recognize", data=JSON.stringify({
   legal_entity_id: 75,
   as_of_date: "2025-06-30",
   schedule_ids: [3],                // only this schedule
   kind_filter: "expense"            // only expense schedules
-})
+}))
 ```
 
 **Dry run** (preview without posting):
 ```javascript
-submit("amortization_schedule", "recognize", {
+submit(object_type="amortization_schedule", operation="recognize", data=JSON.stringify({
   legal_entity_id: 75,
   as_of_date: "2025-12-31",
   dry_run: true
-})
+}))
 // Returns lines_to_process count + preview, no JEs posted, still creates a runs row
 ```
 
@@ -429,8 +429,8 @@ A vendor sends a 12-month software license invoice. The bill processor handles t
 
 For a prepaid expense that wasn't auto-detected (e.g., paid via bank transfer, not a vendor bill):
 
-1. Create the vendor contract: `submit("recurring_contract", "create", {...})`
-2. Create the schedule: `submit("amortization_schedule", "create", {...})`
+1. Create the vendor contract: `submit(object_type="recurring_contract", operation="create", data='{...}')`
+2. Create the schedule: `submit(object_type="amortization_schedule", operation="create", data='{...}')`
 3. Recognition runs automatically on the 1st of each month
 
 ### Scenario 3: Check amortization status
@@ -449,11 +449,11 @@ generate_report("amortization_schedule", {
 The vendor contract was terminated early. Cancel the remaining planned lines:
 
 ```javascript
-submit("amortization_schedule", "cancel", {
+submit(object_type="amortization_schedule", operation="cancel", data=JSON.stringify({
   schedule_id: 3,
   cancellation_reason: "Vendor contract terminated early",
   void_pending_lines: true
-})
+}))
 ```
 
 ### Scenario 5: Recognition fails due to missing fiscal period
@@ -473,11 +473,11 @@ Amortization schedules inherit dimensions from the source transaction line:
 
 ```javascript
 // Create a schedule with explicit dimensions
-submit("amortization_schedule", "create", {
+submit(object_type="amortization_schedule", operation="create", data=JSON.stringify({
   kind: "expense",
   dimensions: { "department": "ENG", "project": "ALPHA" },
   // ... other fields
-})
+}))
 ```
 
 Both the debit (expense) and credit (prepaid) legs of every recognition JE carry the same dimensions. This ensures:

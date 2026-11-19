@@ -58,7 +58,7 @@ Lanes are assigned by your organisation's workflow rules; the submit() result is
 After calculating the return data (KMD lines, VAT boxes, sales tax summary, etc.):
 
 ```
-submit("tax_return", "create", {
+submit(object_type="tax_return", operation="create", data=JSON.stringify({
     "legal_entity_id": 1,
     "return_type": "vat_return",
     "reporting_period_id": 45,
@@ -75,7 +75,7 @@ submit("tax_return", "create", {
         "filing_instructions": { ... }
     },
     "notes": "March 2026 VAT return - calculated by the country plugin"
-})
+}))
 ```
 
 Returns: `{ "success": true, "tax_return_id": 5, "status": "draft" }`
@@ -102,7 +102,7 @@ get_entity("tax_return", id=5)
 ### When Net VAT is Payable (Output > Input)
 
 ```
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
     "transaction_type_code": "JOURNAL_ENTRY",
     "legal_entity_id": 12,
     "description": "VAT closing - 2026/03",
@@ -112,7 +112,7 @@ submit("transaction", "post", {
         { "account_number": "1410", "debit": 0, "credit": 1800.00 },
         { "account_number": "2215", "debit": 0, "credit": 600.00 }
     ]
-})
+}))
 ```
 
 Where (example account numbers; use the entity's own VAT accounts):
@@ -123,7 +123,7 @@ Where (example account numbers; use the entity's own VAT accounts):
 ### When Net VAT is Overpaid (Input > Output)
 
 ```
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
     "transaction_type_code": "JOURNAL_ENTRY",
     "legal_entity_id": 12,
     "description": "VAT closing - 2026/03 (overpaid)",
@@ -133,7 +133,7 @@ submit("transaction", "post", {
         { "account_number": "1415", "debit": 400.00, "credit": 0 },
         { "account_number": "1410", "debit": 0, "credit": 1600.00 }
     ]
-})
+}))
 ```
 
 Where `1415` = VAT Receivable from tax authority.
@@ -145,12 +145,12 @@ Where `1415` = VAT Receivable from tax authority.
 After uploading XML/forms to the tax authority portal and receiving confirmation:
 
 ```
-submit("tax_return", "file", {
+submit(object_type="tax_return", operation="file", data=JSON.stringify({
     "return_id": 5,
     "confirmation_number": "<the authority's receipt reference>",
     "filing_date": "2026-04-18",
     "notes": "Filed via the tax authority portal"
-})
+}))
 ```
 
 This updates:

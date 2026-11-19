@@ -23,7 +23,7 @@ If a country has **zero** rows, the catalog hasn't been seeded for this org. Thi
 The `tax_filing_forms` catalog is writable through the standard `submit()` gateway — no deploy, no admin action. Register each form the country files:
 
 ```python
-submit("tax_filing_form", "create", json.dumps({
+submit(object_type="tax_filing_form", operation="create", data=json.dumps({
     "country_code": "EE",                 # ISO 3166-1 alpha-2 (required)
     "form_code": "TSD",                   # the return_type code (required)
     "tax_authority_id": 91,               # from query("tax_authority")
@@ -72,7 +72,7 @@ external_code = classifications["results"][0]["external_code"]   # e.g. "10" for
 ## Submit a return (universal — same call regardless of country)
 
 ```python
-submit("tax_return", "create", json.dumps({
+submit(object_type="tax_return", operation="create", data=json.dumps({
     "legal_entity_id": <id>,
     "return_type": "<form_code>",        # must match a row in tax_filing_forms (TSD, INF1, KMD, 1099-NEC, P11D, RTI, ...)
     "tax_authority_id": <id>,            # from master_tax_authorities
@@ -85,7 +85,7 @@ The validator checks `return_type` against `tax_filing_forms` for the country. I
 ## Mark as filed after upload
 
 ```python
-submit("tax_return", "file", json.dumps({
+submit(object_type="tax_return", operation="file", data=json.dumps({
     "return_id": <id>,
     "confirmation_number": "<from portal>",
     "filing_date": "YYYY-MM-DD"

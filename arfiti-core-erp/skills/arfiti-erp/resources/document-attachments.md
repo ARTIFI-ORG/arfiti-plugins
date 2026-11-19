@@ -18,9 +18,9 @@ not grant a task agent permission to inspect arbitrary files.
 **ALWAYS follow this workflow when a user uploads a document to the chat:**
 
 1. **Analyze** the document (extract vendor, amounts, dates, line items)
-2. **Identify the existing target first.** For a card purchase, inspect its linked bills and attach missing original evidence to the correct existing bill or provider card row through the supported attachment/receipt workflow. Do not create another AP invoice to satisfy a receipt obligation. Create a transaction via `submit("transaction", "post", {...})` only when the document represents a genuinely new, unrecorded transaction.
-3. **Create attachment** with extracted metadata via `submit("attachment", "create", {...})`
-4. **Generate upload link** via `submit("attachment", "generate_upload_url", {...})`
+2. **Identify the existing target first.** For a card purchase, inspect its linked bills and attach missing original evidence to the correct existing bill or provider card row through the supported attachment/receipt workflow. Do not create another AP invoice to satisfy a receipt obligation. Create a transaction via `submit(object_type="transaction", operation="post", data='{...}')` only when the document represents a genuinely new, unrecorded transaction.
+3. **Create attachment** with extracted metadata via `submit(object_type="attachment", operation="create", data='{...}')`
+4. **Generate upload link** via `submit(object_type="attachment", operation="generate_upload_url", data='{...}')`
 5. **Attach the original file.** Route on ONE question:
 
    > **Who is holding the bytes right now, and what can they run?**
@@ -72,10 +72,10 @@ Use this when a user:
 
 | Operation | Tool | Example |
 |-----------|------|---------|
-| Create attachment | `submit` | `submit("attachment", "create", {...})` |
-| Generate upload link | `submit` | `submit("attachment", "generate_upload_url", {...})` |
-| Confirm upload | `submit` | `submit("attachment", "confirm_upload", {...})` |
-| Delete attachment | `submit` | `submit("attachment", "delete", {...})` |
+| Create attachment | `submit` | `submit(object_type="attachment", operation="create", data='{...}')` |
+| Generate upload link | `submit` | `submit(object_type="attachment", operation="generate_upload_url", data='{...}')` |
+| Confirm upload | `submit` | `submit(object_type="attachment", operation="confirm_upload", data='{...}')` |
+| Delete attachment | `submit` | `submit(object_type="attachment", operation="delete", data='{...}')` |
 | Read a stored document | `read_attachment` | `read_attachment(storage_url=..., content_type="application/pdf")` |
 | Search attachments | `query` | `query("attachment", query="invoice", {...})` |
 | Get attachment | `get` | `get("attachment", 123)` |
@@ -100,36 +100,36 @@ When a user uploads a file directly to Claude.ai:
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  STEP 2: Create Transaction                                  │
-│  submit("transaction", "post", {                            │
+│  submit(object_type="transaction", operation="post", data=JSON.stringify({                            │
 │    transaction_type_code: "AP_INVOICE",                     │
 │    vendor_id: ..., invoice_number: ..., lines: [...]        │
-│  })                                                          │
+│  }))                                                          │
 │  → Returns: transaction_id                                   │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  STEP 3: Create Attachment (Metadata Only)                   │
-│  submit("attachment", "create", {                           │
+│  submit(object_type="attachment", operation="create", data=JSON.stringify({                           │
 │    entity_type: "AP_INVOICE",                               │
 │    entity_id: <transaction_id>,                             │
 │    file_name: "invoice.pdf",                                │
 │    extracted_text: "...",                                   │
 │    extracted_amounts: {...},                                │
 │    extracted_metadata: {...}                                │
-│  })                                                          │
+│  }))                                                          │
 │  → Returns: attachment_id                                    │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  STEP 4: Generate Upload Link                                │
-│  submit("attachment", "generate_upload_url", {              │
+│  submit(object_type="attachment", operation="generate_upload_url", data=JSON.stringify({              │
 │    attachment_id: <attachment_id>,                          │
 │    legal_entity_id: ...,                                    │
 │    file_name: "invoice.pdf",                                │
 │    content_type: "application/pdf"                          │
-│  })                                                          │
+│  }))                                                          │
 │  → Returns: upload_url (expires in 15 min)                   │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -173,7 +173,7 @@ When the user provides a file from Google Drive (via Google Drive MCP):
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  STEP 3: Create Attachment WITH Google Drive URL             │
-│  submit("attachment", "create", {                           │
+│  submit(object_type="attachment", operation="create", data=JSON.stringify({                           │
 │    entity_type: "AP_INVOICE",                               │
 │    entity_id: <transaction_id>,                             │
 │    file_name: "invoice.pdf",                                │
@@ -181,7 +181,7 @@ When the user provides a file from Google Drive (via Google Drive MCP):
 │    storage_provider: "google_drive",                        │
 │    extracted_text: "...",                                   │
 │    extracted_amounts: {...}                                 │
-│  })                                                          │
+│  }))                                                          │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -206,7 +206,7 @@ When the user provides a file from Google Drive (via Google Drive MCP):
 schema = get_submissions(action='schema', object_type="attachment", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("attachment", "create", {
+submit(object_type="attachment", operation="create", data=JSON.stringify({
     // Required
     "entity_type": "AP_INVOICE",  // AP_INVOICE, AR_INVOICE, FIXED_ASSET, etc.
     "entity_id": 1234,
@@ -241,7 +241,7 @@ submit("attachment", "create", {
     // Only if from external source (Google Drive, etc.)
     "storage_url": "https://drive.google.com/file/d/...",
     "storage_provider": "google_drive"
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 
 // Returns:
@@ -260,13 +260,13 @@ submit("attachment", "create", {
 **Call this immediately after creating attachment** (don't wait for transaction approval):
 
 ```javascript
-submit("attachment", "generate_upload_url", {
+submit(object_type="attachment", operation="generate_upload_url", data=JSON.stringify({
     "attachment_id": 456,                        // Required
     "legal_entity_id": 9,                        // Required
     "file_name": "acme_invoice_jan2025.pdf",     // Optional: defaults to the attachment's file name
     "content_type": "application/pdf",           // Optional: defaults from the attachment / file extension
     "expires_in_minutes": 15  // Optional, default 15, max 60
-})
+}))
 // A "Validation Failed" answer lists the bad fields: fix them and resend.
 // Nothing was executed, so a corrected request is safe.
 
@@ -339,11 +339,11 @@ Links a file already stored under the pending upload's storage key to the attach
 The server reads the stored object: it must exist and match `content_hash` and `file_size`, or the call is refused ("Validation Failed"), nothing changes and the token stays usable. Confirm only after the file is stored. After a refusal, send the corrected call with a new `idempotency_key`: an identical retry replays the saved refusal.
 
 ```javascript
-submit("attachment", "confirm_upload", {
+submit(object_type="attachment", operation="confirm_upload", data=JSON.stringify({
     "upload_token": "abc123def456...",
     "content_hash": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",  // SHA-256 of the uploaded bytes, 64 hex characters
     "file_size": 12345
-})
+}))
 
 // Returns:
 // {
@@ -358,11 +358,11 @@ submit("attachment", "confirm_upload", {
 ### 4. Delete Attachment
 
 ```javascript
-submit("attachment", "delete", {
+submit(object_type="attachment", operation="delete", data=JSON.stringify({
     "attachment_id": 456,
     "legal_entity_id": 9,
     "delete_file": true  // Also delete from R2 storage
-})
+}))
 ```
 
 ---
@@ -389,7 +389,7 @@ the receipt somewhere silently wrong.
 Uploading against a card charge files a real **card receipt**, not merely a
 stored attachment, so it appears on the Card expenses page immediately. The
 charge moves to `receipt_status = 'uploaded'` — a draft. It is **not** submitted:
-call `submit("card_transaction", "submit_receipt", {...})` to hand it to the bill
+call `submit(object_type="card_transaction", operation="submit_receipt", data='{...}')` to hand it to the bill
 pipeline. See `receipts-management.md`.
 
 Before 2026-08-17 this row did not exist, and aiming a link at a proxy entity
@@ -492,7 +492,7 @@ Would you like me to create this as an AP invoice?
 
 **Step 2: Create Transaction**
 ```python
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=json.dumps({
     # Required fields
     "transaction_type_code": "AP_INVOICE",
     "legal_entity_id": 10,
@@ -522,13 +522,13 @@ submit("transaction", "post", {
             # Note: dimensions inherited from header
         }
     ]
-})
+}))
 # → Returns transaction_id: 1234
 ```
 
 **Step 3: Create Attachment**
 ```python
-submit("attachment", "create", {
+submit(object_type="attachment", operation="create", data=json.dumps({
     "entity_type": "AP_INVOICE",
     "entity_id": 1234,
     "legal_entity_id": 10,
@@ -547,18 +547,18 @@ submit("attachment", "create", {
         "invoice_date": "2025-01-15",
         "due_date": "2025-02-14"
     }
-})
+}))
 # → Returns attachment_id: 456
 ```
 
 **Step 4: Generate Upload Link**
 ```python
-submit("attachment", "generate_upload_url", {
+submit(object_type="attachment", operation="generate_upload_url", data=json.dumps({
     "attachment_id": 456,
     "legal_entity_id": 10,
     "file_name": "acme_invoice.pdf",
     "content_type": "application/pdf"
-})
+}))
 # → Returns upload_url: "https://mcp.arfiti.com/api/upload/abc123..."
 ```
 
@@ -697,7 +697,7 @@ For customer invoices, use similar fields but with `customer_id` instead of `ven
 
 ## Pre-Flight Checklist
 
-Before calling `submit("transaction", "post", {...})`, verify:
+Before calling `submit(object_type="transaction", operation="post", data='{...}')`, verify:
 
 - [ ] `transaction_type_code` is set (AP_INVOICE, AR_INVOICE, etc.)
 - [ ] `legal_entity_id` is set
@@ -716,7 +716,7 @@ A paid bill, generated preview PDF, attachment metadata row or uploaded-but-unsu
 
 ## Recover an existing document link
 
-For a corrected/replacement document, use `submit("attachment", "update", data)`
+For a corrected/replacement document, use `submit(object_type="attachment", operation="update", data=data)`
 with `attachment_id`, `legal_entity_id`, `expected_transaction_id` (current owner),
 `transaction_id` (new owner), and a factual `reason`. Set `restore_deleted: true`
 only for a deliberately restored soft-deleted attachment. Read both records first;

@@ -234,9 +234,9 @@ When the user says “start onboarding”, first call `get_onboarding(action="ch
 
 1. Analyze the document — extract vendor/customer, amounts, dates, line items
 2. Check required dimensions — `query("dimension_type", filters={"is_required": true})`
-3. Create the transaction — `submit("transaction", "post", {...})`
-4. Create attachment metadata — `submit("attachment", "create", {...})`
-5. Generate upload link — `submit("attachment", "generate_upload_url", {...})`
+3. Create the transaction — `submit(object_type="transaction", operation="post", data='{...}')`
+4. Create attachment metadata — `submit(object_type="attachment", operation="create", data='{...}')`
+5. Generate upload link — `submit(object_type="attachment", operation="generate_upload_url", data='{...}')`
 6. Attach the file — route by where the bytes are AND whether you can reach the server (never by size):
    - **File in your environment, and `curl` to the upload URL works** (Claude Code on a normal network) → `curl -sf -F "file=@<path>" "<upload_url>"`, which stores and confirms in one step.
    - **File in your environment but the upload URL is unreachable** — the usual case in a **Cowork** sandbox, which has no route to the ERP host — → give the user the upload link from step 5 and say what it is for. You cannot put a file into Drive to transfer it; the Drive route below only pulls a file that is already there.

@@ -333,22 +333,22 @@ Customer signs 12-month SaaS contract (12,000 EUR)
 
 | Tool | Purpose |
 |------|---------|
-| `submit("recurring_contract", "create", {...})` | Create a customer contract |
-| `submit("recurring_contract", "activate", {...})` | Activate (start billing) |
-| `submit("recurring_contract", "suspend", {...})` | Pause billing |
-| `submit("recurring_contract", "terminate", {...})` | End the contract |
-| `submit("recurring_contract", "renew", {...})` | Renew for a new term |
-| `submit("recurring_contract", "amend", {...})` | Amend mid-term |
-| `submit("recurring_contract", "update", {...})` | Update contract fields |
-| `submit("recurring_contract", "delete", {contract_id, deletion_reason})` | Delete a contract that never billed and has no usage, invoices or other history (needs `ar:write`); any other contract is refused with the reason: terminate it instead |
-| `submit("contract_line", "create", {...})` | Add a line item |
-| `submit("contract_line", "update", {...})` | Update a line item |
-| `submit("amortization_schedule", "create", {...})` | Create a revenue recognition schedule |
-| `submit("amortization_schedule", "recognize", {...})` | Run recognition (post JEs) |
-| `submit("amortization_schedule", "update", {...})` | Update schedule settings |
-| `submit("amortization_schedule", "cancel", {...})` | Cancel outstanding lines |
-| `submit("billing_run", "execute", {...})` | Generate AR invoices |
-| `submit("billing_run", "preview", {...})` | Preview what would be billed |
+| `submit(object_type="recurring_contract", operation="create", data='{...}')` | Create a customer contract |
+| `submit(object_type="recurring_contract", operation="activate", data='{...}')` | Activate (start billing) |
+| `submit(object_type="recurring_contract", operation="suspend", data='{...}')` | Pause billing |
+| `submit(object_type="recurring_contract", operation="terminate", data='{...}')` | End the contract |
+| `submit(object_type="recurring_contract", operation="renew", data='{...}')` | Renew for a new term |
+| `submit(object_type="recurring_contract", operation="amend", data='{...}')` | Amend mid-term |
+| `submit(object_type="recurring_contract", operation="update", data='{...}')` | Update contract fields |
+| `submit(object_type="recurring_contract", operation="delete", data=JSON.stringify({contract_id, deletion_reason}))` | Delete a contract that never billed and has no usage, invoices or other history (needs `ar:write`); any other contract is refused with the reason: terminate it instead |
+| `submit(object_type="contract_line", operation="create", data='{...}')` | Add a line item |
+| `submit(object_type="contract_line", operation="update", data='{...}')` | Update a line item |
+| `submit(object_type="amortization_schedule", operation="create", data='{...}')` | Create a revenue recognition schedule |
+| `submit(object_type="amortization_schedule", operation="recognize", data='{...}')` | Run recognition (post JEs) |
+| `submit(object_type="amortization_schedule", operation="update", data='{...}')` | Update schedule settings |
+| `submit(object_type="amortization_schedule", operation="cancel", data='{...}')` | Cancel outstanding lines |
+| `submit(object_type="billing_run", operation="execute", data='{...}')` | Generate AR invoices |
+| `submit(object_type="billing_run", operation="preview", data='{...}')` | Preview what would be billed |
 | `get_entity("recurring_contract", id=X)` | Get contract details |
 | `query("recurring_contract", filters={"legal_entity_id": X})` | List contracts (`party_type` is not a query filter: customer and vendor contracts come back together) |
 | `generate_report("amortization_schedule", {...})` | Amortization schedule report |
@@ -376,7 +376,7 @@ customers = query("customer", query="Acme Corp", filters={"legal_entity_id": 75}
 customer_id = customers.results[0].master_customer_id
 
 // Step 3: Create the contract
-submit("recurring_contract", "create", {
+submit(object_type="recurring_contract", operation="create", data=JSON.stringify({
   party_type: "customer",
   customer_id: customer_id,
   legal_entity_id: 75,
@@ -389,7 +389,7 @@ submit("recurring_contract", "create", {
   total_contract_value: 12000.00,
   auto_renew: true,
   notes: "Pro plan, 12-month term"
-})
+}))
 // Returns: { recurring_contract_id: 6, contract_number: "CON-000003", party_type: "customer" }
 ```
 
@@ -403,17 +403,17 @@ Contracts support per-line pricing with fixed, usage, and tiered types:
 
 ```javascript
 // Fixed-price line
-submit("contract_line", "create", {
+submit(object_type="contract_line", operation="create", data=JSON.stringify({
   contract_id: 6,
   line_type: "fixed",
   item_description: "Pro plan monthly subscription",
   fixed_amount: 1000.00,
   gl_account_number: "4000",   // Revenue account
   is_active: true
-})
+}))
 
 // Usage-based line (API call overage)
-submit("contract_line", "create", {
+submit(object_type="contract_line", operation="create", data=JSON.stringify({
   contract_id: 6,
   line_type: "usage",
   item_description: "API calls (overage beyond 10k)",
@@ -421,7 +421,7 @@ submit("contract_line", "create", {
   usage_metric: "api_calls",
   gl_account_number: "4010",   // Usage revenue account
   is_active: true
-})
+}))
 ```
 
 ---
@@ -431,10 +431,10 @@ submit("contract_line", "create", {
 Contracts start in `draft`. Activate to start billing:
 
 ```javascript
-submit("recurring_contract", "activate", {
+submit(object_type="recurring_contract", operation="activate", data=JSON.stringify({
   contract_id: 6,
   legal_entity_id: 75
-})
+}))
 // Status -> 'active', next_billing_date set based on billing_day_of_month
 ```
 
@@ -446,16 +446,16 @@ Active customer contracts generate AR invoices via automated billing runs:
 
 ```javascript
 // Preview what would be billed
-submit("billing_run", "preview", {
+submit(object_type="billing_run", operation="preview", data=JSON.stringify({
   legal_entity_id: 75,
   billing_date: "2025-02-01"
-})
+}))
 
 // Execute billing run
-submit("billing_run", "execute", {
+submit(object_type="billing_run", operation="execute", data=JSON.stringify({
   legal_entity_id: 75,
   billing_date: "2025-02-01"
-})
+}))
 ```
 
 Billing runs only process `party_type='customer'` contracts with `billing_frequency != 'once'`.
@@ -478,7 +478,7 @@ Equal amount each period. Best for:
 ```javascript
 schema = get_submissions(action='schema', object_type="amortization_schedule", operation="create")
 
-submit("amortization_schedule", "create", {
+submit(object_type="amortization_schedule", operation="create", data=JSON.stringify({
   kind: "revenue",
   schedule_type: "straight_line",
   legal_entity_id: 75,
@@ -493,7 +493,7 @@ submit("amortization_schedule", "create", {
   currency_code: "EUR",
   frequency: "monthly",
   description: "Rev rec for Acme Corp subscription"
-})
+}))
 // Creates 12 lines at 1,000 each
 ```
 
@@ -556,25 +556,25 @@ The unified engine handles both revenue and expense. Every executed recognition 
 
 ```javascript
 // Recognize all due revenue lines through March
-submit("amortization_schedule", "recognize", {
+submit(object_type="amortization_schedule", operation="recognize", data=JSON.stringify({
   legal_entity_id: 75,
   as_of_date: "2025-03-31"
-})
+}))
 // Returns: { run_id, run_number, recognized_count, total_amount, posted_transactions }
 
 // Revenue-only recognition
-submit("amortization_schedule", "recognize", {
+submit(object_type="amortization_schedule", operation="recognize", data=JSON.stringify({
   legal_entity_id: 75,
   as_of_date: "2025-03-31",
   kind_filter: "revenue"
-})
+}))
 
 // Dry run (preview, no JEs posted)
-submit("amortization_schedule", "recognize", {
+submit(object_type="amortization_schedule", operation="recognize", data=JSON.stringify({
   legal_entity_id: 75,
   as_of_date: "2025-12-31",
   dry_run: true
-})
+}))
 ```
 
 ### Journal Entry Per Recognition Line
@@ -620,11 +620,11 @@ Create amended schedule for remaining term at new rate.
 ### Contract Amendment
 
 ```javascript
-submit("recurring_contract", "amend", {
+submit(object_type="recurring_contract", operation="amend", data=JSON.stringify({
   contract_id: 6,
   legal_entity_id: 75
   // Amendment details per get_submissions(action='schema', ...)
-})
+}))
 ```
 
 ---
@@ -635,7 +635,7 @@ Per ASC 606, allocate the transaction price to each obligation and create separa
 
 ```javascript
 // 1. Software license: straight-line over 12 months
-submit("amortization_schedule", "create", {
+submit(object_type="amortization_schedule", operation="create", data=JSON.stringify({
   kind: "revenue",
   schedule_type: "straight_line",
   legal_entity_id: 75,
@@ -648,7 +648,7 @@ submit("amortization_schedule", "create", {
   end_date: "2025-12-31",
   frequency: "monthly",
   description: "Software license - 12 month term"
-})
+}))
 
 // Implementation services requiring milestone recognition are handled separately
 // with acceptance evidence and the configured approval/posting workflow.
@@ -692,10 +692,10 @@ generate_report("amortization_schedule", {
 
 ### Scenario 1: New SaaS customer onboarding
 
-1. Create customer: `submit("customer", "create", {...})`
-2. Create contract: `submit("recurring_contract", "create", {party_type: "customer", ...})`
-3. Add line items: `submit("contract_line", "create", {...})`
-4. Activate: `submit("recurring_contract", "activate", {...})`
+1. Create customer: `submit(object_type="customer", operation="create", data='{...}')`
+2. Create contract: `submit(object_type="recurring_contract", operation="create", data=JSON.stringify({party_type: "customer", ...}))`
+3. Add line items: `submit(object_type="contract_line", operation="create", data='{...}')`
+4. Activate: `submit(object_type="recurring_contract", operation="activate", data='{...}')`
 5. Billing runs automatically on billing_day_of_month
 6. Create revenue schedule after first invoice posts
 7. Recognition runs automatically on the 1st of each month
@@ -707,7 +707,7 @@ generate_report("amortization_schedule", {
 // (billing_run generates: DR AR 12,000 / CR Deferred Revenue 12,000)
 
 // 2. Create recognition schedule
-submit("amortization_schedule", "create", {
+submit(object_type="amortization_schedule", operation="create", data=JSON.stringify({
   kind: "revenue",
   schedule_type: "straight_line",
   frequency: "monthly",
@@ -717,7 +717,7 @@ submit("amortization_schedule", "create", {
   source_account_id: 2500,
   target_account_id: 4000,
   // ...
-})
+}))
 // 12 daily-prorated monthly lines; read period_amounts rather than assuming equal months
 ```
 
@@ -731,18 +731,18 @@ recognition approval process with that evidence; see the limitation above.
 
 ```javascript
 // Terminate the contract
-submit("recurring_contract", "terminate", {
+submit(object_type="recurring_contract", operation="terminate", data=JSON.stringify({
   contract_id: 6,
   legal_entity_id: 75,
   reason: "Customer cancelled"
-})
+}))
 
 // Cancel remaining revenue schedule lines
-submit("amortization_schedule", "cancel", {
+submit(object_type="amortization_schedule", operation="cancel", data=JSON.stringify({
   schedule_id: 4,
   cancellation_reason: "Customer contract terminated",
   void_pending_lines: true
-})
+}))
 // Voided amount returned; already-recognized stays posted
 ```
 
@@ -762,25 +762,25 @@ Create a separate schedule per billing year:
 
 ```javascript
 // Year 1
-submit("amortization_schedule", "create", {
+submit(object_type="amortization_schedule", operation="create", data=JSON.stringify({
   kind: "revenue",
   total_amount: 10000.00,
   start_date: "2025-01-01",
   end_date: "2025-12-31",
   // ...
-})
+}))
 // Repeat for Year 2 and 3 when those invoices are posted
 ```
 
 ### Scenario 7: Contract renewal
 
 ```javascript
-submit("recurring_contract", "renew", {
+submit(object_type="recurring_contract", operation="renew", data=JSON.stringify({
   contract_id: 6,
   legal_entity_id: 75,
   new_start_date: "2026-01-01",
   new_end_date: "2026-12-31"
-})
+}))
 // Creates a new contract linked to the original, copies party_type + customer_id
 ```
 

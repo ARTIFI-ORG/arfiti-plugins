@@ -21,18 +21,18 @@ Payment batches organize multiple vendor payments into a single transmission to 
 
 | Tool | Purpose |
 |------|---------|
-| `submit("payment_batch", "create", {...})` | Create new payment batch |
-| `submit("payment_batch", "add_line", {...})` | Add payment line to draft batch |
-| `submit("payment_batch", "remove_line", {...})` | Remove line from draft batch |
-| `submit("payment_batch", "edit_line", {...})` | Edit payment amount on a batch line |
-| `submit("payment_batch", "submit", {...})` | Submit batch for approval |
-| `submit("payment_batch", "approve", {...})` | Approve pending batch — **only when no approval workflow is in flight**; normally you complete the task `submit` created (see Status Lifecycle) |
-| `submit("payment_batch", "reject", {...})` | Reject pending batch — same caveat as `approve` |
-| `submit("payment_batch", "transmit", {...})` | **Not available through the connector** — the user transmits from the admin dashboard (see Transmitting a batch) |
-| `submit("payment_batch", "cancel", {...})` | Cancel batch |
-| `submit("payment_batch", "update", {...})` | Correct `batch_date` (label only, no GL effect) |
-| `submit("payment_batch", "confirm_line", {...})` | Confirm single line from bank statement |
-| `submit("payment_batch", "confirm_batch", {...})` | Auto-confirm all lines from bank statement |
+| `submit(object_type="payment_batch", operation="create", data='{...}')` | Create new payment batch |
+| `submit(object_type="payment_batch", operation="add_line", data='{...}')` | Add payment line to draft batch |
+| `submit(object_type="payment_batch", operation="remove_line", data='{...}')` | Remove line from draft batch |
+| `submit(object_type="payment_batch", operation="edit_line", data='{...}')` | Edit payment amount on a batch line |
+| `submit(object_type="payment_batch", operation="submit", data='{...}')` | Submit batch for approval |
+| `submit(object_type="payment_batch", operation="approve", data='{...}')` | Approve pending batch — **only when no approval workflow is in flight**; normally you complete the task `submit` created (see Status Lifecycle) |
+| `submit(object_type="payment_batch", operation="reject", data='{...}')` | Reject pending batch — same caveat as `approve` |
+| `submit(object_type="payment_batch", operation="transmit", data='{...}')` | **Not available through the connector** — the user transmits from the admin dashboard (see Transmitting a batch) |
+| `submit(object_type="payment_batch", operation="cancel", data='{...}')` | Cancel batch |
+| `submit(object_type="payment_batch", operation="update", data='{...}')` | Correct `batch_date` (label only, no GL effect) |
+| `submit(object_type="payment_batch", operation="confirm_line", data='{...}')` | Confirm single line from bank statement |
+| `submit(object_type="payment_batch", operation="confirm_batch", data='{...}')` | Auto-confirm all lines from bank statement |
 | `query("payment_batch", filters)` | List payment batches |
 | `query("payment_batch", query)` | Search batches |
 | `get_entity("payment_batch", id=X)` | Get single batch: `related.lines` = the lines that can still be paid (not `incomplete`, `excluded` or `cancelled`; their sum is `total_amount`), `related.incomplete_lines` = lines without a bank account, `related.held_lines` = held lines with `excluded_reason`, `related.cancelled_lines` = cancelled lines |
@@ -71,7 +71,7 @@ draft/pending/approved → cancelled
 > to `pending_approval` **and creates the approval workflow** whose id is stamped
 > on `bank_payment_batches.approval_workflow_id`. Approval happens by completing
 > **that task** — via `manage_submissions(action="decide")` or the admin UI. Calling
-> `submit("payment_batch", "approve", ...)` while that workflow is still in
+> `submit(object_type="payment_batch", operation="approve", ...)` while that workflow is still in
 > flight is rejected on purpose: it would spawn a second, redundant approval task
 > that could only fail later. The `approve` / `reject` operations exist for
 > batches with no approval workflow in flight, not as the normal path.
@@ -99,7 +99,7 @@ draft/pending/approved → cancelled
 schema = get_submissions(action='schema', object_type="payment_batch", operation="create")
 
 // Then submit with discovered fields
-submit("payment_batch", "create", {
+submit(object_type="payment_batch", operation="create", data=JSON.stringify({
   legal_entity_id: 4,
   payment_method: "ach",              // ACH, WIRE, SEPA, CHECK — any spelling, stored canonical
   batch_date: "2026-02-25",           // or payment_date (alias)
@@ -107,7 +107,7 @@ submit("payment_batch", "create", {
   bank_account_id: 1,                 // or from_bank_account_id (alias); OPTIONAL — omit to use
                                       // the entity's is_default_payments account in this currency
   description: "February vendor payments"  // optional
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 // Returns: { batch_id, batch_number: "PAY-000001", status: "draft",
 //            total_amount: 0, line_count: 0 }
@@ -119,10 +119,10 @@ the amount. Each line takes the fields of `add_line` (no `batch_id`) and the
 same checks; one refused line refuses the whole create:
 
 ```javascript
-submit("payment_batch", "create", {
+submit(object_type="payment_batch", operation="create", data=JSON.stringify({
   legal_entity_id: 40, payment_method: "SEPA", payment_date: "2026-11-17", currency_code: "EUR",
   lines: [{ master_employee_id: 412, amount: 1000, payment_memo: "Accountable advance, business trip" }]
-})
+}))
 ```
 
 Creating a draft needs no approval (it moves no money); the approval that
@@ -154,14 +154,14 @@ controls the payment is the one `submit` raises for the batch.
 ### Step 2: Add Payment Lines
 
 ```javascript
-submit("payment_batch", "add_line", {
+submit(object_type="payment_batch", operation="add_line", data=JSON.stringify({
   payment_batch_id: 1,                // or batch_id (alias)
   master_vendor_id: 153,
   payment_amount: 3500.50,            // or amount (alias)
   vendor_bank_account_id: 3,          // optional: auto-selects default
   source_transaction_id: 1001,        // optional: link to AP invoice
   source_reference: "INV-2026-001"    // optional: reference text
-})
+}))
 // Returns: { line_id, line_number, vendor_name, payment_amount, status: "pending" }
 ```
 
@@ -191,10 +191,10 @@ submit("payment_batch", "add_line", {
 ### Step 3: Remove a Line (if needed)
 
 ```javascript
-submit("payment_batch", "remove_line", {
+submit(object_type="payment_batch", operation="remove_line", data=JSON.stringify({
   payment_batch_id: 1,                // or batch_id (alias)
   line_id: 5
-})
+}))
 // Recalculates batch total_amount and line_count
 ```
 
@@ -205,14 +205,14 @@ The batch must be in `draft` or `pending_approval` status. Removing lines while 
 Any combination of amount, reference, and memo — at least one required:
 
 ```javascript
-submit("payment_batch", "edit_line", {
+submit(object_type="payment_batch", operation="edit_line", data=JSON.stringify({
   payment_batch_id: 1,                // or batch_id (alias)
   line_id: 5,
   payment_amount: 2800.00,            // or amount (alias) — recalculates batch total
   source_reference: "INV-2026-0193",  // correct an auto-generated reference
   payment_reference: "2200221234567", // bank-file reference (e.g. tax office ref)
   payment_memo: "July payroll taxes"  // payee-visible memo for the bank file
-})
+}))
 ```
 
 The batch must be in `draft` or `pending_approval` status. Editing during `pending_approval` allows approvers to adjust amounts during review. Reference/memo edits do not change batch totals.
@@ -222,9 +222,9 @@ The batch must be in `draft` or `pending_approval` status. Editing during `pendi
 ## Submitting for Approval
 
 ```javascript
-submit("payment_batch", "submit", {
+submit(object_type="payment_batch", operation="submit", data=JSON.stringify({
   batch_id: 1
-})
+}))
 // Returns: { batch_id, status: "pending_approval", total_amount, line_count,
 //            submitted_by, submitted_at }
 ```
@@ -237,7 +237,7 @@ submit("payment_batch", "submit", {
 
 ## Approving or Rejecting
 
-When a batch is submitted via `submit("payment_batch", "submit", {...})`, a workflow approval task is automatically created. The approver must complete the task in the admin dashboard at `/workflows/my-tasks` — not via the `approve` or `reject` tools directly.
+When a batch is submitted via `submit(object_type="payment_batch", operation="submit", data='{...}')`, a workflow approval task is automatically created. The approver must complete the task in the admin dashboard at `/workflows/my-tasks` — not via the `approve` or `reject` tools directly.
 
 ### Workflow-based approval (standard)
 
@@ -258,20 +258,20 @@ In the template workflow definition, batches with `total_amount >= 50,000` (in t
 For batches that predate the workflow engine (no `approval_workflow_id`), direct approval is still available:
 
 ```javascript
-submit("payment_batch", "approve", {
+submit(object_type="payment_batch", operation="approve", data=JSON.stringify({
   batch_id: 1,
   approval_note: "Reviewed — all invoices verified"  // optional
-})
+}))
 // Returns: { batch_id, status: "approved", approved_by, approved_at }
 ```
 
 **Separation of duties:** The approver must be a **different user** than the submitter. Self-approval returns an error.
 
 ```javascript
-submit("payment_batch", "reject", {
+submit(object_type="payment_batch", operation="reject", data=JSON.stringify({
   batch_id: 1,
   rejection_reason: "Vendor 153 amount doesn't match invoice"  // required
-})
+}))
 // Returns: { batch_id, status: "draft", rejected_by, rejection_reason }
 ```
 
@@ -288,10 +288,10 @@ currency/method-matched entity account (preferring `is_default_payments`).
 Set or clear it via update on the payee's bank account:
 
 ```javascript
-submit("employee_bank_account", "update", {
+submit(object_type="employee_bank_account", operation="update", data=JSON.stringify({
   employee_bank_account_id: 12,
   preferred_source_bank_account_id: 7   // or null to clear
-})
+}))
 ```
 
 Batches group per (payment_method, currency, source bank) — one batch per
@@ -323,7 +323,7 @@ linked bank connector, which moves money, and the **file route**
 changes the batch status. Both are dashboard-only. If a user asks you to
 transmit, or to approve or change a transmission, say where the button is and
 confirm the batch state with `query(entity_type="payment_batch", …)`. A
-`submit("payment_batch", "transmit", …)` call, a `decide` with
+`submit(object_type="payment_batch", operation="transmit", …)` call, a `decide` with
 `decision="approve"` on such a submission, or an `edit_payload` on it (its
 connector, route or amount), is refused with
 `operation_not_available_via_mcp`. You can still reject a pending transmission
@@ -360,7 +360,7 @@ Providers settle asynchronously. Recovery and status checks stay available
 through the connector:
 
 ```javascript
-submit("payment_batch", "sync_status", { batch_id: 1 })
+submit(object_type="payment_batch", operation="sync_status", data=JSON.stringify({ batch_id: 1 }))
 // Updates in-flight lines from the provider and rolls the batch up:
 // processing → completed / partially_completed / failed
 ```
@@ -389,13 +389,13 @@ cause (topped up the account, re-authorised the connector), create a new batch
 from them and take it through submit and approval as usual:
 
 ```javascript
-submit("payment_batch", "create", {
+submit(object_type="payment_batch", operation="create", data=JSON.stringify({
   legal_entity_id: 40,
   failed_lines_from_batch_id: 23,   // the refused batch
   payment_method: "SEPA",
   payment_date: "2026-11-03",
   currency_code: "EUR"              // the source batch's currency
-})
+}))
 // result.resent_line_ids = the refused lines copied into the new draft
 ```
 
@@ -421,10 +421,10 @@ recover them with `sync_status`.
 ## Cancelling a Batch
 
 ```javascript
-submit("payment_batch", "cancel", {
+submit(object_type="payment_batch", operation="cancel", data=JSON.stringify({
   batch_id: 2,
   cancellation_reason: "Payment run postponed"  // required
-})
+}))
 // Returns: { batch_id, status: "cancelled" }
 ```
 
@@ -439,13 +439,13 @@ After transmission, payments are confirmed when they appear on bank statements. 
 ### Confirm a Single Line
 
 ```javascript
-submit("payment_batch", "confirm_line", {
+submit(object_type="payment_batch", operation="confirm_line", data=JSON.stringify({
   legal_entity_id: 4,
   statement_line_id: 500,             // bank statement line ID
   batch_line_id: 10,                  // payment batch line ID
   confirmed_amount: 3500.50,          // optional: override if bank amount differs
   confirmed_date: "2026-02-26"        // optional: override date
-})
+}))
 // Creates AP_PAYMENT GL entry, links statement line, updates batch line to "completed"
 ```
 
@@ -454,11 +454,11 @@ The posted payment carries the batch's `payment_method` as it is: a line of a `S
 ### Auto-Confirm Batch from Statement
 
 ```javascript
-submit("payment_batch", "confirm_batch", {
+submit(object_type="payment_batch", operation="confirm_batch", data=JSON.stringify({
   legal_entity_id: 4,
   statement_id: 50,                   // bank statement ID
   batch_id: 1                         // optional: specific batch (default: all transmitted)
-})
+}))
 // Returns: { matches_found, confirmed, failed, unmatched_statement_lines, unmatched_batch_lines }
 ```
 
@@ -543,122 +543,122 @@ query("transaction", filters={
   })
 
 // Step 2: Create batch
-const batch = submit("payment_batch", "create", {
+const batch = submit(object_type="payment_batch", operation="create", data=JSON.stringify({
   legal_entity_id: 4,
   payment_method: "ach",
   batch_date: "2026-02-28",
   currency_code: "USD",
   bank_account_id: 1,
   description: "Weekly AP run - Feb 24-28"
-})
+}))
 
 // Step 3: Add lines for each vendor/invoice
-submit("payment_batch", "add_line", {
+submit(object_type="payment_batch", operation="add_line", data=JSON.stringify({
   payment_batch_id: batch.batch_id,
   master_vendor_id: 100,
   payment_amount: 5000.00,
   source_transaction_id: 1001,
   source_reference: "INV-2026-045"
-})
+}))
 
-submit("payment_batch", "add_line", {
+submit(object_type="payment_batch", operation="add_line", data=JSON.stringify({
   payment_batch_id: batch.batch_id,
   master_vendor_id: 200,
   payment_amount: 12500.00,
   source_transaction_id: 1002,
   source_reference: "INV-2026-046"
-})
+}))
 
 // Step 4: Submit for approval
-submit("payment_batch", "submit", { batch_id: batch.batch_id })
+submit(object_type="payment_batch", operation="submit", data=JSON.stringify({ batch_id: batch.batch_id }))
 
 // Step 5: Approve (different user)
 // Standard: Approver completes the workflow task at /workflows/my-tasks
 // Legacy (batches without workflow): direct approval via submit
-submit("payment_batch", "approve", {
+submit(object_type="payment_batch", operation="approve", data=JSON.stringify({
   batch_id: batch.batch_id,
   approval_note: "Weekly run verified"
-})
+}))
 
 // Step 6: Transmit: the user clicks Transmit in the admin dashboard.
-// submit("payment_batch", "transmit", ...) is refused through the connector.
+// submit(object_type="payment_batch", operation="transmit", ...) is refused through the connector.
 ```
 
 ### Scenario 2: Batch Rejection and Correction
 
 ```javascript
 // Approver rejects due to incorrect amount
-submit("payment_batch", "reject", {
+submit(object_type="payment_batch", operation="reject", data=JSON.stringify({
   batch_id: 1,
   rejection_reason: "Vendor 200 amount should be $12,750 not $12,500"
-})
+}))
 
 // Submitter fixes: remove incorrect line
-submit("payment_batch", "remove_line", {
+submit(object_type="payment_batch", operation="remove_line", data=JSON.stringify({
   payment_batch_id: 1,
   line_id: 5
-})
+}))
 
 // Add corrected line
-submit("payment_batch", "add_line", {
+submit(object_type="payment_batch", operation="add_line", data=JSON.stringify({
   payment_batch_id: 1,
   master_vendor_id: 200,
   payment_amount: 12750.00,
   source_transaction_id: 1002,
   source_reference: "INV-2026-046"
-})
+}))
 
 // Resubmit
-submit("payment_batch", "submit", { batch_id: 1 })
+submit(object_type="payment_batch", operation="submit", data=JSON.stringify({ batch_id: 1 }))
 
 // Approver approves corrected version
-submit("payment_batch", "approve", {
+submit(object_type="payment_batch", operation="approve", data=JSON.stringify({
   batch_id: 1,
   approval_note: "Corrected amount verified"
-})
+}))
 ```
 
 ### Scenario 3: International Wire Payments
 
 ```javascript
 // Create EUR wire batch
-const batch = submit("payment_batch", "create", {
+const batch = submit(object_type="payment_batch", operation="create", data=JSON.stringify({
   legal_entity_id: 4,
   payment_method: "wire",
   batch_date: "2026-02-25",
   currency_code: "EUR",
   bank_account_id: 3,              // EUR bank account
   description: "EU vendor payments - February"
-})
+}))
 
 // Add EUR vendor payment
-submit("payment_batch", "add_line", {
+submit(object_type="payment_batch", operation="add_line", data=JSON.stringify({
   payment_batch_id: batch.batch_id,
   master_vendor_id: 153,
   payment_amount: 3500.50,
   vendor_bank_account_id: 3        // Vendor's EUR bank account
-})
+}))
 ```
 
 ### Scenario 4: Confirming Payments from Bank Statement
 
 ```javascript
 // After bank statement is imported/synced, confirm all transmitted payments
-submit("payment_batch", "confirm_batch", {
+submit(object_type="payment_batch", operation="confirm_batch", data=JSON.stringify({
   legal_entity_id: 4,
   statement_id: 50
-})
+}))
 // Auto-matches statement debit lines to transmitted batch lines
 // Creates AP_PAYMENT GL entries for each match
 // Updates batch to "completed" when all lines confirmed
 
 // For unmatched lines, confirm individually
-submit("payment_batch", "confirm_line", {
+submit(object_type="payment_batch", operation="confirm_line", data=JSON.stringify({
   legal_entity_id: 4,
   statement_line_id: 505,
   batch_line_id: 12,
   confirmed_amount: 3480.00        // Bank settled slightly different amount
-})
+}))
 ```
 
 ### Scenario 5: Check Vendor Bank Account Before Adding Line
@@ -676,7 +676,7 @@ query("vendor_bank_account", filters={
   })
 
 // If no default bank account, create one first
-submit("vendor_bank_account", "create", {
+submit(object_type="vendor_bank_account", operation="create", data=JSON.stringify({
   master_vendor_id: 153,
   account_nickname: "Arvutitark EUR Account",
   bank_name: "Swedbank",
@@ -684,7 +684,7 @@ submit("vendor_bank_account", "create", {
   swift_code: "HABAEE2X",
   currency: "EUR",
   is_default_payments: true
-})
+}))
 ```
 
 ---

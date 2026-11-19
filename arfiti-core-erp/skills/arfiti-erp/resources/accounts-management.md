@@ -168,12 +168,12 @@ See [Dimensions Management](./dimensions-management.md) for full details on dime
 schema = get_submissions(action='schema', object_type="account", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("account", "create", '{...}')
+submit(object_type="account", operation="create", data='{...}')
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
 ```javascript
-submit("account", "create", {
+submit(object_type="account", operation="create", data=JSON.stringify({
     // Required fields
     "account_number": "1050",
     "account_name": "Petty Cash",
@@ -197,7 +197,7 @@ submit("account", "create", {
 
     // Optional - Custom data
     "metadata": {"location": "front_desk", "limit": 500}
-})
+}))
 ```
 
 **Required Fields**:
@@ -240,7 +240,7 @@ submit("account", "create", {
 **Payload Structure**:
 
 ```javascript
-submit("account", "update", {
+submit(object_type="account", operation="update", data=JSON.stringify({
     // Identifier (ONE of these required)
     "account_number": "1050",  // OR
     "account_id": 123,
@@ -259,7 +259,7 @@ submit("account", "update", {
     "description_override": "Euro petty cash for Paris office",
     "is_active_override": true,
     "allow_manual_entries_override": false
-})
+}))
 ```
 
 **Identifier** (ONE required):
@@ -312,7 +312,7 @@ submit("account", "update", {
 **Payload Structure**:
 
 ```javascript
-submit("account", "delete", {
+submit(object_type="account", operation="delete", data=JSON.stringify({
     // Identifier (ONE required)
     "account_number": "1050",  // OR
     "account_id": 123,
@@ -320,7 +320,7 @@ submit("account", "delete", {
     // Optional
     "deletion_reason": "Account no longer needed",
     "hard_delete": false  // Default: false (soft delete)
-})
+}))
 ```
 
 **Soft Delete** (default):
@@ -520,7 +520,7 @@ reports and agents classify accounts by `account_type` / `account_subtype`, neve
 
 ```javascript
 // Create master account (visible to all entities)
-submit("account", "create", {
+submit(object_type="account", operation="create", data=JSON.stringify({
     "account_number": "1000",
     "account_name": "Cash",
     "account_type": "asset",
@@ -528,7 +528,7 @@ submit("account", "create", {
     "account_subtype": "cash",
     "description": "Cash on hand and in bank",
     "is_global": true  // All entities see this
-})
+}))
 
 // Result: All entities (9, 13, 10, etc.) see "1000 - Cash" with same properties
 ```
@@ -537,11 +537,11 @@ submit("account", "create", {
 
 ```javascript
 // Entity 13 wants different name for account 1000
-submit("account", "update", {
+submit(object_type="account", operation="update", data=JSON.stringify({
     "account_number": "1000",
     "legal_entity_id": 13,
     "account_name_override": "Cash - EUR Operations"
-})
+}))
 
 // Result:
 // - Entity 9, 10: See "1000 - Cash" (master)
@@ -552,7 +552,7 @@ submit("account", "update", {
 
 ```javascript
 // Create account visible ONLY to entity 10
-submit("account", "create", {
+submit(object_type="account", operation="create", data=JSON.stringify({
     "account_number": "1055",
     "account_name": "Petty Cash - London Office",
     "account_type": "asset",
@@ -561,7 +561,7 @@ submit("account", "create", {
     "description": "GBP petty cash for London office",
     "is_global": false,  // NOT visible to all
     "legal_entity_id": 10  // Only entity 10
-})
+}))
 
 // Result:
 // - Entity 10: Sees "1055 - Petty Cash - London Office"
@@ -666,7 +666,7 @@ For importing multiple accounts at once:
 Use the `account.import` workflow:
 
 ```javascript
-submit("account", "import", {
+submit(object_type="account", operation="import", data=JSON.stringify({
     "object_type": "account",
     "records": [
       {
@@ -705,7 +705,7 @@ submit("account", "import", {
       "stop_on_error": false,
       "validate_only": false
     }
-})
+}))
 ```
 
 ### Import Options
@@ -788,13 +788,13 @@ The importer performs comprehensive validation:
 Test your import without making changes:
 
 ```javascript
-submit("account", "import", {
+submit(object_type="account", operation="import", data=JSON.stringify({
     "object_type": "account",
     "records": [...],
     "options": {
       "validate_only": true
     }
-})
+}))
 ```
 
 This returns validation errors without creating any accounts.
@@ -867,7 +867,7 @@ This returns validation errors without creating any accounts.
 Standard cash account for bank account tracking:
 
 ```javascript
-submit("account", "create", {
+submit(object_type="account", operation="create", data=JSON.stringify({
     "account_number": "1000",
     "account_name": "Cash - Operating Account",
     "account_type": "asset",
@@ -876,7 +876,7 @@ submit("account", "create", {
     "description": "Primary operating cash account",
     "is_reconcilable": true,  // Enable bank reconciliation
     "allow_manual_entries": true
-})
+}))
 ```
 
 ### Create Foreign Currency Cash Account
@@ -884,7 +884,7 @@ submit("account", "create", {
 For multi-currency operations:
 
 ```javascript
-submit("account", "create", {
+submit(object_type="account", operation="create", data=JSON.stringify({
     "account_number": "1020",
     "account_name": "Cash - EUR",
     "account_type": "asset",
@@ -894,7 +894,7 @@ submit("account", "create", {
     "currency_code": "EUR",
     "is_reconcilable": true,
     "parent_account_number": "1000"
-})
+}))
 ```
 
 ### Create Header Account (Subtotal)
@@ -902,7 +902,7 @@ submit("account", "create", {
 For organizing COA with subtotals:
 
 ```javascript
-submit("account", "create", {
+submit(object_type="account", operation="create", data=JSON.stringify({
     "account_number": "6000",
     "account_name": "Operating Expenses",
     "account_type": "expense",
@@ -911,7 +911,7 @@ submit("account", "create", {
     "description": "Header for all operating expense accounts",
     "is_header": true,  // No posting allowed
     "allow_manual_entries": false
-})
+}))
 ```
 
 ### Rename Account for Specific Entity
@@ -919,11 +919,11 @@ submit("account", "create", {
 Entity-specific name while keeping master unchanged:
 
 ```javascript
-submit("account", "update", {
+submit(object_type="account", operation="update", data=JSON.stringify({
     "account_number": "4000",
     "legal_entity_id": 13,
     "account_name_override": "Product Revenue - EMEA"
-})
+}))
 ```
 
 ### Deactivate Unused Account
@@ -931,11 +931,11 @@ submit("account", "update", {
 Soft delete (can be reactivated):
 
 ```javascript
-submit("account", "delete", {
+submit(object_type="account", operation="delete", data=JSON.stringify({
     "account_number": "1055",
     "deletion_reason": "Account consolidated into 1000",
     "hard_delete": false
-})
+}))
 ```
 
 ### Remove Test Account
@@ -943,11 +943,11 @@ submit("account", "delete", {
 Hard delete (permanent removal):
 
 ```javascript
-submit("account", "delete", {
+submit(object_type="account", operation="delete", data=JSON.stringify({
     "account_number": "9999",
     "deletion_reason": "Test account cleanup",
     "hard_delete": true
-})
+}))
 ```
 
 **Use only for:**
@@ -1167,7 +1167,7 @@ Account dimensions allow you to assign default dimension values to accounts, so 
 Pass `account_dimensions` array when creating an account:
 
 ```javascript
-submit("account", "create", {
+submit(object_type="account", operation="create", data=JSON.stringify({
     "account_number": "6100",
     "account_name": "Salaries and Wages",
     "account_type": "expense",
@@ -1178,7 +1178,7 @@ submit("account", "create", {
       // or {"master_dimension_type_id": 81, "master_dimension_value_id": 377};
       // legacy {"dimension_type_id", "dimension_value_id"} are read in the EFFECTIVE namespace
     ]
-})
+}))
 ```
 
 ### Assign Dimension via Account Update
@@ -1186,13 +1186,13 @@ submit("account", "create", {
 Use `_action` field to add or remove dimension assignments:
 
 ```javascript
-submit("account", "update", {
+submit(object_type="account", operation="update", data=JSON.stringify({
     "account_number": "6100",
     "account_dimensions": [
       {"_action": "add", "type_code": "department", "value_code": "ENG"},
       {"_action": "delete", "type_code": "location"}   // delete needs only the type
     ]
-})
+}))
 ```
 
 ### Standalone Dimension Assignment
@@ -1200,13 +1200,13 @@ submit("account", "update", {
 Use the `account_dimension.assign` workflow for assigning dimensions to an existing account without modifying other account properties:
 
 ```javascript
-submit("account_dimension", "assign", {
+submit(object_type="account_dimension", operation="assign", data=JSON.stringify({
     "account_id": 123,
     "legal_entity_id": 13,
     "dimension_type": "department",
     "dimension_value": "ENG"
     // legacy "dimension_type_id"/"dimension_value_id" are still read, in the EFFECTIVE namespace
-})
+}))
 ```
 
 ---

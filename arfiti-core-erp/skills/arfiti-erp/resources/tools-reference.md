@@ -70,7 +70,7 @@ query("transaction_line", filters={"legal_entity_id": 12,
 ```
 
 **Configuration settings** are readable as `config_setting` (read-only; change
-them with `submit("config_setting", "update", ...)`):
+them with `submit(object_type="config_setting", operation="update", ...)`):
 
 ```javascript
 // One key for one entity, e.g. the reconciliation write-off limit
@@ -255,7 +255,7 @@ schema = get_submissions(action='schema', object_type="vendor", operation="creat
 // → Returns: required fields, optional fields, field types, validation rules, examples
 
 // Step 2: Build payload using schema, then submit
-submit("vendor", "create", '{"vendor_name": "Acme", "payment_term_code": "NET30", ...}')
+submit(object_type="vendor", operation="create", data='{"vendor_name": "Acme", "payment_term_code": "NET30", ...}')
 ```
 
 ### Tool Signature
@@ -278,12 +278,12 @@ Use `validate_only=true` to check a payload before submitting. Runs the full val
 
 ```javascript
 // Validate first — catches all errors in one call
-result = submit("vendor", "create", '{"vendor_name": "Acme", ...}', validate_only=true)
+result = submit(object_type="vendor", operation="create", data='{"vendor_name": "Acme", ...}', validate_only=true)
 // If valid:   {"success": true, "validate_only": true, "valid": true, "message": "Payload validation passed..."}
 // If invalid: {"success": false, "errors": [...]}
 
 // Then submit for real
-submit("vendor", "create", '{"vendor_name": "Acme", ...}')
+submit(object_type="vendor", operation="create", data='{"vendor_name": "Acme", ...}')
 ```
 
 ### Examples (always preceded by schema discovery)
@@ -291,15 +291,15 @@ submit("vendor", "create", '{"vendor_name": "Acme", ...}')
 ```javascript
 // Vendor creation
 schema = get_submissions(action='schema', object_type="vendor", operation="create")     // Check required fields first
-submit("vendor", "create", '{"vendor_name": "Acme", "payment_term_code": "NET30", "email": "ap@acme.com"}')
+submit(object_type="vendor", operation="create", data='{"vendor_name": "Acme", "payment_term_code": "NET30", "email": "ap@acme.com"}')
 
 // Merge a duplicate vendor (consolidate two records into one)
 schema = get_submissions(action='schema', object_type="vendor", operation="merge")      // Check required fields first
-submit("vendor", "merge", '{"winning_vendor_id": 42, "losing_vendor_id": 87, "merge_reason": "duplicate"}')
+submit(object_type="vendor", operation="merge", data='{"winning_vendor_id": 42, "losing_vendor_id": 87, "merge_reason": "duplicate"}')
 
 // Transaction posting
 schema = get_submissions(action='schema', object_type="transaction", operation="post")  // Check required fields first
-submit("transaction", "post", '{"transaction_type_code": "AP_INVOICE", "legal_entity_id": 10, ...}')
+submit(object_type="transaction", operation="post", data='{"transaction_type_code": "AP_INVOICE", "legal_entity_id": 10, ...}')
 
 // Legal entity creation — goes through onboarding, NOT submit()
 // First entity in a new org:
@@ -308,11 +308,11 @@ manage_onboarding(action="start", country_code="US", accounting_standard="us_gaa
 manage_onboarding(action="add_entity", entity_name="Acme US", entity_code="ACME-US", country_code="US", base_currency="USD")
 
 // Legal entity update (safe fields only — entity_name, tax_id, country_code, address, is_active, metadata)
-submit("legal_entity", "update", '{"entity_id": 13, "entity_name": "Acme US LLC"}')
+submit(object_type="legal_entity", operation="update", data='{"entity_id": 13, "entity_name": "Acme US LLC"}')
 
 // Configuration
 schema = get_submissions(action='schema', object_type="number_series", operation="create")
-submit("number_series", "create", '{"legal_entity_id": 9, "series_type": "invoice", "prefix": "INV-"}')
+submit(object_type="number_series", operation="create", data='{"legal_entity_id": 9, "series_type": "invoice", "prefix": "INV-"}')
 ```
 
 ---
@@ -334,7 +334,7 @@ Write actions (`manage_submissions`): `comment`, `decide`, `edit_payload`, `prep
 | `manage_submissions(action='comment', workflow_id, comment)` | Add a comment to a workflow | Attach notes for reviewers |
 | `get_submissions(action='history', workflow_id)` | Get full audit trail | All events, decisions, comments |
 | `get_submissions(action='schema', object_type, operation, payload?)` | Discover payload fields | Get required/optional fields for a workflow; `payload` is optional JSON routing context (`legal_entity_id`, `transaction_type_code`) |
-| `get_imports(action="status", import_id)` | Check import progress (replaces `get_import_status(import_id)`, MCP registration removed) | Track bulk import operations |
+| `get_imports(action="status", import_id)` | Check import progress | Track bulk import operations |
 
 > **Org-scoped:** `get_submissions(action='my_tasks')`, `get_submissions(action='task_details')`, and `manage_submissions(action='decide')` only see/act on tasks belonging to the session's **current** organization. A task from another org of a multi-org user is invisible (`my_tasks`) or returns "Task {id} not found" (`task_details`, `decide`) — select that org with `manage_organization(action="switch", organization_id=X)`, then verify `get_info` reports it before working its tasks. A pinned connection may need reconnection to the intended company.
 
@@ -590,10 +590,10 @@ tax_codes     = query("tax_code", filters={"legal_entity_id": 10})
 dim_types     = query("dimension_type")  // NOTE: "is_required" filter is deprecated; read required dims from workflow_definitions.related_entity_rules instead
 
 // 3. (Optional) Validate payload first — catches all errors without side effects
-submit("vendor", "create", '{"vendor_name": "Acme", "payment_term_code": "NET30", ...}', validate_only=true)
+submit(object_type="vendor", operation="create", data='{"vendor_name": "Acme", "payment_term_code": "NET30", ...}', validate_only=true)
 
 // 4. Submit for real
-submit("vendor", "create", '{"vendor_name": "Acme", "payment_term_code": "NET30", ...}')
+submit(object_type="vendor", operation="create", data='{"vendor_name": "Acme", "payment_term_code": "NET30", ...}')
 ```
 
 ### Analytics -> Drill Down -> Details
@@ -673,11 +673,11 @@ An agent's `role.create`, `role.update`, `role.toggle`, `user_role.assign`, `use
 
 ### Handing work to a managed agent (`managed_agent_run.handoff`)
 
-`submit("managed_agent_run", "handoff", {"agent_type": "bill_processor", "legal_entity_id": 12, "brief": "<what to do and the evidence>", "subject": {"type": "transaction", "id": 812, "label": "BILL000291"}})` starts a session of the organisation's managed agent with the brief. Only an owner or an admin hands off (a managed agent from its own session; a built-in agent's key as for agent_event.create). The target works under its own user, permissions and the organisation's approval lanes; the hand-off grants nothing. The target must be managed and not a roster-only helper (master data, configuration); the entity must be in your scope. One open hand-off per target, entity and subject (`already_open`). A managed agent adds its own `session_id` and gets the result back in its session; anyone else reads it on the run (`query("managed_agent_run")`).
+`submit(object_type="managed_agent_run", operation="handoff", data=JSON.stringify({"agent_type": "bill_processor", "legal_entity_id": 12, "brief": "<what to do and the evidence>", "subject": {"type": "transaction", "id": 812, "label": "BILL000291"}}))` starts a session of the organisation's managed agent with the brief. Only an owner or an admin hands off (a managed agent from its own session; a built-in agent's key as for agent_event.create). The target works under its own user, permissions and the organisation's approval lanes; the hand-off grants nothing. The target must be managed and not a roster-only helper (master data, configuration); the entity must be in your scope. One open hand-off per target, entity and subject (`already_open`). A managed agent adds its own `session_id` and gets the result back in its session; anyone else reads it on the run (`query("managed_agent_run")`).
 
 ### Governed policy (`policy.save`)
 
-`submit("policy", "save", {"namespace": "period_close.policy", "section": "check_severity", "legal_entity_id": 12, "content": {"overrides": {"group.code": "advisory"}}, "reason": "..."})` saves a new version for an entity (omit `legal_entity_id` for the organisation). `"action": "retire"` without `content` ends that level's version. Every version is kept. In force: entity, then organisation, then the product default. An owner, admin or holder of `accounting:close` saves directly; `accounting:write` holders and agents propose and someone with `accounting:close` approves. `fiscal_period.close` reads `period_close.policy.check_severity`, and `payroll.payroll_run_paid` reads `period_close.policy.payroll_settlement` (carry net pay paid after the month end, from a month); integrity checks cannot be overridden (see financial-period-management.md, "Closing a period"). `fiscal_period.close` with `force: true` needs `force_reason` and a person holding `accounting:close`. Read what is in force with `query("policy", filters={"namespace": "period_close.policy", "legal_entity_id": 12})` (also `fixed_assets.policy`; `accounting:read`): one row per section with `source` (entity, organization or default) and `stored` (false: nothing saved, the product default applies). Human workflow downstream payloads are sanitized recursively; setting provenance fields does not grant agent authority.
+`submit(object_type="policy", operation="save", data=JSON.stringify({"namespace": "period_close.policy", "section": "check_severity", "legal_entity_id": 12, "content": {"overrides": {"group.code": "advisory"}}, "reason": "..."}))` saves a new version for an entity (omit `legal_entity_id` for the organisation). `"action": "retire"` without `content` ends that level's version. Every version is kept. In force: entity, then organisation, then the product default. An owner, admin or holder of `accounting:close` saves directly; `accounting:write` holders and agents propose and someone with `accounting:close` approves. `fiscal_period.close` reads `period_close.policy.check_severity`, and `payroll.payroll_run_paid` reads `period_close.policy.payroll_settlement` (carry net pay paid after the month end, from a month); integrity checks cannot be overridden (see financial-period-management.md, "Closing a period"). `fiscal_period.close` with `force: true` needs `force_reason` and a person holding `accounting:close`. Read what is in force with `query("policy", filters={"namespace": "period_close.policy", "legal_entity_id": 12})` (also `fixed_assets.policy`; `accounting:read`): one row per section with `source` (entity, organization or default) and `stored` (false: nothing saved, the product default applies). Human workflow downstream payloads are sanitized recursively; setting provenance fields does not grant agent authority.
 
 Stored attachment reads authorize the actual owning type and entity. Employee personnel files require HR/payroll read, and a colliding ledger ID grants no access. Unknown/retired CONTRACT spaces are refused. Unscoped raw email/import/skill storage is an organization-wide admin operation. Existing expense/card ownership scope still applies to receipts.
 
@@ -693,7 +693,7 @@ remain confirmable by the submitter. Agent submissions with authenticated submit
 provenance may be approved by their human creator. Human self-approval on an
 approval step requires there to be no other eligible approver.
 
-`submit("legal_entity", "rerun_onboarding_task", ...)` requires live owner/admin
+`submit(object_type="legal_entity", operation="rerun_onboarding_task", ...)` requires live owner/admin
 membership and access to the entity, including when invoked through MCP.
 
 

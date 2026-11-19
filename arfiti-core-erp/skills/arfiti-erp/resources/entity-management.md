@@ -29,11 +29,11 @@ A **legal entity** represents a distinct legal business unit within your organiz
 
 | Tool | Purpose |
 |------|---------|
-| `submit("legal_entity", "update", data)` | Update safe scalar fields on an existing entity |
+| `submit(object_type="legal_entity", operation="update", data=data)` | Update safe scalar fields on an existing entity |
 | `manage_onboarding(action="start", ...)` | Create the FIRST legal entity in an organization (via onboarding wave 1) |
 | `manage_onboarding(action="add_entity", ...)` | Create a 2nd+ legal entity in an already-onboarded organization |
 
-> **NEVER call `submit("legal_entity", "create", ...)`** — that executor does not exist. Legal entities are created by the onboarding flow, not by `submit()`.
+> **NEVER call `submit(object_type="legal_entity", operation="create", ...)`** — that executor does not exist. Legal entities are created by the onboarding flow, not by `submit()`.
 
 ---
 
@@ -107,11 +107,11 @@ At least one updatable field must be provided. If none are, the call is a no-op.
 ### Example
 
 ```
-submit("legal_entity", "update", {
+submit(object_type="legal_entity", operation="update", data=JSON.stringify({
     "entity_id": 13,
     "entity_name": "Acme Corporation USA",
     "tax_id": "12-3456789"
-})
+}))
 ```
 
 Response:
@@ -130,20 +130,20 @@ Response:
 
 ```
 # Update registered address (structured columns from mig 409 — preferred)
-submit("legal_entity", "update", {
+submit(object_type="legal_entity", operation="update", data=JSON.stringify({
     "entity_id": 13,
     "address_line_1": "123 Main St",
     "city": "Dublin",
     "state_province": "Leinster",
     "postal_code": "D02",
     "country_code": "IE"
-})
+}))
 
 # Deactivate entity
-submit("legal_entity", "update", {"entity_id": 13, "is_active": false})
+submit(object_type="legal_entity", operation="update", data=JSON.stringify({"entity_id": 13, "is_active": false}))
 
 # Reactivate
-submit("legal_entity", "update", {"entity_id": 13, "is_active": true})
+submit(object_type="legal_entity", operation="update", data=JSON.stringify({"entity_id": 13, "is_active": true}))
 ```
 
 ### NOT Updatable Fields
@@ -173,22 +173,22 @@ VAT registration is stored in `entity_tax_registrations` with `registration_type
 **Enable VAT (new or reactivate):**
 
 ```
-submit("tax_registration", "create", {
+submit(object_type="tax_registration", operation="create", data=JSON.stringify({
     "legal_entity_id": 13,
     "registration_type": "vat",
     "registration_number": "EE101980223",
     "effective_from": "2026-04-01"
-})
+}))
 ```
 
 **Disable VAT:** update the active registration row to `is_active=false` with `effective_to=CURRENT_DATE`:
 
 ```
-submit("tax_registration", "update", {
+submit(object_type="tax_registration", operation="update", data=JSON.stringify({
     "registration_id": <id>,
     "is_active": false,
     "effective_to": "2026-04-24"
-})
+}))
 ```
 
 **Create VAT at entity-creation time** (preferred — avoids a two-step flow):
@@ -294,7 +294,7 @@ Active (is_active=true)
     | Toggle VAT if needed
     | Update name/address/tax_id
     |
-Inactive (is_active=false, via submit("legal_entity", "update", {"entity_id": X, "is_active": false}))
+Inactive (is_active=false, via submit(object_type="legal_entity", operation="update", data=JSON.stringify({"entity_id": X, "is_active": false})))
     | Can be reactivated
     |
 Active (reactivated)
@@ -312,10 +312,10 @@ Entities are never hard-deleted -- they are deactivated. Inactive entities:
 ### Rename an Entity
 
 ```
-submit("legal_entity", "update", {
+submit(object_type="legal_entity", operation="update", data=JSON.stringify({
     "entity_id": 13,
     "entity_name": "New Company Name LLC"
-})
+}))
 ```
 
 ### Register for VAT
@@ -324,18 +324,18 @@ Use `tax_registration.create` — NOT `legal_entity.update`. Set the legal entit
 
 ```
 # 1. Set tax_id on the entity
-submit("legal_entity", "update", {
+submit(object_type="legal_entity", operation="update", data=JSON.stringify({
     "entity_id": 13,
     "tax_id": "IE1234567T"
-})
+}))
 
 # 2. Create the VAT registration
-submit("tax_registration", "create", {
+submit(object_type="tax_registration", operation="create", data=JSON.stringify({
     "legal_entity_id": 13,
     "registration_type": "vat",
     "registration_number": "IE1234567T",
     "effective_from": "2026-04-01"
-})
+}))
 ```
 
 ### Update Business Address
@@ -343,14 +343,14 @@ submit("tax_registration", "create", {
 Use the structured columns from migration 409 — the legacy `address` JSONB is deprecated for new writes:
 
 ```
-submit("legal_entity", "update", {
+submit(object_type="legal_entity", operation="update", data=JSON.stringify({
     "entity_id": 13,
     "address_line_1": "456 Business Ave",
     "city": "San Francisco",
     "state_province": "CA",
     "postal_code": "94102",
     "country_code": "US"
-})
+}))
 ```
 
 ### Set Non-Calendar Fiscal Year
@@ -361,10 +361,10 @@ submit("legal_entity", "update", {
 
 ```
 # Deactivate
-submit("legal_entity", "update", {"entity_id": 13, "is_active": false})
+submit(object_type="legal_entity", operation="update", data=JSON.stringify({"entity_id": 13, "is_active": false}))
 
 # Reactivate later
-submit("legal_entity", "update", {"entity_id": 13, "is_active": true})
+submit(object_type="legal_entity", operation="update", data=JSON.stringify({"entity_id": 13, "is_active": true}))
 ```
 
 ---
@@ -424,7 +424,7 @@ submit("legal_entity", "update", {"entity_id": 13, "is_active": true})
 
 ## Reporting business date
 
-`submit("legal_entity", "update", data={"legal_entity_id": ENTITY_ID, "reporting_timezone": "Europe/Tallinn"})`
+`submit(object_type="legal_entity", operation="update", data=JSON.stringify({"legal_entity_id": ENTITY_ID, "reporting_timezone": "Europe/Tallinn"}))`
 confirms an IANA reporting timezone through the normal workflow. Onboarding and
 cloning receive a DB default from a valid organisation timezone or country, falling
 back to UTC where no country mapping exists. Country defaults are provisional,

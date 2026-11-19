@@ -20,10 +20,10 @@ The `revenue_schedule.*` workflow calls are backward-compatible aliases that rou
 
 | Legacy call | Routes to |
 |-------------|-----------|
-| `submit("revenue_schedule", "create", {...})` | `amortization_schedule.create` with `kind: "revenue"` |
-| `submit("revenue_schedule", "recognize", {...})` | `amortization_schedule.recognize` |
-| `submit("revenue_schedule", "update", {...})` | `amortization_schedule.update` |
-| `submit("revenue_schedule", "cancel", {...})` | `amortization_schedule.cancel` |
+| `submit(object_type="revenue_schedule", operation="create", data='{...}')` | `amortization_schedule.create` with `kind: "revenue"` |
+| `submit(object_type="revenue_schedule", operation="recognize", data='{...}')` | `amortization_schedule.recognize` |
+| `submit(object_type="revenue_schedule", operation="update", data='{...}')` | `amortization_schedule.update` |
+| `submit(object_type="revenue_schedule", operation="cancel", data='{...}')` | `amortization_schedule.cancel` |
 
 Both old and new API calls go through the same Pydantic validators, workflow definitions, and executors. The only difference is the object_type string.
 

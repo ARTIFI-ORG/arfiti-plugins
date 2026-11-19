@@ -134,7 +134,7 @@ Use the `fiscal_period.create` workflow to create new accounting periods.
 schema = get_submissions(action='schema', object_type="fiscal_period", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("fiscal_period", "create", {
+submit(object_type="fiscal_period", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-01",
     period_type: "month",
@@ -142,7 +142,7 @@ submit("fiscal_period", "create", {
     end_date: "2025-01-31",
     fiscal_year: 2025,
     period_number: 1
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -188,7 +188,7 @@ submit("fiscal_period", "create", {
 ### Example: Create Monthly Period
 
 ```javascript
-submit("fiscal_period", "create", {
+submit(object_type="fiscal_period", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-01",
     period_type: "month",
@@ -196,7 +196,7 @@ submit("fiscal_period", "create", {
     end_date: "2025-01-31",
     fiscal_year: 2025,
     period_number: 1
-})
+}))
 ```
 
 **Result:** January 2025 period created, open for transaction posting
@@ -214,7 +214,7 @@ query("fiscal_period", filters={"legal_entity_id": 12}, limit=50)
 
 **If the target period doesn't exist, create it before posting:**
 ```javascript
-submit("fiscal_period", "create", {
+submit(object_type="fiscal_period", operation="create", data=JSON.stringify({
     legal_entity_id: 12,
     period_name: "2025-01",
     period_type: "month",
@@ -222,7 +222,7 @@ submit("fiscal_period", "create", {
     end_date: "2025-01-31",
     fiscal_year: 2025,
     period_number: 1
-})
+}))
 ```
 
 **IMPORTANT:**
@@ -233,7 +233,7 @@ submit("fiscal_period", "create", {
 ### Example: Create Quarterly Period
 
 ```javascript
-submit("fiscal_period", "create", {
+submit(object_type="fiscal_period", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-Q1",
     period_type: "quarter",
@@ -241,7 +241,7 @@ submit("fiscal_period", "create", {
     end_date: "2025-03-31",
     fiscal_year: 2025,
     period_number: 1
-})
+}))
 ```
 
 **Result:** Q1 2025 period created (Jan-Mar)
@@ -249,14 +249,14 @@ submit("fiscal_period", "create", {
 ### Example: Create Annual Period
 
 ```javascript
-submit("fiscal_period", "create", {
+submit(object_type="fiscal_period", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "FY2025",
     period_type: "year",
     start_date: "2025-01-01",
     end_date: "2025-12-31",
     fiscal_year: 2025
-})
+}))
 ```
 
 **Result:** Annual fiscal year 2025 period created
@@ -270,10 +270,10 @@ Use the `fiscal_period.close` workflow to close accounting periods after month-e
 ### Workflow: fiscal_period.close
 
 ```javascript
-submit("fiscal_period", "close", {
+submit(object_type="fiscal_period", operation="close", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-01"
-})
+}))
 ```
 
 **Required Fields:**
@@ -311,10 +311,10 @@ submit("fiscal_period", "close", {
 
 ```javascript
 // Close January 2025 after month-end procedures
-submit("fiscal_period", "close", {
+submit(object_type="fiscal_period", operation="close", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-01"
-})
+}))
 ```
 
 **Result:** January 2025 closed, no new transactions allowed
@@ -327,10 +327,10 @@ earnings, post that journal yourself (a journal entry dated in the last period),
 then close the period:
 
 ```javascript
-submit("fiscal_period", "close", {
+submit(object_type="fiscal_period", operation="close", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-12"
-})
+}))
 ```
 
 **Result:** December 2025 closed. Income statement balances stay as posted unless a closing journal was posted first.
@@ -344,11 +344,11 @@ Use the `fiscal_period.reopen` workflow to reopen closed periods (if not locked)
 ### Workflow: fiscal_period.reopen
 
 ```javascript
-submit("fiscal_period", "reopen", {
+submit(object_type="fiscal_period", operation="reopen", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-01",
     reopen_reason: "Need to post late expense report dated January"
-})
+}))
 ```
 
 **Required Fields:**
@@ -384,11 +384,11 @@ submit("fiscal_period", "reopen", {
 ### Example: Reopen for Late Transaction
 
 ```javascript
-submit("fiscal_period", "reopen", {
+submit(object_type="fiscal_period", operation="reopen", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-01",
     reopen_reason: "Late vendor invoice dated January 28 received February 6"
-})
+}))
 ```
 
 **Result:** January 2025 reopened, can post transactions
@@ -407,11 +407,11 @@ Use the `fiscal_period.lock` workflow to lock closed periods to prevent reopenin
 ### Workflow: fiscal_period.lock
 
 ```javascript
-submit("fiscal_period", "lock", {
+submit(object_type="fiscal_period", operation="lock", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-12",
     lock_reason: "Year-end 2025 audit complete - SOX compliance"
-})
+}))
 ```
 
 **Required Fields:**
@@ -444,11 +444,11 @@ submit("fiscal_period", "lock", {
 ### Example: Lock After Year-End Audit
 
 ```javascript
-submit("fiscal_period", "lock", {
+submit(object_type="fiscal_period", operation="lock", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-12",
     lock_reason: "Year-end 2025 audit complete - SOX compliance - Audit report dated 2026-02-15"
-})
+}))
 ```
 
 **Result:** December 2025 locked; reopening it first needs `fiscal_period.unlock` (approval steps, if any, are your organisation's workflow configuration)
@@ -456,11 +456,11 @@ submit("fiscal_period", "lock", {
 ### Example: Lock After Tax Filing
 
 ```javascript
-submit("fiscal_period", "lock", {
+submit(object_type="fiscal_period", operation="lock", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-Q4",
     lock_reason: "Q4 2025 tax return filed - Form 1120 submitted to IRS on 2026-03-15"
-})
+}))
 ```
 
 **Result:** Q4 2025 locked after tax filing
@@ -485,11 +485,11 @@ Use the `fiscal_period.unlock` workflow for emergency unlock of locked periods. 
 ### Workflow: fiscal_period.unlock
 
 ```javascript
-submit("fiscal_period", "unlock", {
+submit(object_type="fiscal_period", operation="unlock", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-12",
     unlock_reason: "Material revenue misstatement $50K found - CFO approved correction per email 2026-02-20 10:30 AM"
-})
+}))
 ```
 
 **Required Fields:**
@@ -523,34 +523,34 @@ submit("fiscal_period", "unlock", {
 
 ```javascript
 // Step 1: Unlock period (approval as the organisation has configured it)
-submit("fiscal_period", "unlock", {
+submit(object_type="fiscal_period", operation="unlock", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-12",
     unlock_reason: "Material revenue misstatement $50K found during Q1 review - CFO approved correction per email 2026-02-20 10:30 AM - Ticket #AUD-2026-015"
-})
+}))
 
 // Step 2: Reopen period (now that it's unlocked)
-submit("fiscal_period", "reopen", {
+submit(object_type="fiscal_period", operation="reopen", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-12",
     reopen_reason: "Emergency audit adjustment - unlocked by CFO"
-})
+}))
 
 // Step 3: Post correcting journal entries
 // (use transaction workflows)
 
 // Step 4: Re-close period
-submit("fiscal_period", "close", {
+submit(object_type="fiscal_period", operation="close", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-12"
-})
+}))
 
 // Step 5: Re-lock period
-submit("fiscal_period", "lock", {
+submit(object_type="fiscal_period", operation="lock", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-12",
     lock_reason: "Re-locked after audit adjustment - 2026-02-20"
-})
+}))
 ```
 
 **Result:** Period unlocked → reopened → corrected → closed → re-locked with full audit trail
@@ -740,10 +740,10 @@ const trialBalance = query("transaction", filters={
 // Manually verify debits = credits
 
 // Close the period
-submit("fiscal_period", "close", {
+submit(object_type="fiscal_period", operation="close", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-10"
-})
+}))
 ```
 
 **Result:** October 2025 closed successfully
@@ -764,11 +764,11 @@ submit("fiscal_period", "close", {
 // (Period closed on January 3)
 
 // Step 2: After audit is complete, lock the period
-submit("fiscal_period", "lock", {
+submit(object_type="fiscal_period", operation="lock", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-12",
     lock_reason: "Year-end 2025 audit complete - SOX compliance - Audit opinion dated 2026-02-01"
-})
+}))
 ```
 
 **Result:** December 2025 locked, frozen for audit compliance
@@ -788,20 +788,20 @@ const period = query("fiscal_period", query="2025-10", filters={
 // If is_locked = true, must unlock first (fiscal_period.unlock; approval as configured)
 
 // Step 2: Reopen period
-submit("fiscal_period", "reopen", {
+submit(object_type="fiscal_period", operation="reopen", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-10",
     reopen_reason: "Correction: vendor invoice #INV-2345 dated October 28 was incorrectly posted to November - needs to be in October"
-})
+}))
 
 // Step 3: Post correcting entry
 // (use transaction workflow to move from November to October)
 
 // Step 4: Re-close period
-submit("fiscal_period", "close", {
+submit(object_type="fiscal_period", operation="close", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-10"
-})
+}))
 ```
 
 **Result:** October corrected and re-closed with audit trail
@@ -814,7 +814,7 @@ submit("fiscal_period", "close", {
 
 ```javascript
 // Create January
-submit("fiscal_period", "create", {
+submit(object_type="fiscal_period", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-01",
     period_type: "month",
@@ -822,10 +822,10 @@ submit("fiscal_period", "create", {
     end_date: "2025-01-31",
     fiscal_year: 2025,
     period_number: 1
-})
+}))
 
 // Create February
-submit("fiscal_period", "create", {
+submit(object_type="fiscal_period", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-02",
     period_type: "month",
@@ -833,7 +833,7 @@ submit("fiscal_period", "create", {
     end_date: "2025-02-28",
     fiscal_year: 2025,
     period_number: 2
-})
+}))
 
 // ... continue for all 12 months
 ```
@@ -848,7 +848,7 @@ submit("fiscal_period", "create", {
 
 ```javascript
 // Q1 2025
-submit("fiscal_period", "create", {
+submit(object_type="fiscal_period", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-Q1",
     period_type: "quarter",
@@ -856,10 +856,10 @@ submit("fiscal_period", "create", {
     end_date: "2025-03-31",
     fiscal_year: 2025,
     period_number: 1
-})
+}))
 
 // Q2 2025
-submit("fiscal_period", "create", {
+submit(object_type="fiscal_period", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-Q2",
     period_type: "quarter",
@@ -867,10 +867,10 @@ submit("fiscal_period", "create", {
     end_date: "2025-06-30",
     fiscal_year: 2025,
     period_number: 2
-})
+}))
 
 // Q3 2025
-submit("fiscal_period", "create", {
+submit(object_type="fiscal_period", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-Q3",
     period_type: "quarter",
@@ -878,10 +878,10 @@ submit("fiscal_period", "create", {
     end_date: "2025-09-30",
     fiscal_year: 2025,
     period_number: 3
-})
+}))
 
 // Q4 2025
-submit("fiscal_period", "create", {
+submit(object_type="fiscal_period", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-Q4",
     period_type: "quarter",
@@ -889,7 +889,7 @@ submit("fiscal_period", "create", {
     end_date: "2025-12-31",
     fiscal_year: 2025,
     period_number: 4
-})
+}))
 ```
 
 **Result:** 4 quarterly periods created for 2025
@@ -904,7 +904,7 @@ submit("fiscal_period", "create", {
 // FY2025 runs from April 2024 to March 2025
 
 // April 2024 (Period 1 of FY2025)
-submit("fiscal_period", "create", {
+submit(object_type="fiscal_period", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-04",
     period_type: "month",
@@ -912,10 +912,10 @@ submit("fiscal_period", "create", {
     end_date: "2024-04-30",
     fiscal_year: 2025,
     period_number: 1
-})
+}))
 
 // May 2024 (Period 2 of FY2025)
-submit("fiscal_period", "create", {
+submit(object_type="fiscal_period", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-05",
     period_type: "month",
@@ -923,12 +923,12 @@ submit("fiscal_period", "create", {
     end_date: "2024-05-31",
     fiscal_year: 2025,
     period_number: 2
-})
+}))
 
 // ... continue through March 2025 (Period 12 of FY2025)
 
 // March 2025 (Period 12 of FY2025)
-submit("fiscal_period", "create", {
+submit(object_type="fiscal_period", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     period_name: "2025-03",
     period_type: "month",
@@ -936,7 +936,7 @@ submit("fiscal_period", "create", {
     end_date: "2025-03-31",
     fiscal_year: 2025,
     period_number: 12
-})
+}))
 ```
 
 **Result:** Fiscal year 2025 spans April 2024 - March 2025
@@ -1469,7 +1469,7 @@ The saga's `checkpoint_data.pause_reasons` says why each failed phase paused:
 
 To continue:
 1. Do the work with the normal tools, or ask the user to.
-2. Call `submit("saga","retry_phase", {saga_id, phase_number})`. The checks run again, and the phase completes only if they pass.
+2. Call `submit(object_type="saga", operation="retry_phase", data=JSON.stringify({saga_id, phase_number}))`. The checks run again, and the phase completes only if they pass.
 
 A retry after credits are topped up, or after an agent is switched back on, also re-runs the other phases stopped for that reason. There is no "mark resolved" operation. Whether a check applies is a policy or `force` decision at close (above).
 

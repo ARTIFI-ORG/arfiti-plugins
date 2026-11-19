@@ -78,12 +78,12 @@ Shall I submit this?
 ### Step 4: Submit
 
 ```
-submit("support_ticket", "create", {
+submit(object_type="support_ticket", operation="create", data=JSON.stringify({
     "category": "bug_report",
     "subject": "AP aging report shows incorrect 30-day bucket totals",
     "description": "When generating AP aging for entity 9 as of 2026-03-20, the 0-30 day bucket includes 3 invoices with due dates from January 2026. Expected: only invoices due within last 30 days.",
     "conversation_context": "User ran generate_report('ap_aging', {legal_entity_id: 9, as_of_date: '2026-03-20'}). Report returned 15 invoices in 0-30 bucket. Manual verification showed 3 invoices (INV-001, INV-002, INV-003) have due dates from January."
-})
+}))
 ```
 
 **Expected result:**
@@ -152,10 +152,10 @@ Check that:
 ### Step 2: Submit the Comment
 
 ```
-submit("support_ticket_comment", "create", {
+submit(object_type="support_ticket_comment", operation="create", data=JSON.stringify({
     "ticket_id": 42,
     "body": "I also noticed this happens when filtering by vendor 'Acme Corp' specifically. Other vendors seem to show correct aging buckets."
-})
+}))
 ```
 
 **Expected result:**
@@ -178,10 +178,10 @@ submit("support_ticket_comment", "create", {
 When the user's issue has been resolved and they want to close the ticket:
 
 ```
-submit("support_ticket", "update", {
+submit(object_type="support_ticket", operation="update", data=JSON.stringify({
     "ticket_id": 42,
     "status": "closed"
-})
+}))
 ```
 
 **Expected result:**

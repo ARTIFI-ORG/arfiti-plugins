@@ -157,13 +157,13 @@ unmatched --> matched --> reconciled
 | `query("bank_statement_line", filters={...})` | List statement lines (filter by `recon_status`, `bank_account_id`, etc.) |
 | `query("bank_statement_line", query="query text")` | Search by description or reference |
 | `query("bank_statement_line", group_by, aggregates, filters)` | Aggregate lines (e.g., totals by status) |
-| `submit("bank_statement_line", "match", {...})` | Match a line to a GL transaction |
-| `submit("bank_statement_line", "unmatch", {...})` | Remove a match |
-| `submit("bank_statement_line", "exclude", {...})` | Exclude a line (no GL posting needed) |
-| `submit("reconciliation", "match", {...})` | Manually match payment to invoice(s) (AR/AP) |
-| `submit("reconciliation", "unmatch", {...})` | Reverse a match (AR/AP/card — see "Reverse a Match") |
+| `submit(object_type="bank_statement_line", operation="match", data='{...}')` | Match a line to a GL transaction |
+| `submit(object_type="bank_statement_line", operation="unmatch", data='{...}')` | Remove a match |
+| `submit(object_type="bank_statement_line", operation="exclude", data='{...}')` | Exclude a line (no GL posting needed) |
+| `submit(object_type="reconciliation", operation="match", data='{...}')` | Manually match payment to invoice(s) (AR/AP) |
+| `submit(object_type="reconciliation", operation="unmatch", data='{...}')` | Reverse a match (AR/AP/card — see "Reverse a Match") |
 | `query("reconciliation_run", ...)` / `query("reconciliation_item", ...)` | Inspect match records: which run matched what, at what confidence |
-| `submit("reconciliation", "dismiss", {...})` | Close a transaction as reconciled without match |
+| `submit(object_type="reconciliation", operation="dismiss", data='{...}')` | Close a transaction as reconciled without match |
 | `generate_report("reconciliation_status", {...})` | Reconciliation status report |
 
 ---
@@ -182,12 +182,12 @@ schema = get_submissions(action='schema', object_type="bank_statement_line", ope
 
 // Step 2: Submit with discovered fields
 // Tip: Use validate_only=true to check payload before submitting
-submit("bank_statement_line", "match", {
+submit(object_type="bank_statement_line", operation="match", data=JSON.stringify({
   statement_line_id: 123,
   gl_transaction_id: 456,
   legal_entity_id: 9,
   notes: "Matched by amount and vendor name"  // optional
-})
+}))
 ```
 
 **Result:** Sets `recon_status = 'matched'` and `gl_transaction_id = 456` on the statement line.
@@ -206,11 +206,11 @@ submit("bank_statement_line", "match", {
 Remove an incorrect match:
 
 ```javascript
-submit("bank_statement_line", "unmatch", {
+submit(object_type="bank_statement_line", operation="unmatch", data=JSON.stringify({
   statement_line_id: 123,
   legal_entity_id: 9,
   reason: "Matched to wrong transaction"  // optional
-})
+}))
 ```
 
 **Result:** Clears `gl_transaction_id`, sets `recon_status = 'unmatched'`, creates audit log entry.
@@ -220,11 +220,11 @@ submit("bank_statement_line", "unmatch", {
 Mark a line as excluded when no GL posting is needed (duplicates, non-business items, internal transfers already handled):
 
 ```javascript
-submit("bank_statement_line", "exclude", {
+submit(object_type="bank_statement_line", operation="exclude", data=JSON.stringify({
   statement_line_id: 123,
   legal_entity_id: 9,
   reason: "Duplicate entry"  // optional
-})
+}))
 ```
 
 **Result:** Sets `recon_status = 'excluded'`. Line is removed from unmatched count.
@@ -262,12 +262,12 @@ query("transaction", query="payment to vendor XYZ amount 5000")
 ### Step 3: Create the Match
 
 ```javascript
-submit("bank_statement_line", "match", {
+submit(object_type="bank_statement_line", operation="match", data=JSON.stringify({
   statement_line_id: 123,
   gl_transaction_id: 456,
   legal_entity_id: 9,
   notes: "Exact amount and date match"
-})
+}))
 ```
 
 ### Step 4: Verify Progress
@@ -331,7 +331,7 @@ When a bank statement line has no matching GL transaction, an adjusting journal 
 
 ```javascript
 // Step 1: Post adjusting JE for bank fee
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
   transaction_type_code: "JOURNAL_ENTRY",
   legal_entity_id: 9,
   entry_date: "2026-01-15",
@@ -340,14 +340,14 @@ submit("transaction", "post", {
     { account_number: "6500", debit: 25.00 },
     { account_number: "1000", credit: 25.00 }
   ]
-})
+}))
 
 // Step 2: Match the statement line to the new JE
-submit("bank_statement_line", "match", {
+submit(object_type="bank_statement_line", operation="match", data=JSON.stringify({
   statement_line_id: 789,
   gl_transaction_id: <new_je_transaction_id>,
   legal_entity_id: 9
-})
+}))
 ```
 
 ### Interest Income
@@ -370,18 +370,18 @@ Same pattern: post adjusting JE (DR Cash / CR Interest Income), then match.
 
 ```javascript
 // Remove incorrect match
-submit("bank_statement_line", "unmatch", {
+submit(object_type="bank_statement_line", operation="unmatch", data=JSON.stringify({
   statement_line_id: 123,
   legal_entity_id: 9,
   reason: "Wrong vendor payment"
-})
+}))
 
 // Create correct match
-submit("bank_statement_line", "match", {
+submit(object_type="bank_statement_line", operation="match", data=JSON.stringify({
   statement_line_id: 123,
   gl_transaction_id: 789,
   legal_entity_id: 9
-})
+}))
 ```
 
 ---
@@ -473,15 +473,16 @@ A refund/reversal/chargeback leg is held out of every payment/invoice pass (mone
 
 ```python
 # 1. Link the verified bill
-await submit("card_purchase", "manage", data='{"legal_entity_id": 40,
+await submit(object_type="card_purchase", operation="manage", data=json.dumps({"legal_entity_id": 40,
     "purchase_id": 501, "expected_version": 3, "action": "link_existing_bill",
-    "bill_transaction_id": 9001, "reason": "Confirmed against vendor statement"}')
+    "bill_transaction_id": 9001, "reason": "Confirmed against vendor statement"}))
 
 # 2. Apply the payment -- scope MUST be "ap" (bank/card are refused here)
-await submit("reconciliation", "match", data='{"legal_entity_id": 40,
-    "scope": "ap", "source_transaction_id": <charge id>, "purchase_id": 501,
+charge_id = ...  # the card charge's transaction id
+await submit(object_type="reconciliation", operation="match", data=json.dumps({"legal_entity_id": 40,
+    "scope": "ap", "source_transaction_id": charge_id, "purchase_id": 501,
     "purchase_version": 3, "applications": [
-        {"target_transaction_id": 9001, "applied_amount": "32.40"}]}')
+        {"target_transaction_id": 9001, "applied_amount": "32.40"}]}))
 ```
 
 A purchase leg whose card expense was posted without a vendor is applied under the purchase's vendor (the one vendor its legs name); the bill must belong to that vendor and the posted card expense is not changed. With no purchase, or a purchase that names no single vendor, the match is refused (`Payment <id> has no vendor assigned`).
@@ -724,14 +725,14 @@ generate_report("reconciliation_status", {
 
 ```javascript
 // Step 1: Import statement
-submit("bank_statement", "import", {
+submit(object_type="bank_statement", operation="import", data=JSON.stringify({
   legal_entity_id: 9,
   bank_account_id: 1,
   statement_date: "2026-01-31",
   opening_balance: 100000.00,
   closing_balance: 125000.00,
   lines: [...]
-})
+}))
 
 // Step 2: List unmatched lines
 query("bank_statement_line", filters={ legal_entity_id: 9, bank_account_id: 1, recon_status: "unmatched" })
@@ -740,12 +741,12 @@ query("bank_statement_line", filters={ legal_entity_id: 9, bank_account_id: 1, r
 query("transaction", query="ACME SUPPLIES 1500")
 
 // Step 4: Create match
-submit("bank_statement_line", "match", {
+submit(object_type="bank_statement_line", operation="match", data=JSON.stringify({
   statement_line_id: 124,
   gl_transaction_id: 789,
   legal_entity_id: 9,
   notes: "Exact amount and date match"
-})
+}))
 
 // Step 5: Handle exceptions (bank fees, interest) with adjusting JEs
 // Step 6: Verify completion
@@ -786,7 +787,7 @@ Apply payments to invoices directly via Claude, without running the full reconci
 
 ```javascript
 // 1:1 match
-submit("reconciliation", "match", {
+submit(object_type="reconciliation", operation="match", data=JSON.stringify({
   scope: "ar",                          // or "ap" for vendor bills
   legal_entity_id: 9,
   source_transaction_id: 456,           // AR_PAYMENT transaction ID
@@ -794,10 +795,10 @@ submit("reconciliation", "match", {
     { target_transaction_id: 789, applied_amount: 1500.00 }
   ],
   notes: "Matched by amount and date"
-})
+}))
 
 // 1:N split -- one payment across multiple invoices
-submit("reconciliation", "match", {
+submit(object_type="reconciliation", operation="match", data=JSON.stringify({
   scope: "ar",
   legal_entity_id: 9,
   source_transaction_id: 457,
@@ -807,17 +808,17 @@ submit("reconciliation", "match", {
   ],
   write_off_amount: 0.01,
   notes: "Split payment with rounding write-off"
-})
+}))
 
 // Partial match -- payment $50 against invoice $100
-submit("reconciliation", "match", {
+submit(object_type="reconciliation", operation="match", data=JSON.stringify({
   scope: "ap",
   legal_entity_id: 9,
   source_transaction_id: 100,           // AP_PAYMENT for 50
   applications: [
     { target_transaction_id: 200, applied_amount: 50.00 }
   ]
-})
+}))
 // Invoice 200: amount_due=50, status='partial', recon_status='partial'
 // Remaining 50 will be matched by future payment
 ```
@@ -829,13 +830,13 @@ piece of work, record them as one run:
 
 ```javascript
 // First match: open the run; the response returns reconciliation_run_id.
-submit("reconciliation", "match", { scope: "ar", legal_entity_id: 9,
-  source_transaction_id: 456, applications: [...], open_run: true })
+submit(object_type="reconciliation", operation="match", data=JSON.stringify({ scope: "ar", legal_entity_id: 9,
+  source_transaction_id: 456, applications: [...], open_run: true }))
 // Later matches, same entity and scope: join it.
-submit("reconciliation", "match", { scope: "ar", legal_entity_id: 9,
-  source_transaction_id: 457, applications: [...], reconciliation_run_id: 1701 })
+submit(object_type="reconciliation", operation="match", data=JSON.stringify({ scope: "ar", legal_entity_id: 9,
+  source_transaction_id: 457, applications: [...], reconciliation_run_id: 1701 }))
 // After the last match: close it. A closed run is never reopened.
-submit("reconciliation", "finalize", { scope: "ar", legal_entity_id: 9, reconciliation_run_id: 1701 })
+submit(object_type="reconciliation", operation="finalize", data=JSON.stringify({ scope: "ar", legal_entity_id: 9, reconciliation_run_id: 1701 }))
 ```
 
 Only your own open run in the same entity and scope can be joined; the
@@ -862,13 +863,13 @@ query("reconciliation_item", filters={ legal_entity_id: 9, target_transaction_id
 Then unmatch by the item's SOURCE transaction:
 
 ```javascript
-submit("reconciliation", "unmatch", {
+submit(object_type="reconciliation", operation="unmatch", data=JSON.stringify({
   scope: "ar",                          // "ap" for vendor-side matches
   legal_entity_id: 9,
   source_transaction_id: 456,
   reconciliation_run_id: 913,           // optional: only this run's matches
   reason: "Incorrect match"
-})
+}))
 // Reverses all applied matches, restores invoice financials
 ```
 
@@ -881,12 +882,12 @@ reverses the CARD_EXPENSE_RECLASS settlement journal:
 
 ```javascript
 // Card charge CARD000352 → get_entity("card_transaction", 201).posted_transaction_id = 12705
-submit("reconciliation", "unmatch", {
+submit(object_type="reconciliation", operation="unmatch", data=JSON.stringify({
   scope: "ap",
   legal_entity_id: 40,
   source_transaction_id: 12705,         // the posted CARD_EXPENSE, NOT the card_transaction_id
   reason: "Matched against the wrong day's bill"
-})
+}))
 ```
 
 Do NOT confuse this with the card line's own `recon_status: "confirmed"` —
@@ -899,13 +900,13 @@ settlement.
 Mark a transaction as reconciled when no matching counterpart exists:
 
 ```javascript
-submit("reconciliation", "dismiss", {
+submit(object_type="reconciliation", operation="dismiss", data=JSON.stringify({
   scope: "ap",
   legal_entity_id: 9,
   transaction_id: 612,
   reason: "Invoice was in prior year (2024), AP closed at zero balance",
   category: "prior_period"
-})
+}))
 // Sets recon_status='dismissed', creates audit trail
 ```
 
@@ -1059,7 +1060,7 @@ must separately configure `transaction.repair_reverse_charge_sign` with a review
 step. No workflow or approval policy is automatically activated.
 
 Submit the returned `request` plus `expected_fingerprint` through
-`submit("transaction", "repair_reverse_charge_sign", payload, idempotency_key=...)`.
+`submit(object_type="transaction", operation="repair_reverse_charge_sign", data=payload, idempotency_key=...)`.
 Use the same key and unchanged payload for retries. Approval rechecks live access,
 original request scope, and the complete booked evidence. Changed evidence refuses
 the repair. After a failed approval, a fresh preview is allowed only when the

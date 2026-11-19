@@ -165,14 +165,14 @@ Bank statements track cash movements in company bank accounts. Statement lines c
 | `query("bank_statement_line", filters)` | List statement lines |
 | `query("bank_account", query)` | Search bank accounts |
 | `query("bank_statement_line", query)` | Search by description/reference |
-| `submit("bank_account", "create", {...})` | Create bank account |
-| `submit("bank_account", "update", {...})` | Update bank account |
-| `submit("bank_statement", "import", {...})` | Import bank statement |
-| `submit("bank_statement_line", "match", {...})` | Match line to GL transaction |
-| `submit("bank_statement_line", "unmatch", {...})` | Unmatch a line |
-| `submit("bank_statement_line", "exclude", {...})` | Exclude a line (no GL needed) |
-| `submit("bank_statement_line", "revoke_exclusion", {...})` | Restore an excluded line to `unmatched` (reason and request key required; read `get_entity` first for `expected_exclusion_hash`) |
-| `submit("bank_statement", "void", {...})` | Void a statement (reverses all GL) |
+| `submit(object_type="bank_account", operation="create", data='{...}')` | Create bank account |
+| `submit(object_type="bank_account", operation="update", data='{...}')` | Update bank account |
+| `submit(object_type="bank_statement", operation="import", data='{...}')` | Import bank statement |
+| `submit(object_type="bank_statement_line", operation="match", data='{...}')` | Match line to GL transaction |
+| `submit(object_type="bank_statement_line", operation="unmatch", data='{...}')` | Unmatch a line |
+| `submit(object_type="bank_statement_line", operation="exclude", data='{...}')` | Exclude a line (no GL needed) |
+| `submit(object_type="bank_statement_line", operation="revoke_exclusion", data='{...}')` | Restore an excluded line to `unmatched` (reason and request key required; read `get_entity` first for `expected_exclusion_hash`) |
+| `submit(object_type="bank_statement", operation="void", data='{...}')` | Void a statement (reverses all GL) |
 | `query("bank_statement_line", group_by, aggregates, filters)` | Aggregate statement lines (e.g., totals by status) |
 | `query(entity_type, filters={...})` ×N | Fetch reference data (issue the calls in parallel) |
 
@@ -186,9 +186,9 @@ Read this **before** importing a statement that mixes regular transfers with car
 
 | You have… | The bank account `account_type` is… | Import path | Where the card lines land |
 |---|---|---|---|
-| A dedicated **corporate-card statement** (one bill per month) | `credit_card`, with a card program whose `card_bank_account_id` points at this account | `submit("bank_statement", "import", …)` once. Lines auto-route. | `bank_card_transactions` (handled by `bank_transaction_processor` (card mode)) |
-| A **checking account with debit cards on it** (Wise, Revolut, N26, Mercury) | `checking` (or `savings`) | **Two imports**: (1) `submit("bank_statement", "import", …)` with the **non-card** lines; (2) `submit("import", "execute", { object_type: "card_transaction", … })` with the card lines. | Card lines go to `bank_card_transactions`, **not** to `bank_statement_lines` |
-| Statement-only **card transactions** with no bank statement context | n/a | `submit("import", "execute", { object_type: "card_transaction", … })` directly. | `bank_card_transactions` |
+| A dedicated **corporate-card statement** (one bill per month) | `credit_card`, with a card program whose `card_bank_account_id` points at this account | `submit(object_type="bank_statement", operation="import", …)` once. Lines auto-route. | `bank_card_transactions` (handled by `bank_transaction_processor` (card mode)) |
+| A **checking account with debit cards on it** (Wise, Revolut, N26, Mercury) | `checking` (or `savings`) | **Two imports**: (1) `submit(object_type="bank_statement", operation="import", …)` with the **non-card** lines; (2) `submit(object_type="import", operation="execute", data=JSON.stringify({ object_type: "card_transaction", … }))` with the card lines. | Card lines go to `bank_card_transactions`, **not** to `bank_statement_lines` |
+| Statement-only **card transactions** with no bank statement context | n/a | `submit(object_type="import", operation="execute", data=JSON.stringify({ object_type: "card_transaction", … }))` directly. | `bank_card_transactions` |
 
 **Why the split for the checking-with-debit-cards case:** the auto-routing rule (`card_bank_account_id`) is gated on `account_type='credit_card'`, so it never fires for a checking account. If you put all 20 lines on the bank statement, the 7 card lines are recorded twice (once as bank_statement_lines, once if/when the card-transaction posting later settles to cash) **or** the card-transaction lifecycle (employee submission, MCC categorisation, approval lanes, receipt attach) is skipped entirely.
 
@@ -344,7 +344,7 @@ Based on the user's answer:
 **If checking/savings account:**
 ```javascript
 // Create the bank account
-submit("bank_account", "create", {
+submit(object_type="bank_account", operation="create", data=JSON.stringify({
   legal_entity_id: 12,
   bank_account_code: "LHV-EUR-NEW",
   account_name: "LHV New Account EUR",
@@ -353,14 +353,14 @@ submit("bank_account", "create", {
   currency: "EUR",
   account_type: "checking",       // or "savings"
   gl_account_number: "1000"       // Ask user which GL account
-})
+}))
 // Then import the statement
 ```
 
 **If credit card account:**
 ```javascript
 // 1. Create the bank account with credit_card type
-submit("bank_account", "create", {
+submit(object_type="bank_account", operation="create", data=JSON.stringify({
   legal_entity_id: 12,
   bank_account_code: "LHV-CC-EUR",
   account_name: "LHV Corporate Card EUR",
@@ -369,7 +369,7 @@ submit("bank_account", "create", {
   currency: "EUR",
   account_type: "credit_card",
   gl_account_number: "2100"       // Credit card payable
-})
+}))
 
 // 2. Ask: "Which card program does this belong to?"
 query("card_program", filters={ legal_entity_id: 12, is_active: true })
@@ -379,7 +379,7 @@ query("card_program", filters={ legal_entity_id: 12, is_active: true })
 // Refused (bank_claim_program_retained) once any card of the program is linked to a journal.
 
 // If new program needed → create it:
-submit("card_program", "create", {
+submit(object_type="card_program", operation="create", data=JSON.stringify({
   legal_entity_id: 12,
   program_name: "LHV Corporate Card",
   program_type: "corporate",
@@ -391,7 +391,7 @@ submit("card_program", "create", {
                                        // card processor falls back to the funding bank's GL.
                                        // See corporate-cards-management.md → "Debit-card vs
                                        // credit-card posting modes".
-})
+}))
 
 // 3. Then import the statement (auto-routes to card processing)
 ```
@@ -472,7 +472,7 @@ Company bank accounts represent actual bank accounts used for operations.
 schema = get_submissions(action='schema', object_type="bank_account", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("bank_account", "create", {
+submit(object_type="bank_account", operation="create", data=JSON.stringify({
   legal_entity_id: 9,
   bank_account_code: "CASH-USD-MAIN",
   account_name: "Main Operating Account - Chase",
@@ -503,7 +503,7 @@ submit("bank_account", "create", {
 
   // Import format (for CSV)
   statement_import_format: "CSV"      // CSV, OFX, QBO, MT940
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -597,7 +597,7 @@ Bank statements contain a header with period information and lines for individua
 #### From CSV
 
 ```javascript
-submit("bank_statement", "import", {
+submit(object_type="bank_statement", operation="import", data=JSON.stringify({
   legal_entity_id: 9,
   bank_account_id: 1,
   statement_date: "2026-01-31",
@@ -630,7 +630,7 @@ submit("bank_statement", "import", {
     },
     // ... more lines
   ]
-})
+}))
 ```
 
 #### From CSV File
@@ -643,7 +643,7 @@ When user provides a CSV file, parse and submit:
 // 2026-01-05,ACH CREDIT CUSTOMER PAYMENT,ACH123456,credit,5000.00,55000.00
 // 2026-01-10,CHECK 1001 - ACME SUPPLIES,CHK1001,debit,1500.00,53500.00
 
-submit("bank_statement", "import", {
+submit(object_type="bank_statement", operation="import", data=JSON.stringify({
   legal_entity_id: 9,
   bank_account_id: 1,
   statement_date: "2026-01-31",
@@ -651,7 +651,7 @@ submit("bank_statement", "import", {
   options: {
     on_duplicate: "skip"  // Skip if reference_number exists
   }
-})
+}))
 ```
 
 **Required Statement Fields:**
@@ -786,7 +786,7 @@ Common metadata field names to use:
 LHV CSV has 16 columns. Map all of them:
 
 ```javascript
-submit("bank_statement", "import", {
+submit(object_type="bank_statement", operation="import", data=JSON.stringify({
   legal_entity_id: 12,
   bank_account_id: 3,
   statement_date: "2026-01-31",
@@ -812,7 +812,7 @@ submit("bank_statement", "import", {
       }
     }
   ]
-})
+}))
 ```
 
 **Example — Wise (card payments with embedded FX):**
@@ -1053,11 +1053,11 @@ rollout.
 When Claude identifies a matching GL transaction:
 
 ```javascript
-submit("bank_statement_line", "match", {
+submit(object_type="bank_statement_line", operation="match", data=JSON.stringify({
   statement_line_id: 123,
   gl_transaction_id: 456,
   legal_entity_id: 9
-})
+}))
 ```
 
 **Required Fields:**
@@ -1075,11 +1075,11 @@ submit("bank_statement_line", "match", {
 ### Unmatching a Statement Line
 
 ```javascript
-submit("bank_statement_line", "unmatch", {
+submit(object_type="bank_statement_line", operation="unmatch", data=JSON.stringify({
   statement_line_id: 123,
   legal_entity_id: 9,
   reason: "Matched to wrong transaction"
-})
+}))
 ```
 
 **Result:**
@@ -1091,11 +1091,11 @@ submit("bank_statement_line", "unmatch", {
 For lines that don't need a GL posting (e.g., duplicate entries, internal bank transfers already handled, non-business items):
 
 ```javascript
-submit("bank_statement_line", "exclude", {
+submit(object_type="bank_statement_line", operation="exclude", data=JSON.stringify({
   statement_line_id: 123,
   legal_entity_id: 9,
   reason: "Duplicate entry - already processed in previous statement"
-})
+}))
 ```
 
 **Result:**
@@ -1136,11 +1136,11 @@ const unmatched = query("bank_statement_line", filters={
 // "I found a matching payment to ACME SUPPLIES for $1,500.00 posted on 2026-01-10"
 
 // Step 4: Submit match
-submit("bank_statement_line", "match", {
+submit(object_type="bank_statement_line", operation="match", data=JSON.stringify({
   statement_line_id: 123,
   gl_transaction_id: 456,
   legal_entity_id: 9
-})
+}))
 ```
 
 ---
@@ -1159,12 +1159,12 @@ Voiding a bank statement reverses all GL transactions that were posted from its 
 ### Void Workflow
 
 ```javascript
-submit("bank_statement", "void", {
+submit(object_type="bank_statement", operation="void", data=JSON.stringify({
   legal_entity_id: 9,
   statement_id: 123,           // Required: Bank statement ID
   reason: "Imported wrong CSV file, need to re-import with correct data"  // Required
   // reversal_date: "2026-02-01"  // Optional, defaults to today
-})
+}))
 ```
 
 **Result:**
@@ -1228,12 +1228,12 @@ After voiding, you can re-import a corrected statement for the same date range:
 
 ```javascript
 // The overlap check excludes voided statements, so this works:
-submit("bank_statement", "import", {
+submit(object_type="bank_statement", operation="import", data=JSON.stringify({
   legal_entity_id: 9,
   bank_account_id: 1,
   statement_date: "2026-01-31",
   // ... corrected data
-})
+}))
 ```
 
 ### Important Notes
@@ -1263,7 +1263,7 @@ submit("bank_statement", "import", {
 
 ```javascript
 // Step 1: Create bank account
-submit("bank_account", "create", {
+submit(object_type="bank_account", operation="create", data=JSON.stringify({
   legal_entity_id: 9,
   bank_account_code: "CASH-USD-001",
   account_name: "Operating Account - Chase",
@@ -1274,10 +1274,10 @@ submit("bank_account", "create", {
   usage_type: "operating",
   is_operating: true,
   is_default_payments: true
-})
+}))
 
 // Step 2: Import first statement
-submit("bank_statement", "import", {
+submit(object_type="bank_statement", operation="import", data=JSON.stringify({
   legal_entity_id: 9,
   bank_account_id: 1,  // ID from step 1
   statement_date: "2026-01-31",
@@ -1292,7 +1292,7 @@ submit("bank_statement", "import", {
     },
     // ... more lines
   ]
-})
+}))
 ```
 
 ### Scenario 2: Import Bank Statement from CSV
@@ -1310,7 +1310,7 @@ transaction_date,description,reference,type,amount,balance
 Claude parses and imports:
 
 ```javascript
-submit("bank_statement", "import", {
+submit(object_type="bank_statement", operation="import", data=JSON.stringify({
   legal_entity_id: 9,
   bank_account_id: 1,
   statement_date: "2026-01-31",
@@ -1332,7 +1332,7 @@ submit("bank_statement", "import", {
       balance_after: 53500.00
     }
   ]
-})
+}))
 ```
 
 ### Scenario 3: Reconcile Bank Statement
@@ -1350,11 +1350,11 @@ query("bank_statement_line", filters={
 // Claude searches: query("transaction", query="ACME SUPPLIES 1500")
 
 // Step 3: Match the line
-submit("bank_statement_line", "match", {
+submit(object_type="bank_statement_line", operation="match", data=JSON.stringify({
   statement_line_id: 124,
   gl_transaction_id: 789,
   legal_entity_id: 9
-})
+}))
 
 // Step 4: Verify reconciliation progress
 query("bank_statement_line", filters={
@@ -1400,7 +1400,7 @@ query("bank_account", filters={
 // - Account type: "checking", "savings", or "credit_card"
 
 // Step 3: Create the bank account
-submit("bank_account", "create", {
+submit(object_type="bank_account", operation="create", data=JSON.stringify({
   legal_entity_id: 9,
   bank_account_code: "CASH-USD-CHASE",        // Generate from currency + bank name
   account_name: "Operating Account - Chase",   // Descriptive name
@@ -1410,16 +1410,16 @@ submit("bank_account", "create", {
   account_type: "checking",                    // From user
   usage_type: "operating",
   is_operating: true
-})
+}))
 
 // Step 4: Import the statement using the new bank_account_id
-submit("bank_statement", "import", {
+submit(object_type="bank_statement", operation="import", data=JSON.stringify({
   legal_entity_id: 9,
   bank_account_id: <new_bank_account_id>,
   statement_date: "2026-01-31",
   source: "csv_upload",
   lines: [...]  // Parsed from user's CSV
-})
+}))
 ```
 
 **Important:** Always confirm bank account details with the user before creating. The GL account mapping is critical — an incorrect mapping will cause all statement entries to post to the wrong account.

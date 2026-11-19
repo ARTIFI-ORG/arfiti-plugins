@@ -123,15 +123,15 @@ Corporate cards enable employee spending with automated transaction tracking, ca
 | `query("card_program", query)` | Search card programs |
 | `query("card", query)` | Search cards |
 | `query("card_transaction", query)` | Search transactions by merchant |
-| `submit("card_program", "create", {...})` | Create card program |
-| `submit("card_program", "update", {...})` | Update card program |
-| `submit("card_program", "deactivate", {...})` | Deactivate card program |
-| `submit("card", "issue", {...})` | Issue card to employee |
-| `submit("card", "activate", {...})` | Activate issued card |
-| `submit("card", "suspend", {...})` | Suspend card |
-| `submit("card", "cancel", {...})` | Cancel card |
-| `submit("card_transaction", "submit", {...})` | Submit transaction for approval |
-| `submit("import", "execute", {object_type: "card_transaction", ...})` | Import card transactions |
+| `submit(object_type="card_program", operation="create", data='{...}')` | Create card program |
+| `submit(object_type="card_program", operation="update", data='{...}')` | Update card program |
+| `submit(object_type="card_program", operation="deactivate", data='{...}')` | Deactivate card program |
+| `submit(object_type="card", operation="issue", data='{...}')` | Issue card to employee |
+| `submit(object_type="card", operation="activate", data='{...}')` | Activate issued card |
+| `submit(object_type="card", operation="suspend", data='{...}')` | Suspend card |
+| `submit(object_type="card", operation="cancel", data='{...}')` | Cancel card |
+| `submit(object_type="card_transaction", operation="submit", data='{...}')` | Submit transaction for approval |
+| `submit(object_type="import", operation="execute", data=JSON.stringify({object_type: "card_transaction", ...}))` | Import card transactions |
 | `query("card_transaction", group_by, aggregates, filters)` | Aggregate card spend (e.g., by merchant, employee) |
 | `query(entity_type, filters={...})` ×N | Fetch reference data (issue the calls in parallel) |
 
@@ -159,7 +159,7 @@ Card programs define company-level settings for a group of corporate cards.
 schema = get_submissions(action='schema', object_type="card_program", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("card_program", "create", {
+submit(object_type="card_program", operation="create", data=JSON.stringify({
   legal_entity_id: 9,
   program_code: "CORP-AMEX-2026",
   program_name: "Corporate American Express",
@@ -200,7 +200,7 @@ submit("card_program", "create", {
   blocked_mcc_codes: ["7995"],         // Block gambling
   allowed_countries: ["US", "CA"],
   blocked_countries: ["RU", "IR"]
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -276,20 +276,20 @@ get_entity("card_program", id=1)
 ### Updating a Card Program
 
 ```javascript
-submit("card_program", "update", {
+submit(object_type="card_program", operation="update", data=JSON.stringify({
   card_program_id: 1,
   default_spending_limit: 7500.00,
   blocked_mcc_codes: ["7995", "5933"]  // Add pawn shops to blocked
-})
+}))
 ```
 
 ### Deactivating a Card Program
 
 ```javascript
-submit("card_program", "deactivate", {
+submit(object_type="card_program", operation="deactivate", data=JSON.stringify({
   card_program_id: 1,
   reason: "Switching to new card provider"
-})
+}))
 ```
 
 ---
@@ -302,7 +302,7 @@ Cards are issued to employees under a card program.
 
 ```javascript
 // Option 1: Using entity-level employee_id
-submit("card", "issue", {
+submit(object_type="card", operation="issue", data=JSON.stringify({
   card_program_id: 1,
   legal_entity_id: 9,
   employee_id: 42,                    // Entity-level employee ID
@@ -318,15 +318,15 @@ submit("card", "issue", {
 
   // For physical cards
   shipping_address: "123 Main St, New York, NY 10001"
-})
+}))
 
 // Option 2: Using master_employee_id (resolved to entity-level)
-submit("card", "issue", {
+submit(object_type="card", operation="issue", data=JSON.stringify({
   card_program_id: 1,
   legal_entity_id: 9,
   master_employee_id: 15,             // Master employee ID (will be resolved)
   card_type: "virtual"
-})
+}))
 ```
 
 **Required Fields:**
@@ -411,27 +411,27 @@ get_entity("card", id=5)
 ### Activating a Card
 
 ```javascript
-submit("card", "activate", {
+submit(object_type="card", operation="activate", data=JSON.stringify({
   card_id: 5
-})
+}))
 ```
 
 ### Suspending a Card
 
 ```javascript
-submit("card", "suspend", {
+submit(object_type="card", operation="suspend", data=JSON.stringify({
   card_id: 5,
   reason: "Employee on leave"
-})
+}))
 ```
 
 ### Cancelling a Card
 
 ```javascript
-submit("card", "cancel", {
+submit(object_type="card", operation="cancel", data=JSON.stringify({
   card_id: 5,
   reason: "Employee terminated"
-})
+}))
 ```
 
 ---
@@ -571,7 +571,7 @@ query(
 When an employee needs to categorize and submit a transaction:
 
 ```javascript
-submit("card_transaction", "submit", {
+submit(object_type="card_transaction", operation="submit", data=JSON.stringify({
   card_transaction_id: 123,
   legal_entity_id: 9,
 
@@ -579,7 +579,7 @@ submit("card_transaction", "submit", {
   expense_item_id: 45,              // Expense category (e.g., "Office Supplies")
   business_purpose: "Books for professional development",
   project_id: 10                    // Optional: link to project
-})
+}))
 ```
 
 **Receipts are not part of this payload.** A receipt is attached to the
@@ -632,10 +632,10 @@ This is useful for testing, CSV imports, or migrating from other systems.
 
 ### Import via MCP Tool
 
-Use `submit("import", "execute", {...})` with `object_type: "card_transaction"`:
+Use `submit(object_type="import", operation="execute", data='{...}')` with `object_type: "card_transaction"`:
 
 ```javascript
-submit("import", "execute", {
+submit(object_type="import", operation="execute", data=JSON.stringify({
   object_type: "card_transaction",
   legal_entity_id: 9,
   records: [
@@ -662,7 +662,7 @@ submit("import", "execute", {
   options: {
     on_duplicate: "skip"  // Skip the same provider event, card and transaction type
   }
-})
+}))
 ```
 
 ### CSV Format for Bulk Import
@@ -767,18 +767,18 @@ When processing card statements, the agent should validate that cards and progra
 
 ```javascript
 // 1. Ensure the bank account has account_type = 'credit_card'
-submit("bank_account", "update", {
+submit(object_type="bank_account", operation="update", data=JSON.stringify({
   bank_account_id: 10,
   legal_entity_id: 12,
   account_type: "credit_card"
-})
+}))
 
 // 2. Link it to a card program
-submit("card_program", "update", {
+submit(object_type="card_program", operation="update", data=JSON.stringify({
   card_program_id: 415,
   legal_entity_id: 12,
   card_bank_account_id: 10
-})
+}))
 
 // 3. Now any statement imported for bank_account 10
 //    will automatically create card transactions
@@ -805,7 +805,7 @@ this can be configured via chat.
 
 ```javascript
 // Step 1: Create card program
-submit("card_program", "create", {
+submit(object_type="card_program", operation="create", data=JSON.stringify({
   legal_entity_id: 9,
   program_code: "CORP-VISA-2026",
   program_name: "Corporate Visa Cards",
@@ -818,16 +818,16 @@ submit("card_program", "create", {
   default_spending_period: "monthly",
   gl_clearing_account_number: "2100",
   gl_expense_account_number: "6500"
-})
+}))
 
 // Step 2: Issue cards to employees
-submit("card", "issue", {
+submit(object_type="card", operation="issue", data=JSON.stringify({
   card_program_id: 1,
   legal_entity_id: 9,
   employee_id: 42,
   card_type: "virtual",
   spending_limit: 5000.00
-})
+}))
 ```
 
 ### Scenario 2: Employee Submits Expense
@@ -841,12 +841,12 @@ query("card_transaction", filters={
   })
 
 // Step 2: Submit with categorization
-submit("card_transaction", "submit", {
+submit(object_type="card_transaction", operation="submit", data=JSON.stringify({
   card_transaction_id: 123,
   legal_entity_id: 9,
   expense_item_id: 45,
   business_purpose: "Client lunch meeting"
-})
+}))
 // The receipt is handled separately. receipt_status tells you where it is:
 // pending/requested/overdue = none yet; uploaded = a file is attached but
 // NOT submitted (call submit_receipt); processing/in_review = in flight;
@@ -877,7 +877,7 @@ query("card_transaction", filters={
 
 ```javascript
 // Import test transactions (no connector needed)
-submit("import", "execute", {
+submit(object_type="import", operation="execute", data=JSON.stringify({
   object_type: "card_transaction",
   legal_entity_id: 9,
   records: [
@@ -902,7 +902,7 @@ submit("import", "execute", {
   options: {
     on_duplicate: "skip"
   }
-})
+}))
 ```
 
 ---
@@ -936,8 +936,8 @@ Two different links can exist for a card transaction — undo the right one:
 
 | What you want to undo | Operation |
 |-----------------------|-----------|
-| The card line's GL confirmation (`confirmed` → `pending_recon`) | `submit("reconciliation", "unmatch", { scope: "card", legal_entity_id, card_transaction_id })` — voids the card-scope reconciliation items; the posted GL transaction is NOT touched |
-| A settlement of the card's posted CARD_EXPENSE against a vendor bill | `submit("reconciliation", "unmatch", { scope: "ap", legal_entity_id, source_transaction_id: <posted_transaction_id> })` — restores the bill's amount_due/status and reverses the CARD_EXPENSE_RECLASS settlement journal |
+| The card line's GL confirmation (`confirmed` → `pending_recon`) | `submit(object_type="reconciliation", operation="unmatch", data=JSON.stringify({ scope: "card", legal_entity_id, card_transaction_id }))` — voids the card-scope reconciliation items; the posted GL transaction is NOT touched |
+| A settlement of the card's posted CARD_EXPENSE against a vendor bill | `submit(object_type="reconciliation", operation="unmatch", data=JSON.stringify({ scope: "ap", legal_entity_id, source_transaction_id: <posted_transaction_id> }))` — restores the bill's amount_due/status and reverses the CARD_EXPENSE_RECLASS settlement journal |
 
 To find the posted GL transaction: `get_entity("card_transaction", id)` → `posted_transaction_id`. To see whether (and to what) that transaction is matched: `query("reconciliation_item", filters={ legal_entity_id, source_transaction_id: <posted_transaction_id> })`.
 
@@ -1061,7 +1061,7 @@ debited, so expense is recognized once and nothing misstates.
 Since card statements flow through the unified bank statement pipeline, importing card transactions from a CSV uses the standard bank statement import. The bank account must have `account_type = 'credit_card'` and be linked to a card program via `card_bank_account_id`.
 
 ```javascript
-submit("bank_statement", "import", {
+submit(object_type="bank_statement", operation="import", data=JSON.stringify({
   legal_entity_id: 9,
   bank_account_id: 5,          // Must be a credit_card account
   statement_date: "2026-02-28",
@@ -1079,7 +1079,7 @@ submit("bank_statement", "import", {
       }
     }
   ]
-})
+}))
 ```
 
 The `bank_transaction_processor` agent will detect the credit card account type and resolve the card program, card, and employee context automatically. See [Bank Statements Management](bank-statements-management.md) for full CSV import format details and metadata field mappings.
@@ -1087,7 +1087,7 @@ The `bank_transaction_processor` agent will detect the credit card account type 
 > **One card-data table, whatever the source:** every card movement lands in
 > `bank_card_transactions` — a real-time card API (Stripe Issuing, Payhawk), a
 > connector sync, and a manual/CSV/statement import all write there. The
-> `object_type: "card_transaction"` in `submit("import", "execute", …)` names the
+> `object_type: "card_transaction"` in `submit(object_type="import", operation="execute", …)` names the
 > *importer*, not a second table. (This note used to describe a separate
 > `card_transactions` table for manual imports; no such table exists in any
 > schema.)
@@ -1101,24 +1101,24 @@ The `bank_transaction_processor` agent will detect the credit card account type 
 > card row".
 >
 > **Statement-based card processing flow depends on the bank account type:**
-> - **`account_type = 'credit_card'`** with a card program's `card_bank_account_id` pointing at it → `submit("bank_statement", "import", …)` and the import auto-routes the lines into `bank_card_transactions`.
-> - **`account_type = 'checking'` or `'savings'` with debit cards on the same account** (typical for Wise, Revolut, N26, Mercury) → import in **two passes**: non-card lines go to `bank_statement_lines` via `submit("bank_statement", "import", …)`; card lines go to `bank_card_transactions` via `submit("import", "execute", { object_type: "card_transaction", … })`. Card lines are excluded from the bank statement payload to avoid double-counting.
+> - **`account_type = 'credit_card'`** with a card program's `card_bank_account_id` pointing at it → `submit(object_type="bank_statement", operation="import", …)` and the import auto-routes the lines into `bank_card_transactions`.
+> - **`account_type = 'checking'` or `'savings'` with debit cards on the same account** (typical for Wise, Revolut, N26, Mercury) → import in **two passes**: non-card lines go to `bank_statement_lines` via `submit(object_type="bank_statement", operation="import", …)`; card lines go to `bank_card_transactions` via `submit(object_type="import", operation="execute", data=JSON.stringify({ object_type: "card_transaction", … }))`. Card lines are excluded from the bank statement payload to avoid double-counting.
 >
 > **Worked example — Wise EUR checking account, 2 debit cards, 20 statement lines:**
 > 1. From the CSV, filter the lines into two buckets using the heuristic in [bank-statements-management.md](bank-statements-management.md): `transaction_details_type == "CARD"`, matching `FEE-CARD-*` fee lines, presence of `merchant` / `card_last4` / MCC, or known card-merchant name patterns. Suppose 13 lines are non-card and 7 are card.
 > 2. Import the 13 non-card lines:
 >    ```javascript
->    submit("bank_statement", "import", {
+>    submit(object_type="bank_statement", operation="import", data=JSON.stringify({
 >      legal_entity_id: 12,
 >      bank_account_id: 5,           // Wise EUR checking, account_type='checking'
 >      statement_date: "2026-02-28",
 >      source: "csv_upload",
 >      lines: [ /* the 13 non-card lines */ ]
->    })
+>    }))
 >    ```
 > 3. Import the 7 card lines, tagging each with the matching `card_id` (look it up via `query("card", card_last4)` per legal entity):
 >    ```javascript
->    submit("import", "execute", {
+>    submit(object_type="import", operation="execute", data=JSON.stringify({
 >      import_type: "card_transaction",
 >      legal_entity_id: 12,
 >      lines: [
@@ -1132,13 +1132,13 @@ The `bank_transaction_processor` agent will detect the credit card account type 
 >        },
 >        // …6 more
 >      ]
->    })
+>    }))
 >    ```
 > 4. The bank account's running balance still reconciles: each card transaction settles to cash via the card-clearing → cash entry generated by the card pipeline, no separate bank statement line needed.
 >
 > If you can't confidently match a card line to an existing card (no `card_last4` in the CSV and no merchant lookup), post the bank-statement side and **leave the card-transaction import for the user to confirm** rather than guessing.
 
-> **Note:** `card.reactivate` and `card.update_limit` workflows are not currently implemented. To reactivate a suspended card, use `card`, "activate". To change spending limits, update the card program defaults via `submit("card_program", "update", {...})`.
+> **Note:** `card.reactivate` and `card.update_limit` workflows are not currently implemented. To reactivate a suspended card, use `submit(object_type="card", operation="activate", ...)`. To change spending limits, update the card program defaults via `submit(object_type="card_program", operation="update", data='{...}')`.
 
 ---
 
@@ -1146,11 +1146,11 @@ The `bank_transaction_processor` agent will detect the credit card account type 
 
 - **Card Programs** define company-level settings (limits, GL accounts, controls)
 - **Cards** are issued to employees with individual limits (use `employee_id` or `master_employee_id`)
-- **Card Transactions** are imported from providers or manually via `submit("import", "execute", {...})`
+- **Card Transactions** are imported from providers or manually via `submit(object_type="import", operation="execute", data='{...}')`
 - **Use `query`** with filters to query cards and transactions
-- **Use `submit("card_transaction", "submit", {...})`** to categorize and submit expenses
+- **Use `submit(object_type="card_transaction", operation="submit", data='{...}')`** to categorize and submit expenses
 - **Dimensions** (department, cost center) are assigned when posting to GL, not on the card transaction
-- **Manual Import** available via `submit("import", "execute", {object_type: "card_transaction", ...})` for testing or migration
+- **Manual Import** available via `submit(object_type="import", operation="execute", data=JSON.stringify({object_type: "card_transaction", ...}))` for testing or migration
 - **Hybrid Architecture** — link card programs to bank accounts via `card_bank_account_id` for unified reconciliation
 
 ---

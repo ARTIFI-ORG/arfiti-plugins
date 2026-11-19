@@ -148,11 +148,11 @@ The system comes with 17 standard payment terms:
 schema = get_submissions(action='schema', object_type="payment_term", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_30",
     description: "Payment due in 30 days",
     days_until_due: 30
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -170,23 +170,23 @@ submit("payment_term", "create", {
 **Example: Immediate Payment**
 
 ```javascript
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "DUE_ON_RECEIPT",
     description: "Payment due immediately upon receipt",
     days_until_due: 0
-})
+}))
 ```
 
 **Example: With Early Payment Discount**
 
 ```javascript
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_30_2_10",
     description: "Net 30, 2% discount if paid within 10 days",
     days_until_due: 30,
     discount_days: 10,
     discount_percent: 2.0
-})
+}))
 ```
 
 **How Early Payment Discount Works:**
@@ -205,40 +205,40 @@ Pay after 10 days:  $10,000 (full amount)
 **Example: Aggressive Cash Flow Terms**
 
 ```javascript
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_30_5_7",
     description: "Net 30, 5% discount if paid within 7 days",
     days_until_due: 30,
     discount_days: 7,
     discount_percent: 5.0
-})
+}))
 ```
 
 **Example: Industry-Specific Terms**
 
 ```javascript
 // Construction industry - progress payments
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_30_PROGRESS",
     description: "Net 30 from progress payment milestone",
     days_until_due: 30
-})
+}))
 
 // Government contracts
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_30_GOV",
     description: "Net 30 days (government contract)",
     days_until_due: 30
-})
+}))
 
 // Wholesale with discount
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_30_2_10_WHOLESALE",
     description: "Net 30, 2% discount within 10 days (wholesale customers)",
     days_until_due: 30,
     discount_days: 10,
     discount_percent: 2.0
-})
+}))
 ```
 
 **Validation**:
@@ -297,37 +297,37 @@ submit("payment_term", "create", {
 **Example: Update Description**
 
 ```javascript
-submit("payment_term", "update", {
+submit(object_type="payment_term", operation="update", data=JSON.stringify({
     payment_term_id: 2,
     description: "Payment due in 30 days from invoice date"
-})
+}))
 ```
 
 **Example: Update Discount**
 
 ```javascript
-submit("payment_term", "update", {
+submit(object_type="payment_term", operation="update", data=JSON.stringify({
     payment_term_id: 8,
     discount_percent: 2.5  // Increase from 2.0% to 2.5%
-})
+}))
 ```
 
 **Example: Update Due Date Period**
 
 ```javascript
-submit("payment_term", "update", {
+submit(object_type="payment_term", operation="update", data=JSON.stringify({
     payment_term_id: 3,
     days_until_due: 35  // Change from 30 to 35 days
-})
+}))
 ```
 
 **Example: Reactivate Deactivated Term**
 
 ```javascript
-submit("payment_term", "update", {
+submit(object_type="payment_term", operation="update", data=JSON.stringify({
     payment_term_id: 9,
     is_active: true  // Make available again
-})
+}))
 ```
 
 **Returns**:
@@ -368,9 +368,9 @@ submit("payment_term", "update", {
 **Example: Deactivate Unused Term**
 
 ```javascript
-submit("payment_term", "deactivate", {
+submit(object_type="payment_term", operation="deactivate", data=JSON.stringify({
     code: "NET_90"
-})
+}))
 ```
 
 **What Happens When Deactivated:**
@@ -417,9 +417,9 @@ query("customer", filters={"payment_terms_code": "NET_90"})
 // ... update each customer's payment_terms_code ...
 
 // Step 3: Deactivate the term
-submit("payment_term", "deactivate", {
+submit(object_type="payment_term", operation="deactivate", data=JSON.stringify({
     code: "NET_90"
-})
+}))
 ```
 
 ---
@@ -583,22 +583,22 @@ Paid on Jan 15 (after discount period):
 
 ```javascript
 // High discount for very fast payment
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_30_5_7",
     description: "Net 30, 5% discount if paid within 7 days",
     days_until_due: 30,
     discount_days: 7,
     discount_percent: 5.0
-})
+}))
 
 // Graduated discounts (create multiple terms)
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_30_3_10",
     description: "Net 30, 3% discount if paid within 10 days",
     days_until_due: 30,
     discount_days: 10,
     discount_percent: 3.0
-})
+}))
 ```
 
 ### Discount Calculation Examples
@@ -641,25 +641,25 @@ Regular Period: Mar 8-30
 
 ```javascript
 // Create standard NET 30
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_30",
     description: "Payment due in 30 days",
     days_until_due: 30
-})
+}))
 
 // Create NET 60 for larger customers
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_60",
     description: "Payment due in 60 days (approved customers only)",
     days_until_due: 60
-})
+}))
 
 // Create NET 15 for smaller orders
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_15",
     description: "Payment due in 15 days",
     days_until_due: 15
-})
+}))
 ```
 
 **Result**: 3 standard B2B payment terms available for customer assignment
@@ -672,22 +672,22 @@ submit("payment_term", "create", {
 
 ```javascript
 // Create attractive 2/10 Net 30
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_30_2_10",
     description: "Net 30, 2% discount if paid within 10 days",
     days_until_due: 30,
     discount_days: 10,
     discount_percent: 2.0
-})
+}))
 
 // Create aggressive 5/7 Net 30 for priority customers
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_30_5_7",
     description: "Net 30, 5% discount if paid within 7 days (VIP customers)",
     days_until_due: 30,
     discount_days: 7,
     discount_percent: 5.0
-})
+}))
 ```
 
 **Result**: Early payment discounts incentivize faster payment, improving cash flow
@@ -700,17 +700,17 @@ submit("payment_term", "create", {
 
 ```javascript
 // Create immediate payment terms
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "DUE_ON_RECEIPT",
     description: "Payment due immediately upon receipt",
     days_until_due: 0
-})
+}))
 
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "COD",
     description: "Cash on delivery",
     days_until_due: 0
-})
+}))
 ```
 
 **Result**: Immediate payment terms for retail customers
@@ -723,26 +723,26 @@ submit("payment_term", "create", {
 
 ```javascript
 // Negotiate favorable terms with vendors
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_60",
     description: "Payment due in 60 days",
     days_until_due: 60
-})
+}))
 
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_90",
     description: "Payment due in 90 days",
     days_until_due: 90
-})
+}))
 
 // Take advantage of vendor early payment discounts
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_60_2_10",
     description: "Net 60, 2% discount if paid within 10 days",
     days_until_due: 60,
     discount_days: 10,
     discount_percent: 2.0
-})
+}))
 ```
 
 **Result**: Extended payment terms for vendor relationships, with discount options
@@ -755,16 +755,16 @@ submit("payment_term", "create", {
 
 ```javascript
 // Extended terms for slow season
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_90_SEASONAL",
     description: "Net 90 days (seasonal promotion)",
     days_until_due: 90
-})
+}))
 
 // Deactivate after season ends
-submit("payment_term", "deactivate", {
+submit(object_type="payment_term", operation="deactivate", data=JSON.stringify({
     code: "NET_90_SEASONAL"
-})
+}))
 ```
 
 **Result**: Temporary extended terms for seasonal promotions
@@ -777,27 +777,27 @@ submit("payment_term", "deactivate", {
 
 ```javascript
 // Construction industry - progress payments
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_30_PROGRESS",
     description: "Net 30 from progress payment milestone",
     days_until_due: 30
-})
+}))
 
 // Government contracts - standard terms
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_30_GOV",
     description: "Net 30 days (government contract)",
     days_until_due: 30
-})
+}))
 
 // Wholesale - standard terms with discount
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_30_2_10_WHOLESALE",
     description: "Net 30, 2% discount within 10 days (wholesale customers)",
     days_until_due: 30,
     discount_days: 10,
     discount_percent: 2.0
-})
+}))
 ```
 
 **Result**: Industry-specific payment terms for specialized business types
@@ -837,10 +837,10 @@ Payment terms are assigned to customers as default terms for invoices:
 
 ```javascript
 // Create customer with payment terms
-submit("customer", "create", {
+submit(object_type="customer", operation="create", data=JSON.stringify({
     customer_name: "ACME Corp",
     payment_terms_code: "NET_30"  // Default payment terms for this customer
-})
+}))
 ```
 
 **Result**: All AR invoices for ACME Corp default to NET_30 terms
@@ -851,10 +851,10 @@ Payment terms are assigned to vendors for AP invoice management:
 
 ```javascript
 // Create vendor with payment terms
-submit("vendor", "create", {
+submit(object_type="vendor", operation="create", data=JSON.stringify({
     vendor_name: "Office Supplies Inc",
     payment_terms_code: "NET_60"  // We pay vendor in 60 days
-})
+}))
 ```
 
 **Result**: All AP invoices from Office Supplies Inc default to NET_60 terms
@@ -982,11 +982,11 @@ Payment terms manage when vendor payments are due:
 The payment_terms table doesn't have a metadata field, but you can use the description field to add context:
 
 ```javascript
-submit("payment_term", "create", {
+submit(object_type="payment_term", operation="create", data=JSON.stringify({
     code: "NET_45_SPECIAL",
     description: "Net 45 days (Q1 2025 promotion - ends March 31)",
     days_until_due: 45
-})
+}))
 ```
 
 ---

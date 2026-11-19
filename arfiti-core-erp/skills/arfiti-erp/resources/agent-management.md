@@ -94,7 +94,7 @@ workflow authority remain separate controls.
 | `payment_proposal_agent` | Proposes payment batches for approval | pipeline | varies |
 | `configuration_agent` | Handles system configuration tasks | llm | varies |
 
-Since 11 November 2026 (AR-1187): `asset_creator`, `agent_architect` and the Estonian country agents are retired (create a fixed asset with `submit("fixed_asset", "acquire_from_bill", …)`; an `asset_creation` task is refused with that sentence, because nothing would pick it up; a failed run emails the admins). `bill_processor`, `bank_transaction_processor`, `reconciliation_agent`, `master_data_agent`, `configuration_agent`, `expense_processor` and `period_close_agent` are run by managed agents: where the row already exists the built-in runtime keeps running until the row is set to the managed runtime, except for `bank_transaction_processor` and `expense_processor`, whose built-in pipelines are removed (a run of either on the built-in runtime is refused and says to set the runtime to managed); a new organisation gets the row switched off and marked `config.runtime = "managed"` (Mode "Managed" in the dashboard; enabling it is refused). `stripe_transaction_processor` is not created in a new organisation and is not shown in the agent list. `bills_collector_agent` and `payment_proposal_agent` are automations (fixed logic). Full list: the agent catalog guide.
+Since 11 November 2026 (AR-1187): `asset_creator`, `agent_architect` and the Estonian country agents are retired (create a fixed asset with `submit(object_type="fixed_asset", operation="acquire_from_bill", …)`; an `asset_creation` task is refused with that sentence, because nothing would pick it up; a failed run emails the admins). `bill_processor`, `bank_transaction_processor`, `reconciliation_agent`, `master_data_agent`, `configuration_agent`, `expense_processor` and `period_close_agent` are run by managed agents: where the row already exists the built-in runtime keeps running until the row is set to the managed runtime, except for `bank_transaction_processor` and `expense_processor`, whose built-in pipelines are removed (a run of either on the built-in runtime is refused and says to set the runtime to managed); a new organisation gets the row switched off and marked `config.runtime = "managed"` (Mode "Managed" in the dashboard; enabling it is refused). `stripe_transaction_processor` is not created in a new organisation and is not shown in the agent list. `bills_collector_agent` and `payment_proposal_agent` are automations (fixed logic). Full list: the agent catalog guide.
 
 ## How the managed agents work, and working beside them
 
@@ -166,12 +166,12 @@ start a managed agent.
   postings for one bank line or one bill is the mistake to avoid. If the agent has a
   submission waiting for approval, approve or reject that one; do not post a second.
 - **Answer the task, do not work around it.** If the person tells you their decision,
-  record it as their answer with `submit("agent_request", "respond", ...)` under their
+  record it as their answer with `submit(object_type="agent_request", operation="respond", ...)` under their
   sign-in, in their words. Do not answer for them without their decision, and do not
   complete the work by hand and leave the task open: the agent would then act on a stale
   question.
 - **To change how an agent works, change its rules.** One plain sentence in the rules
-  for that agent, saved with `submit("policy", "save", {"namespace": "agent.rules", ...})`
+  for that agent, saved with `submit(object_type="policy", operation="save", data=JSON.stringify({"namespace": "agent.rules", ...}))`
   (see "Agent rules" below). Send the whole text. The standard instructions are ours and
   are not the client's to edit.
 - **To stop a repeated question, put the fact where the agent looks first:** on the
@@ -205,10 +205,10 @@ Manage agent configurations using these tools:
 |------|---------|
 | `query("agent_definition")` | List all agent definitions with status |
 | `get_entity("agent_definition", ...)` | Get full config for a specific agent |
-| `submit("agent_definition", "create", {...})` | Create a new agent definition (owner or admin) |
-| `submit("agent_definition", "update", {...})` | Update agent configuration (owner or admin) |
-| `submit("agent_definition", "enable", {...})` | Enable or disable an agent (owner or admin) |
-| `submit("agent_definition", "archive", {...})` | Archive an agent that is no longer used, or restore one (owner or admin). See "Archiving an agent that is no longer used" |
+| `submit(object_type="agent_definition", operation="create", data='{...}')` | Create a new agent definition (owner or admin) |
+| `submit(object_type="agent_definition", operation="update", data='{...}')` | Update agent configuration (owner or admin) |
+| `submit(object_type="agent_definition", operation="enable", data='{...}')` | Enable or disable an agent (owner or admin) |
+| `submit(object_type="agent_definition", operation="archive", data='{...}')` | Archive an agent that is no longer used, or restore one (owner or admin). See "Archiving an agent that is no longer used" |
 | `manage_agents(action="regenerate_keys")` | Regenerate MCP API keys (owner or admin) for agents missing one, or (`force: true`, optionally `agent_type`) replace them. The new key keeps the previous runtime key's owner, whose roles are the agent's authority, and the earlier runtime key is revoked (a run still using it fails and is retried). An agent whose owner has left goes to the calling person (an agent caller cannot take it over); owner changes are listed under `owner_changed`, agents that got no key under `skipped`, and agents whose missing key another caller filled meanwhile under `already_filled` |
 | `get_agents(action="list_templates")` | List available agent templates |
 | `manage_agents(action="seed_definitions")` | Seed agents from templates (owner or admin) |
@@ -249,15 +249,15 @@ query("agent_definition")
 get_entity("agent_definition", global_id="bill_processor")
 
 # Disable an agent
-submit("agent_definition", "enable", {definition_id: 1, is_enabled: false})
+submit(object_type="agent_definition", operation="enable", data=JSON.stringify({definition_id: 1, is_enabled: false}))
 
 # Read the definition first; config updates replace the full object.
 # Preserve every existing key, including resolution and rollout flags.
 # Update bill processor confidence threshold
-submit("agent_definition", "update", {
+submit(object_type="agent_definition", operation="update", data=JSON.stringify({
     definition_id: 1,
     config: {...current_definition.config, "confidence_threshold": 0.90}
-})
+}))
 ```
 
 ---
@@ -269,7 +269,7 @@ update surface actually changes behavior:
 
 | Mode | Runtime | How to change its behavior |
 |------|---------|---------------------------|
-| `llm` | System prompt drives a Claude session | `submit("agent_definition", "update", {definition_id, system_prompt/config/...})` |
+| `llm` | System prompt drives a Claude session | `submit(object_type="agent_definition", operation="update", data=JSON.stringify({definition_id, system_prompt/config/...}))` |
 | `pipeline` | Deterministic staged blocks (no LLM unless a block uses one) | `manage_agents(action="update_pipeline_patch", ...)` |
 | `code` | Python handler deployed with the server | Code deploy only — the definition's `system_prompt` row is **documentation, not runtime**; editing it changes nothing |
 | `hybrid` | Code + LLM steps | Code deploy for the code part; definition `config` for tunables |
@@ -338,8 +338,8 @@ current revocations still apply. Model budgets use `config.model_call_policy`.
 ```python
 # LLM agents — prompt, config, tools, triggers, model tier, concurrency:
 get_submissions(action="schema", object_type="agent_definition", operation="update")  # field contract
-submit("agent_definition", "update", {"definition_id": N, "system_prompt": "..."})
-submit("agent_definition", "enable", {"definition_id": N, "is_enabled": false})
+submit(object_type="agent_definition", operation="update", data=json.dumps({"definition_id": N, "system_prompt": "..."}))
+submit(object_type="agent_definition", operation="enable", data=json.dumps({"definition_id": N, "is_enabled": false}))
 
 # Pipeline agents — patch this org's stages (canonical pipeline stays shared):
 manage_agents(action="update_pipeline_patch", agent_type="...",
@@ -355,10 +355,10 @@ manage_agents(action="dry_run_pipeline", agent_type="...",
 ### Schedules
 
 ```python
-submit("scheduled_job", "create", {...})                       # cron for an agent
-submit("scheduled_job", "update", {"job_id": N, "cron_expression": "0 9 * * *"})
-submit("scheduled_job", "enable", {"job_id": N, "is_enabled": false})
-submit("scheduled_job", "delete", {"job_id": N})
+submit(object_type="scheduled_job", operation="create", data='{...}')                       # cron for an agent
+submit(object_type="scheduled_job", operation="update", data=json.dumps({"job_id": N, "cron_expression": "0 9 * * *"}))
+submit(object_type="scheduled_job", operation="enable", data=json.dumps({"job_id": N, "is_enabled": false}))
+submit(object_type="scheduled_job", operation="delete", data=json.dumps({"job_id": N}))
 ```
 
 ### Archiving an agent that is no longer used
@@ -371,11 +371,11 @@ and it is left out of the dashboard's agent list, cannot be enabled, and nothing
 it. Nothing is deleted: run history, tasks, audit rows and scheduled jobs stay as they are.
 
 ```python
-submit("agent_definition", "archive", {
+submit(object_type="agent_definition", operation="archive", data=json.dumps({
     "agent_type": "client_helper",        # or "definition_id": N; both must name the same agent
     "archived": True,                     # default true; false restores
     "reason": "Replaced by the bank agent"   # optional, at most 500 characters
-})
+}))
 ```
 
 Archiving is refused while something can still start the agent. Each refusal says what
@@ -383,9 +383,9 @@ to do first:
 
 | Refused when | Do this first |
 |---|---|
-| The agent is enabled | `submit("agent_definition", "enable", {"definition_id": N, "is_enabled": false})` |
-| The agent is set to the managed runtime | `submit("agent_definition", "set_runtime", {..., "runtime": "builtin"})` |
-| An enabled scheduled job names the agent (the refusal lists the job ids) | `submit("scheduled_job", "enable", {"job_id": N, "is_enabled": false})` or `submit("scheduled_job", "delete", {"job_id": N})` |
+| The agent is enabled | `submit(object_type="agent_definition", operation="enable", data=JSON.stringify({"definition_id": N, "is_enabled": false}))` |
+| The agent is set to the managed runtime | `submit(object_type="agent_definition", operation="set_runtime", data=JSON.stringify({..., "runtime": "builtin"}))` |
+| An enabled scheduled job names the agent (the refusal lists the job ids) | `submit(object_type="scheduled_job", operation="enable", data=JSON.stringify({"job_id": N, "is_enabled": false}))` or `submit(object_type="scheduled_job", operation="delete", data=JSON.stringify({"job_id": N}))` |
 | The agent is already archived, or was retired by the platform | Nothing: there is nothing to archive |
 
 `"archived": false` restores an agent this operation archived. The agent comes back
@@ -407,7 +407,7 @@ While an agent is archived:
 - No new API key is issued for it: `agent_api_key.create` and `agent_api_key.rotate`
   (a rotation issues a new key with a new expiry) are refused. Keys it already has are
   not revoked by archiving and keep working until they expire or you revoke them
-  (`submit("agent_api_key", "revoke", ...)`).
+  (`submit(object_type="agent_api_key", operation="revoke", ...)`).
 - `agent_definition.update` keeps it archived: a `config` you send replaces the rest of
   the config, and the row's `retired` entry is put back.
 
@@ -440,9 +440,9 @@ Monitor and manage running agent sessions:
 |------|---------|
 | `query("agent_instance", filters={...})` | List running/completed sessions |
 | `get_entity("agent_instance", id="X")` | Get instance details with logs |
-| `submit("agent_instance", "cancel", {...})` | Cancel a running instance (owner, admin or the person who started it) |
+| `submit(object_type="agent_instance", operation="cancel", data='{...}')` | Cancel a running instance (owner, admin or the person who started it) |
 | `get_agents(action="get_running_summary")` | Summary of all active agents |
-| `submit("agent_instance", "start", {...})` | Manually trigger an agent run (owner or admin) |
+| `submit(object_type="agent_instance", operation="start", data='{...}')` | Manually trigger an agent run (owner or admin) |
 
 `agent_instance` is the built-in runtime's run. A row run by a managed agent is switched
 off, so `agent_instance.start` for it is refused ("Agent '<type>' is disabled"), and its
@@ -462,10 +462,10 @@ query("agent_instance", filters={agent_type: "bill_processor", status: "complete
 get_entity("agent_instance", id="42")
 
 # Manually trigger reconciliation
-submit("agent_instance", "start", {agent_type: "reconciliation_agent"})
+submit(object_type="agent_instance", operation="start", data=JSON.stringify({agent_type: "reconciliation_agent"}))
 
 # Cancel a stuck instance
-submit("agent_instance", "cancel", {instance_id: "42"})
+submit(object_type="agent_instance", operation="cancel", data=JSON.stringify({instance_id: "42"}))
 ```
 
 ---
@@ -478,9 +478,9 @@ Events are triggers that start agent runs. They flow through a queue.
 |------|---------|
 | `query("agent_event", filters={...})` | List events in queue |
 | `get_entity("agent_event", id="X")` | Get event details |
-| `submit("agent_event", "create", {...})` | Create a new event manually (owner or admin) |
-| `submit("agent_event", "retry", {...})` | Retry a failed event (owner or admin) |
-| `submit("agent_event", "ignore", {...})` | Mark event as ignored |
+| `submit(object_type="agent_event", operation="create", data='{...}')` | Create a new event manually (owner or admin) |
+| `submit(object_type="agent_event", operation="retry", data='{...}')` | Retry a failed event (owner or admin) |
+| `submit(object_type="agent_event", operation="ignore", data='{...}')` | Mark event as ignored |
 | `get_agents(action="get_event_stats")` | Queue statistics |
 
 ### Event Types
@@ -507,17 +507,17 @@ query("agent_event", filters={status: "pending"})
 get_agents(action="get_event_stats")
 
 # Create manual event
-submit("agent_event", "create", {
+submit(object_type="agent_event", operation="create", data=JSON.stringify({
     event_type: "manual.trigger",
     agent_type: "reconciliation_agent",
     payload: {"scope": "vendor"}
-})
+}))
 
 # Retry a failed event
-submit("agent_event", "retry", {event_id: "15"})
+submit(object_type="agent_event", operation="retry", data=JSON.stringify({event_id: "15"}))
 
 # Ignore a problematic event
-submit("agent_event", "ignore", {event_id: "16", reason: "Duplicate email"})
+submit(object_type="agent_event", operation="ignore", data=JSON.stringify({event_id: "16", reason: "Duplicate email"}))
 ```
 
 A person cannot create every event. The gateway refuses an event type outside
@@ -541,10 +541,10 @@ Inter-agent communication. One agent creates a request, another processes it.
 |------|---------|
 | `query("agent_request", filters={...})` | List requests with filters |
 | `get_entity("agent_request", id="X")` | Get request details |
-| `submit("agent_request", "create", {...})` | Create a new request |
-| `submit("agent_request", "update", {...})` | Agent-side request updates; not a substitute for a human answer |
-| `submit("agent_request", "respond", {...})` | Authenticated human answer with current version and retry key; follow the task contract |
-| `submit("agent_request", "add_reminder", {...})` | Add follow-up reminder |
+| `submit(object_type="agent_request", operation="create", data='{...}')` | Create a new request |
+| `submit(object_type="agent_request", operation="update", data='{...}')` | Agent-side request updates; not a substitute for a human answer |
+| `submit(object_type="agent_request", operation="respond", data='{...}')` | Authenticated human answer with current version and retry key; follow the task contract |
+| `submit(object_type="agent_request", operation="add_reminder", data='{...}')` | Add follow-up reminder |
 | `query("agent_request", filters={assigned_to_employee_id: X, status: "pending"})` | Get requests pending for a specific employee |
 
 ### Raising a review task for a person
@@ -553,7 +553,7 @@ When you cannot post a document, need a decision, or see more than one
 equally supported answer, raise a task instead of only reporting it:
 
 ```
-submit("agent_request", "create", {
+submit(object_type="agent_request", operation="create", data=JSON.stringify({
   request_type: "verification",
   legal_entity_id: <entity>,
   request_data: {
@@ -566,7 +566,7 @@ submit("agent_request", "create", {
     options: [{id: "keep", label: "Keep it"}, {id: "discard", label: "Discard it"}],
     documents: [{filename, storage_url, content_type}]
   }
-})
+}))
 ```
 
 - Give a `title` of a few words: it is the task's row in the person's list,
@@ -584,7 +584,7 @@ submit("agent_request", "create", {
   `response_data.notes`. Re-read the current records before acting on it; the
   answer is information, not permission.
 - After acting, link the outcome:
-  `submit("agent_request", "update", {request_id, result_type: "transaction", result_id: <id>})`.
+  `submit(object_type="agent_request", operation="update", data=JSON.stringify({request_id, result_type: "transaction", result_id: <id>}))`.
 - In a Managed Agents session, add
   `run_reference: {runtime: "managed_agents", session_id: "<the managed_session_id from your kickoff>"}`.
   The person's answer is then sent into your session as a message; act on it.
@@ -707,8 +707,8 @@ something the system refuses, the refusal stands; raise a review task that says 
 
 An agent can propose a rule (for example after a person's answer that should apply from now
 on); signed in as its own user it may propose only for its own agent type unless its role
-holds `accounting:write`. The call is `submit("policy", "save", {"namespace": "agent.rules", "section": "<agent_type or all>",
-"legal_entity_id": <id or omit>, "content": {"text": "..."}, "reason": "..."})`. It
+holds `accounting:write`. The call is `submit(object_type="policy", operation="save", data=JSON.stringify({"namespace": "agent.rules", "section": "<agent_type or all>",
+"legal_entity_id": <id or omit>, "content": {"text": "..."}, "reason": "..."}))`. It
 waits for a person's approval and applies only after it. Send the whole text for that
 agent and level, not one added line: a save replaces that level's text. Limit: 4,000
 characters, plain text.
@@ -723,10 +723,10 @@ An agent in the organisation's list is run by the built-in runtime or by a manag
 a setting on the organisation's row; an owner or admin changes it:
 
 ```python
-submit("agent_definition", "set_runtime", {
+submit(object_type="agent_definition", operation="set_runtime", data=json.dumps({
     "agent_type": "bill_processor", "runtime": "managed",
     "managed": {"agent_id": "agent_...", "environment_id": "env_...", "vault_id": "vlt_...",
-                "budget_cents": 300, "model_tier": "standard", "max_open_sessions": 1, "answers": "auto"}})
+                "budget_cents": 300, "model_tier": "standard", "max_open_sessions": 1, "answers": "auto"}}))
 ```
 
 - `budget_cents` is the most one run may cost. `model_tier` is `fast`, `standard` or
@@ -741,7 +741,7 @@ deployed), an owner or an admin of every legal entity sets up all of the organis
 managed agents in one call, and onboarding runs the same:
 
 ```python
-submit("managed_agents", "provision", {"organization_id": <the signed-in organisation>})
+submit(object_type="managed_agents", operation="provision", data=json.dumps({"organization_id": <the signed-in organisation>}))
 ```
 
 It creates the organisation's agents, vault, agent users and keys (the keys go into the
@@ -749,8 +749,7 @@ vault and are never shown), assigns their roles and sets the rows last. Running 
 finishes a run that stopped part way and changes nothing that is current; to run it again
 within a day, pass a new `idempotency_key`. Where the platform does not set agents up
 itself it is refused with the reason. Then retry the failed events with
-`submit("agent_event", "retry", {"event_id": "..."})`. `submit("managed_agents",
-"deprovision", {"organization_id": ...})` takes them down, for an organisation being
+`submit(object_type="agent_event", operation="retry", data=JSON.stringify({"event_id": "..."}))`. `submit(object_type="managed_agents", operation="deprovision", data=JSON.stringify({"organization_id": ...}))` takes them down, for an organisation being
 deleted; do not run it otherwise.
 
 To make each managed agent's Standard instructions tab show what it runs, an owner or admin
@@ -759,7 +758,7 @@ payload (the server reads each agent from the agent service and the skill text f
 build, for the version in use):
 
 ```python
-submit("managed_agents", "record_instructions", {"organization_id": <the signed-in organisation>})
+submit(object_type="managed_agents", operation="record_instructions", data=json.dumps({"organization_id": <the signed-in organisation>}))
 ```
 
 The runs the platform started are read, not written:
@@ -774,7 +773,7 @@ ended early), `failed` (never started; `error` says why). `cost_cents` is the li
 far; `charged_cents` is how much of it was charged to the organisation's AI credits when the
 run ended (`charge_note` says why a cost was not charged). With no AI credits left no
 session starts: the event and the run are `failed` with that reason, and after a top-up
-`submit("agent_event", "retry", {"event_id": "..."})` starts it. Reading needs
+`submit(object_type="agent_event", operation="retry", data=JSON.stringify({"event_id": "..."}))` starts it. Reading needs
 `accounting:read`. Full contract: GUIDE_MANAGED_AGENT_RUNS.
 
 What a managed agent runs (its prompt and skills) is kept in the agent service. The
@@ -789,9 +788,9 @@ get_entity("agent_instructions", id=12)                                  # one v
 An owner or admin records a version after applying instructions to the agent service:
 
 ```python
-submit("agent_definition", "set_instructions", {
+submit(object_type="agent_definition", operation="set_instructions", data=json.dumps({
     "agent_type": "bill_processor", "version": "19",
-    "parts": [{"name": "arfiti-bill-processing", "kind": "skill", "version": "skver_...", "text": "..."}]})
+    "parts": [{"name": "arfiti-bill-processing", "kind": "skill", "version": "skver_...", "text": "..."}]}))
 ```
 
 - This stores a record only. It does not change what the agent runs and sends nothing to
@@ -805,8 +804,8 @@ A managed session whose submit was held for approval records what it waits for, 
 when the workflow is decided (AR-1194, built but not deployed):
 
 ```python
-submit("managed_agent_run", "wait", {"session_id": "sesn_...", "workflow_id": "<pending workflow id>",
-       "waiting_for": "<one line: what continues once this is decided>"})
+submit(object_type="managed_agent_run", operation="wait", data=json.dumps({"session_id": "sesn_...", "workflow_id": "<pending workflow id>",
+       "waiting_for": "<one line: what continues once this is decided>"}))
 ```
 
 Only a session the platform started can declare a wait, and only for a workflow it submitted
@@ -819,11 +818,11 @@ Each agent gets its own MCP API key for authentication.
 
 | Tool | Purpose |
 |------|---------|
-| `submit("agent_api_key", "create", {...})` | Create MCP API key for an agent (owner or admin); the key is shown once to the caller and acts with the caller's roles |
-| `submit("agent_api_key", "create", {..., identity: "agent_user"})` | Key that signs a managed agent in as its own user (owner or admin). It carries the roles assigned to that user, not the caller's; the result gives `agent_user_id`. Add `deliver: "vault"` to store it in the agent's vault instead of returning it (required when your own access is limited to some legal entities; the agent's address must carry `?agent=<agent type>`). `rotate` on such a key keeps its owner |
+| `submit(object_type="agent_api_key", operation="create", data='{...}')` | Create MCP API key for an agent (owner or admin); the key is shown once to the caller and acts with the caller's roles |
+| `submit(object_type="agent_api_key", operation="create", data=JSON.stringify({..., identity: "agent_user"}))` | Key that signs a managed agent in as its own user (owner or admin). It carries the roles assigned to that user, not the caller's; the result gives `agent_user_id`. Add `deliver: "vault"` to store it in the agent's vault instead of returning it (required when your own access is limited to some legal entities; the agent's address must carry `?agent=<agent type>`). `rotate` on such a key keeps its owner |
 | `query("agent_api_key")` | List agent API keys |
-| `submit("agent_api_key", "revoke", {...})` | Revoke a key (owner or admin) |
-| `submit("agent_api_key", "rotate", {...})` | Rotate a key, revoking the old one (owner or admin); the new key acts with the caller's roles. The agent's own runtime key is refused: use `regenerate_keys` |
+| `submit(object_type="agent_api_key", operation="revoke", data='{...}')` | Revoke a key (owner or admin) |
+| `submit(object_type="agent_api_key", operation="rotate", data='{...}')` | Rotate a key, revoking the old one (owner or admin); the new key acts with the caller's roles. The agent's own runtime key is refused: use `regenerate_keys` |
 
 A revoked or rotated-out key is refused with HTTP 401 on its next authentication,
 even if its expiry date has not passed. Use the replacement key after rotation;
@@ -842,14 +841,14 @@ the previous rotation completed; do not repeat an uncertain rotation with a new 
 query("agent_api_key")
 
 # Create key for bill processor
-submit("agent_api_key", "create", {agent_definition_id: 1, name: "bill-processor-prod"})
+submit(object_type="agent_api_key", operation="create", data=JSON.stringify({agent_definition_id: 1, name: "bill-processor-prod"}))
 
 # Rotate a compromised key you created (an agent's own runtime key is refused:
 # manage_agents(action="regenerate_keys", agent_type=..., force=True) replaces and revokes it)
-submit("agent_api_key", "rotate", {key_id: 3})
+submit(object_type="agent_api_key", operation="rotate", data=JSON.stringify({key_id: 3}))
 
 # Revoke a key
-submit("agent_api_key", "revoke", {key_id: 5})
+submit(object_type="agent_api_key", operation="revoke", data=JSON.stringify({key_id: 5}))
 ```
 
 ---
@@ -862,11 +861,11 @@ Configure recurring agent runs.
 |------|---------|
 | `query("scheduled_job")` | List all scheduled jobs |
 | `get_entity("scheduled_job", id=X)` | Get job details |
-| `submit("scheduled_job", "create", {...})` | Create a new scheduled job (owner or admin) |
-| `submit("scheduled_job", "update", {...})` | Update job schedule/config (owner or admin) |
-| `submit("scheduled_job", "enable", {...})` | Enable or disable a job (owner or admin) |
-| `submit("scheduled_job", "delete", {...})` | Delete a scheduled job (owner or admin) |
-| `submit("scheduled_job", "trigger", {...})` | Manually trigger a scheduled job now (owner, admin or the job's creator) |
+| `submit(object_type="scheduled_job", operation="create", data='{...}')` | Create a new scheduled job (owner or admin) |
+| `submit(object_type="scheduled_job", operation="update", data='{...}')` | Update job schedule/config (owner or admin) |
+| `submit(object_type="scheduled_job", operation="enable", data='{...}')` | Enable or disable a job (owner or admin) |
+| `submit(object_type="scheduled_job", operation="delete", data='{...}')` | Delete a scheduled job (owner or admin) |
+| `submit(object_type="scheduled_job", operation="trigger", data='{...}')` | Manually trigger a scheduled job now (owner, admin or the job's creator) |
 
 ### Examples
 
@@ -875,18 +874,18 @@ Configure recurring agent runs.
 query("scheduled_job")
 
 # Create daily reconciliation run at 6 AM
-submit("scheduled_job", "create", {
+submit(object_type="scheduled_job", operation="create", data=JSON.stringify({
     agent_type: "reconciliation_agent",
     cron_expression: "0 6 * * *",
     job_name: "Daily AP/AR Reconciliation",
     job_payload: {"scope": "vendor"}
-})
+}))
 
 # Disable a job temporarily
-submit("scheduled_job", "enable", {job_id: 3, is_enabled: false})
+submit(object_type="scheduled_job", operation="enable", data=JSON.stringify({job_id: 3, is_enabled: false}))
 
 # Trigger a job immediately
-submit("scheduled_job", "trigger", {job_id: 3})
+submit(object_type="scheduled_job", operation="trigger", data=JSON.stringify({job_id: 3}))
 ```
 
 ---
@@ -899,9 +898,9 @@ Multi-step orchestration across agents.
 |------|---------|
 | `query("saga", filters={...})` | List sagas with filters |
 | `get_entity("saga", id="X", include_related=true)` | Get saga with all phases |
-| `submit("saga", "create", {...})` | Create a new saga |
-| `submit("saga", "advance", {...})` | Advance saga to next phase |
-| `submit("saga", "cancel", {...})` | Cancel a running saga |
+| `submit(object_type="saga", operation="create", data='{...}')` | Create a new saga |
+| `submit(object_type="saga", operation="advance", data='{...}')` | Advance saga to next phase |
+| `submit(object_type="saga", operation="cancel", data='{...}')` | Cancel a running saga |
 
 ### Saga Pattern
 
@@ -925,7 +924,7 @@ query("saga", filters={status: "in_progress"})
 get_entity("saga", id="7", include_related=true)
 
 # Cancel a stuck saga
-submit("saga", "cancel", {saga_id: 7, reason: "Vendor creation failed"})
+submit(object_type="saga", operation="cancel", data=JSON.stringify({saga_id: 7, reason: "Vendor creation failed"}))
 ```
 
 ---
@@ -938,10 +937,10 @@ Configure event routing rules that automatically create events when triggers fir
 |------|---------|
 | `query("downstream_rule", filters={...})` | List all routing rules |
 | `get_entity("downstream_rule", id=X)` | Get rule details |
-| `submit("downstream_rule", "create", {...})` | Create a new rule (owner or admin) |
-| `submit("downstream_rule", "update", {...})` | Update a rule (owner or admin) |
-| `submit("downstream_rule", "toggle", {...})` | Enable/disable a rule (owner or admin) |
-| `submit("downstream_rule", "delete", {...})` | Delete a rule (owner or admin) |
+| `submit(object_type="downstream_rule", operation="create", data='{...}')` | Create a new rule (owner or admin) |
+| `submit(object_type="downstream_rule", operation="update", data='{...}')` | Update a rule (owner or admin) |
+| `submit(object_type="downstream_rule", operation="toggle", data='{...}')` | Enable/disable a rule (owner or admin) |
+| `submit(object_type="downstream_rule", operation="delete", data='{...}')` | Delete a rule (owner or admin) |
 
 ### Examples
 
@@ -950,15 +949,15 @@ Configure event routing rules that automatically create events when triggers fir
 query("downstream_rule", filters={is_enabled: true})
 
 # Create rule: when bill is posted, trigger reconciliation
-submit("downstream_rule", "create", {
+submit(object_type="downstream_rule", operation="create", data=JSON.stringify({
     name: "Post-bill reconciliation",
     trigger_event: "transaction.posted",
     target_agent_type: "reconciliation_agent",
     conditions: {"transaction_type": "AP_INVOICE"}
-})
+}))
 
 # Disable a rule
-submit("downstream_rule", "toggle", {rule_id: 4, is_active: false})
+submit(object_type="downstream_rule", operation="toggle", data=JSON.stringify({rule_id: 4, is_active: false}))
 ```
 
 ---
@@ -1012,11 +1011,11 @@ Manage email addresses associated with legal entities for agent email routing.
 | Tool | Purpose |
 |------|---------|
 | `query("entity_email", filters={...})` | List email addresses for an entity |
-| `get_entity("entity_email", id=X)` | Get email address details (replaces `get_entity_email_address`, MCP registration removed) |
-| `submit("entity_email", "create", {...})` | Create a new email address |
-| `submit("entity_email", "update", {...})` | Update `default_agent_type`, `routing_rules` or `is_active`. `email_type` cannot be changed: create a new address of the type you need and delete the old one |
-| `submit("entity_email", "delete", {...})` | Delete an email address |
-| `submit("entity_email", "verify", {...})` | Not supported: the table has no verification-token columns (see the note on `entity_email.verify` below). Verify provider-to-inbox delivery separately |
+| `get_entity("entity_email", id=X)` | Get email address details |
+| `submit(object_type="entity_email", operation="create", data='{...}')` | Create a new email address |
+| `submit(object_type="entity_email", operation="update", data='{...}')` | Update `default_agent_type`, `routing_rules` or `is_active`. `email_type` cannot be changed: create a new address of the type you need and delete the old one |
+| `submit(object_type="entity_email", operation="delete", data='{...}')` | Delete an email address |
+| `submit(object_type="entity_email", operation="verify", data='{...}')` | Not supported: the table has no verification-token columns (see the note on `entity_email.verify` below). Verify provider-to-inbox delivery separately |
 | `query("entity_email", query=...)` | Look up which entity an email routes to |
 
 ### Examples
@@ -1026,11 +1025,11 @@ Manage email addresses associated with legal entities for agent email routing.
 query("entity_email", filters={legal_entity_id: 9})
 
 # Create AP inbox for an entity
-submit("entity_email", "create", {
+submit(object_type="entity_email", operation="create", data=JSON.stringify({
     legal_entity_id: 9,
     email_address: "ap@company.com",
     email_type: "ap_inbox"
-})
+}))
 
 # Look up routing for incoming email
 query("entity_email", query="bills@company.com")
@@ -1082,16 +1081,16 @@ manage_agents(action="seed_definitions", agent_types=["bills_collector_agent"], 
 # (stripe_transaction_processor) comes back under "not_seeded"; nothing is created.
 
 # Configure the agent
-submit("agent_definition", "update", {
+submit(object_type="agent_definition", operation="update", data=JSON.stringify({
     definition_id: 1,
     config: {"confidence_threshold": 0.85}
-})
+}))
 
 # Enable it
-submit("agent_definition", "enable", {definition_id: 1, is_enabled: true})
+submit(object_type="agent_definition", operation="enable", data=JSON.stringify({definition_id: 1, is_enabled: true}))
 
 # Create API key
-submit("agent_api_key", "create", {agent_definition_id: 1, name: "bill-processor-prod"})
+submit(object_type="agent_api_key", operation="create", data=JSON.stringify({agent_definition_id: 1, name: "bill-processor-prod"}))
 ```
 
 ### 2. Monitor Agent Health
@@ -1124,25 +1123,25 @@ get_entity("agent_event", id="15")
 query("agent_request", filters={status: "pending"})
 
 # Retry the event after fixing the issue
-submit("agent_event", "retry", {event_id: "15"})
+submit(object_type="agent_event", operation="retry", data=JSON.stringify({event_id: "15"}))
 ```
 
 ### 4. Set Up Scheduled Agent Runs
 
 ```
 # Create daily reconciliation at 6 AM UTC
-submit("scheduled_job", "create", {
+submit(object_type="scheduled_job", operation="create", data=JSON.stringify({
     agent_type: "reconciliation_agent",
     cron_expression: "0 6 * * *",
     job_name: "Daily Reconciliation"
-})
+}))
 
 # Create weekly payment proposals on Fridays at 10 AM
-submit("scheduled_job", "create", {
+submit(object_type="scheduled_job", operation="create", data=JSON.stringify({
     agent_type: "payment_proposal_agent",
     cron_expression: "0 10 * * 5",
     job_name: "Weekly Payment Proposals"
-})
+}))
 
 # Verify scheduled jobs
 query("scheduled_job")
@@ -1152,12 +1151,12 @@ query("scheduled_job")
 
 ```
 # Create downstream rule: bill posted -> reconciliation
-submit("downstream_rule", "create", {
+submit(object_type="downstream_rule", operation="create", data=JSON.stringify({
     name: "Auto-reconcile after bill posting",
     trigger_event: "transaction.posted",
     target_agent_type: "reconciliation_agent",
     conditions: {"transaction_type": "AP_INVOICE"}
-})
+}))
 
 # Verify rules
 query("downstream_rule")

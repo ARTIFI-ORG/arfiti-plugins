@@ -312,7 +312,7 @@ This means each bank account posts to its own specific GL account, which is crit
 3. **If NO dedicated GL account exists**, create new ones:
    ```javascript
    // GL account for the bank account itself
-   submit("account", "create", {
+   submit(object_type="account", operation="create", data=JSON.stringify({
      account_number: "1011",  // Pick next available number in 10xx range
      account_name: "LHV Bank EUR",  // Name matching the bank
      account_type: "asset",
@@ -320,10 +320,10 @@ This means each bank account posts to its own specific GL account, which is crit
      is_active: true,
      normal_balance: "debit",
      description: "Bank account for LHV EUR operating account"
-   })
+   }))
 
    // If this bank has corporate cards, create ONE GL account for all cards of this bank
-   submit("account", "create", {
+   submit(object_type="account", operation="create", data=JSON.stringify({
      account_number: "1012",  // Next available number
      account_name: "LHV Bank Cards EUR",  // Bank name + "Cards"
      account_type: "asset",
@@ -331,7 +331,7 @@ This means each bank account posts to its own specific GL account, which is crit
      is_active: true,
      normal_balance: "debit",
      description: "Corporate card clearing for LHV EUR cards"
-   })
+   }))
    ```
    Then use the bank GL account number as `gl_account_number` when creating the bank account.
 
@@ -384,7 +384,7 @@ currency in the entity, so two waiting creates for one IBAN leave one account.
 schema = get_submissions(action='schema', object_type="bank_account", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("bank_account", "create", {
+submit(object_type="bank_account", operation="create", data=JSON.stringify({
   // Required fields
   legal_entity_id: 13,
   bank_account_code: "CASH-USD-001",
@@ -413,7 +413,7 @@ submit("bank_account", "create", {
   // Limits (optional)
   daily_limit: 100000.00,
   monthly_limit: 2000000.00
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -476,7 +476,7 @@ submit("bank_account", "create", {
 ### Example: Create Primary Operating Account
 
 ```javascript
-submit("bank_account", "create", {
+submit(object_type="bank_account", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     bank_account_code: "CASH-USD-MAIN",
     account_name: "Wells Fargo Operating - USD",
@@ -490,7 +490,7 @@ submit("bank_account", "create", {
     is_operating: true,
     is_default_payments: true,
     daily_limit: 100000.00
-})
+}))
 ```
 
 **Result:** Primary operating account created
@@ -498,7 +498,7 @@ submit("bank_account", "create", {
 ### Example: Create Payroll Account
 
 ```javascript
-submit("bank_account", "create", {
+submit(object_type="bank_account", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     bank_account_code: "CASH-USD-PAYROLL",
     account_name: "Payroll Account - Chase",
@@ -510,7 +510,7 @@ submit("bank_account", "create", {
     account_type: "checking",
     usage_type: "payroll",
     monthly_limit: 500000.00
-})
+}))
 ```
 
 **Result:** Separate payroll account created
@@ -524,7 +524,7 @@ Use the `bank_account.update` workflow to update bank account details.
 **Workflow: bank_account.update**
 
 ```javascript
-submit("bank_account", "update", {
+submit(object_type="bank_account", operation="update", data=JSON.stringify({
     bank_account_id: 123,
     // Only include fields you want to change — every other field
     // stays untouched. Wire-instruction fields (iban, swift_code,
@@ -537,7 +537,7 @@ submit("bank_account", "update", {
     bank_country: "BE",
     currency: "EUR",
     is_default_receipts: true
-})
+}))
 ```
 
 **Required Fields:**
@@ -598,11 +598,11 @@ Use the `bank_account.verify` workflow to mark an account as verified.
 **Workflow: bank_account.verify**
 
 ```javascript
-submit("bank_account", "verify", {
+submit(object_type="bank_account", operation="verify", data=JSON.stringify({
     bank_account_id: 123,
     verification_status: "verified",
     verification_method: "bank_letter"
-})
+}))
 ```
 
 **Required Fields:**
@@ -641,10 +641,10 @@ Use the `bank_account.delete` workflow to deactivate (soft delete) a bank accoun
 **Workflow: bank_account.delete**
 
 ```javascript
-submit("bank_account", "delete", {
+submit(object_type="bank_account", operation="delete", data=JSON.stringify({
     bank_account_id: 123,
     deletion_reason: "Account closed at bank"
-})
+}))
 ```
 
 **Required Fields:**
@@ -688,7 +688,7 @@ Use the `vendor_bank_account.create` workflow to add vendor payment accounts.
 **Workflow: vendor_bank_account.create**
 
 ```javascript
-submit("vendor_bank_account", "create", {
+submit(object_type="vendor_bank_account", operation="create", data=JSON.stringify({
     // Required fields
     master_vendor_id: 456,
     legal_entity_id: 13,
@@ -716,7 +716,7 @@ submit("vendor_bank_account", "create", {
     // Verification
     verification_status: "unverified",
     requires_dual_approval: false
-})
+}))
 ```
 
 **Required Fields:**
@@ -785,7 +785,7 @@ submit("vendor_bank_account", "create", {
 ### Example: Add ACH Vendor Account
 
 ```javascript
-submit("vendor_bank_account", "create", {
+submit(object_type="vendor_bank_account", operation="create", data=JSON.stringify({
     master_vendor_id: 456,
     legal_entity_id: 13,
     payment_method: "ach",
@@ -797,7 +797,7 @@ submit("vendor_bank_account", "create", {
     currency_code: "USD",
     account_nickname: "Primary ACH",
     is_default: true
-})
+}))
 ```
 
 **Result:** ACH vendor account created
@@ -805,7 +805,7 @@ submit("vendor_bank_account", "create", {
 ### Example: Add International Wire Account
 
 ```javascript
-submit("vendor_bank_account", "create", {
+submit(object_type="vendor_bank_account", operation="create", data=JSON.stringify({
     master_vendor_id: 456,
     legal_entity_id: 13,
     payment_method: "wire_international",
@@ -817,7 +817,7 @@ submit("vendor_bank_account", "create", {
     currency_code: "EUR",
     account_nickname: "Wire - EUR",
     requires_dual_approval: true
-})
+}))
 ```
 
 **Result:** International wire account created with dual approval requirement
@@ -831,11 +831,11 @@ Use the `vendor_bank_account.update` workflow.
 **Workflow: vendor_bank_account.update**
 
 ```javascript
-submit("vendor_bank_account", "update", {
+submit(object_type="vendor_bank_account", operation="update", data=JSON.stringify({
     bank_account_id: 789,
     account_nickname: "Primary ACH - Verified",
     is_default: true
-})
+}))
 ```
 
 **Required Fields:**
@@ -866,11 +866,11 @@ Use the `vendor_bank_account.verify` workflow.
 **Workflow: vendor_bank_account.verify**
 
 ```javascript
-submit("vendor_bank_account", "verify", {
+submit(object_type="vendor_bank_account", operation="verify", data=JSON.stringify({
     bank_account_id: 789,
     verification_status: "verified",
     verification_method: "micro_deposits"
-})
+}))
 ```
 
 **Required Fields:**
@@ -905,10 +905,10 @@ Use the `vendor_bank_account.delete` workflow.
 **Workflow: vendor_bank_account.delete**
 
 ```javascript
-submit("vendor_bank_account", "delete", {
+submit(object_type="vendor_bank_account", operation="delete", data=JSON.stringify({
     bank_account_id: 789,
     deletion_reason: "Vendor changed banks"
-})
+}))
 ```
 
 **Required Fields:**
@@ -946,7 +946,7 @@ Use the `employee_bank_account.create` workflow.
 **Workflow: employee_bank_account.create**
 
 ```javascript
-submit("employee_bank_account", "create", {
+submit(object_type="employee_bank_account", operation="create", data=JSON.stringify({
     // Required fields
     employee_id: 100,
     legal_entity_id: 13,
@@ -975,7 +975,7 @@ submit("employee_bank_account", "create", {
 
     // Verification
     verification_status: "unverified"
-})
+}))
 ```
 
 **Required Fields:**
@@ -1035,7 +1035,7 @@ submit("employee_bank_account", "create", {
 ### Example: Add Payroll Direct Deposit Account
 
 ```javascript
-submit("employee_bank_account", "create", {
+submit(object_type="employee_bank_account", operation="create", data=JSON.stringify({
     employee_id: 100,
     legal_entity_id: 13,
     usage_type: "payroll",
@@ -1046,7 +1046,7 @@ submit("employee_bank_account", "create", {
     account_type: "checking",
     deposit_allocation_type: "remainder",
     is_default: true
-})
+}))
 ```
 
 **Result:** Primary payroll account created
@@ -1055,7 +1055,7 @@ submit("employee_bank_account", "create", {
 
 ```javascript
 // Account 1: Savings (fixed amount)
-submit("employee_bank_account", "create", {
+submit(object_type="employee_bank_account", operation="create", data=JSON.stringify({
     employee_id: 100,
     legal_entity_id: 13,
     usage_type: "payroll",
@@ -1067,10 +1067,10 @@ submit("employee_bank_account", "create", {
     deposit_allocation_type: "amount",
     deposit_amount: 500.00,  // $500 to savings
     deposit_order: 1  // First
-})
+}))
 
 // Account 2: Checking (remainder)
-submit("employee_bank_account", "create", {
+submit(object_type="employee_bank_account", operation="create", data=JSON.stringify({
     employee_id: 100,
     legal_entity_id: 13,
     usage_type: "payroll",
@@ -1082,7 +1082,7 @@ submit("employee_bank_account", "create", {
     deposit_allocation_type: "remainder",  // Rest goes here
     deposit_order: 2,  // Second
     is_default: true
-})
+}))
 ```
 
 **Result:** Split direct deposit - $500 to savings, remainder to checking
@@ -1096,12 +1096,12 @@ Use the `employee_bank_account.update` workflow.
 **Workflow: employee_bank_account.update**
 
 ```javascript
-submit("employee_bank_account", "update", {
+submit(object_type="employee_bank_account", operation="update", data=JSON.stringify({
     bank_account_id: 456,
     account_nickname: "Personal Checking - Wells Fargo",
     deposit_allocation_type: "percentage",
     deposit_percentage: 80.00
-})
+}))
 ```
 
 **Required Fields:**
@@ -1132,11 +1132,11 @@ Use the `employee_bank_account.verify` workflow.
 **Workflow: employee_bank_account.verify**
 
 ```javascript
-submit("employee_bank_account", "verify", {
+submit(object_type="employee_bank_account", operation="verify", data=JSON.stringify({
     bank_account_id: 456,
     verification_status: "verified",
     verification_method: "micro_deposits"
-})
+}))
 ```
 
 **Required Fields:**
@@ -1171,10 +1171,10 @@ Use the `employee_bank_account.delete` workflow.
 **Workflow: employee_bank_account.delete**
 
 ```javascript
-submit("employee_bank_account", "delete", {
+submit(object_type="employee_bank_account", operation="delete", data=JSON.stringify({
     bank_account_id: 456,
     deletion_reason: "Employee closed account"
-})
+}))
 ```
 
 **Required Fields:**
@@ -1203,7 +1203,7 @@ submit("employee_bank_account", "delete", {
 
 ## ~~Change Request Workflows~~ (DEPRECATED 2026-02)
 
-> **DEPRECATED:** The `bank_account_change_request` table and workflows have been removed. Sensitive bank account changes now go through the standard workflow approval system. Use `submit("bank_account", "update", {...})` which automatically routes through approval lanes based on risk.
+> **DEPRECATED:** The `bank_account_change_request` table and workflows have been removed. Sensitive bank account changes now go through the standard workflow approval system. Use `submit(object_type="bank_account", operation="update", data='{...}')` which automatically routes through approval lanes based on risk.
 
 ~~Change request workflows handle sensitive bank account changes that require approval.~~
 
@@ -1214,7 +1214,7 @@ Use the `bank_account_change_request.create` workflow.
 **Workflow: bank_account_change_request.create**
 
 ```javascript
-submit("bank_account_change_request", "create", {
+submit(object_type="bank_account_change_request", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     request_type: "add",  // or "update" or "delete"
     entity_type: "vendor",  // or "employee" or "bank_account"
@@ -1229,7 +1229,7 @@ submit("bank_account_change_request", "create", {
     verification_method: "bank_letter",
     requires_dual_approval: true,
     request_reason: "New supplier in UK requires wire transfers"
-})
+}))
 ```
 
 **Required Fields:**
@@ -1279,10 +1279,10 @@ Use the `bank_account_change_request.approve` workflow.
 **Workflow: bank_account_change_request.approve**
 
 ```javascript
-submit("bank_account_change_request", "approve", {
+submit(object_type="bank_account_change_request", operation="approve", data=JSON.stringify({
     request_id: 789,
     approval_note: "Verified with vendor via email - bank letter attached"
-})
+}))
 ```
 
 **Required Fields:**
@@ -1322,10 +1322,10 @@ Use the `bank_account_change_request.reject` workflow.
 **Workflow: bank_account_change_request.reject**
 
 ```javascript
-submit("bank_account_change_request", "reject", {
+submit(object_type="bank_account_change_request", operation="reject", data=JSON.stringify({
     request_id: 789,
     rejection_reason: "IBAN checksum appears invalid - please verify with vendor"
-})
+}))
 ```
 
 **Required Fields:**
@@ -1361,10 +1361,10 @@ Use the `bank_account_change_request.cancel` workflow.
 **Workflow: bank_account_change_request.cancel**
 
 ```javascript
-submit("bank_account_change_request", "cancel", {
+submit(object_type="bank_account_change_request", operation="cancel", data=JSON.stringify({
     request_id: 789,
     cancellation_reason: "Vendor provided updated account details"
-})
+}))
 ```
 
 **Required Fields:**
@@ -1402,9 +1402,9 @@ Use the `bank_account_change_request.apply` workflow to execute approved changes
 **Workflow: bank_account_change_request.apply**
 
 ```javascript
-submit("bank_account_change_request", "apply", {
+submit(object_type="bank_account_change_request", operation="apply", data=JSON.stringify({
     request_id: 789
-})
+}))
 ```
 
 **Required Fields:**
@@ -1433,7 +1433,7 @@ submit("bank_account_change_request", "apply", {
 
 ## ~~Verification Workflows~~ (DEPRECATED 2026-02)
 
-> **DEPRECATED:** The `bank_account_verification_events` table and workflows have been removed. Verification is now handled directly via `submit("bank_account", "verify", {...})`, `submit("vendor_bank_account", "verify", {...})`, or `submit("employee_bank_account", "verify", {...})`.
+> **DEPRECATED:** The `bank_account_verification_events` table and workflows have been removed. Verification is now handled directly via `submit(object_type="bank_account", operation="verify", data='{...}')`, `submit(object_type="vendor_bank_account", operation="verify", data='{...}')`, or `submit(object_type="employee_bank_account", operation="verify", data='{...}')`.
 
 ~~Verification workflows handle account verification processes (micro-deposits, Plaid, etc.).~~
 
@@ -1444,12 +1444,12 @@ Use the `bank_account_verification.create` workflow.
 **Workflow: bank_account_verification.create**
 
 ```javascript
-submit("bank_account_verification", "create", {
+submit(object_type="bank_account_verification", operation="create", data=JSON.stringify({
     bank_account_id: 789,
     bank_account_type: "vendor",  // or "employee" or "bank_account"
     verification_method: "micro_deposits",
     micro_deposit_amounts: [0.17, 0.32]  // If method=micro_deposits
-})
+}))
 ```
 
 **Required Fields:**
@@ -1495,11 +1495,11 @@ Use the `bank_account_verification.update` workflow.
 **Workflow: bank_account_verification.update**
 
 ```javascript
-submit("bank_account_verification", "update", {
+submit(object_type="bank_account_verification", operation="update", data=JSON.stringify({
     verification_id: 123,
     status: "in_progress",
     notes: "Micro-deposits sent, waiting for confirmation"
-})
+}))
 ```
 
 **Required Fields:**
@@ -1533,11 +1533,11 @@ Use the `bank_account_verification.complete` workflow.
 **Workflow: bank_account_verification.complete**
 
 ```javascript
-submit("bank_account_verification", "complete", {
+submit(object_type="bank_account_verification", operation="complete", data=JSON.stringify({
     verification_id: 123,
     verification_status: "verified",  // or "failed"
     confirmed_amounts: [0.17, 0.32]  // If method=micro_deposits
-})
+}))
 ```
 
 **Required Fields:**
@@ -1585,7 +1585,7 @@ Use the `bank_account_integration.create` workflow.
 **Workflow: bank_account_integration.create**
 
 ```javascript
-submit("bank_account_integration", "create", {
+submit(object_type="bank_account_integration", operation="create", data=JSON.stringify({
     bank_account_id: 123,
     provider: "revolut",  // or "stripe"
     provider_account_id: "12345678",
@@ -1595,7 +1595,7 @@ submit("bank_account_integration", "create", {
     },
     sync_frequency: "daily",
     auto_sync_enabled: true
-})
+}))
 ```
 
 **Required Fields:**
@@ -1640,11 +1640,11 @@ Use the `bank_account_integration.update` workflow.
 **Workflow: bank_account_integration.update**
 
 ```javascript
-submit("bank_account_integration", "update", {
+submit(object_type="bank_account_integration", operation="update", data=JSON.stringify({
     integration_id: "uuid-here",
     sync_frequency: "hourly",
     auto_sync_enabled: false
-})
+}))
 ```
 
 **Required Fields:**
@@ -1673,10 +1673,10 @@ Use the `bank_account_integration.delete` workflow.
 **Workflow: bank_account_integration.delete**
 
 ```javascript
-submit("bank_account_integration", "delete", {
+submit(object_type="bank_account_integration", operation="delete", data=JSON.stringify({
     integration_id: "uuid-here",
     deletion_reason: "Switching to different banking provider"
-})
+}))
 ```
 
 **Required Fields:**
@@ -1709,12 +1709,12 @@ Use the `bank_account_integration.sync` workflow.
 **Workflow: bank_account_integration.sync**
 
 ```javascript
-submit("bank_account_integration", "sync", {
+submit(object_type="bank_account_integration", operation="sync", data=JSON.stringify({
     integration_id: "uuid-here",
     sync_type: "transactions",  // or "balance" or "both"
     start_date: "2026-01-01",
     end_date: "2026-01-14"
-})
+}))
 ```
 
 **Required Fields:**
@@ -1887,7 +1887,7 @@ query("vendor_bank_account", query="chase", filters={"legal_entity_id": 13, "ver
 
 ```javascript
 // Step 1: Create account
-submit("bank_account", "create", {
+submit(object_type="bank_account", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     bank_account_code: "CASH-USD-MAIN",
     account_name: "Wells Fargo Operating Account",
@@ -1901,14 +1901,14 @@ submit("bank_account", "create", {
     is_operating: true,
     is_default_payments: true,
     daily_limit: 100000.00
-})
+}))
 
 // Step 2: Verify account
-submit("bank_account", "verify", {
+submit(object_type="bank_account", operation="verify", data=JSON.stringify({
     bank_account_id: 123,
     verification_status: "verified",
     verification_method: "bank_letter"
-})
+}))
 ```
 
 **Result:** Primary operating account set up and verified
@@ -1921,7 +1921,7 @@ submit("bank_account", "verify", {
 
 ```javascript
 // Step 1: Create vendor bank account
-submit("vendor_bank_account", "create", {
+submit(object_type="vendor_bank_account", operation="create", data=JSON.stringify({
     master_vendor_id: 456,
     legal_entity_id: 13,
     payment_method: "ach",
@@ -1932,14 +1932,14 @@ submit("vendor_bank_account", "create", {
     account_type: "checking",
     currency_code: "USD",
     is_default: true
-})
+}))
 
 // Step 2: Verify account (replaces deprecated bank_account_verification workflows)
-submit("vendor_bank_account", "verify", {
+submit(object_type="vendor_bank_account", operation="verify", data=JSON.stringify({
     bank_account_id: 789,
     verification_status: "verified",
     verification_method: "micro_deposits"
-})
+}))
 ```
 
 **Result:** Vendor account set up and verified for ACH payments
@@ -1952,7 +1952,7 @@ submit("vendor_bank_account", "verify", {
 
 ```javascript
 // Step 1: Employee creates account
-submit("employee_bank_account", "create", {
+submit(object_type="employee_bank_account", operation="create", data=JSON.stringify({
     employee_id: 100,
     legal_entity_id: 13,
     usage_type: "payroll",
@@ -1963,14 +1963,14 @@ submit("employee_bank_account", "create", {
     account_type: "checking",
     deposit_allocation_type: "remainder",
     is_default: true
-})
+}))
 
 // Step 2: Verify account (replaces deprecated bank_account_verification workflows)
-submit("employee_bank_account", "verify", {
+submit(object_type="employee_bank_account", operation="verify", data=JSON.stringify({
     bank_account_id: 456,
     verification_status: "verified",
     verification_method: "plaid"
-})
+}))
 ```
 
 **Result:** Employee direct deposit set up and instantly verified via Plaid
@@ -1985,20 +1985,20 @@ submit("employee_bank_account", "verify", {
 
 ```javascript
 // Step 1: Update vendor bank account (automatically routes through approval if high-risk)
-submit("vendor_bank_account", "update", {
+submit(object_type="vendor_bank_account", operation="update", data=JSON.stringify({
     bank_account_id: 789,
     routing_number: "111000025",
     account_number: "7777888899",
     bank_name: "Wells Fargo",
     notes: "Vendor switched banks effective 2026-01-15"
-})
+}))
 
 // Step 2: Verify updated account
-submit("vendor_bank_account", "verify", {
+submit(object_type="vendor_bank_account", operation="verify", data=JSON.stringify({
     bank_account_id: 789,
     verification_status: "verified",
     verification_method: "bank_letter"
-})
+}))
 ```
 
 **Result:** Vendor bank account updated through standard approval system, then verified
@@ -2013,7 +2013,7 @@ submit("vendor_bank_account", "verify", {
 
 ```javascript
 // Step 1: Update bank account metadata to link to connector
-submit("bank_account", "update", {
+submit(object_type="bank_account", operation="update", data=JSON.stringify({
     bank_account_id: 123,
     metadata: {
       connector_id: "revolut-connector-uuid",
@@ -2021,7 +2021,7 @@ submit("bank_account", "update", {
       sync_frequency: "daily",
       auto_sync_enabled: true
     }
-})
+}))
 
 // Step 2: Configure credentials securely via Admin Dashboard
 // NEVER pass API keys or secrets through Claude chat
@@ -2039,7 +2039,7 @@ submit("bank_account", "update", {
 
 ```javascript
 // Account 1: Savings - fixed amount
-submit("employee_bank_account", "create", {
+submit(object_type="employee_bank_account", operation="create", data=JSON.stringify({
     employee_id: 100,
     legal_entity_id: 13,
     usage_type: "payroll",
@@ -2051,10 +2051,10 @@ submit("employee_bank_account", "create", {
     deposit_allocation_type: "amount",
     deposit_amount: 500.00,
     deposit_order: 1
-})
+}))
 
 // Account 2: Checking - remainder
-submit("employee_bank_account", "create", {
+submit(object_type="employee_bank_account", operation="create", data=JSON.stringify({
     employee_id: 100,
     legal_entity_id: 13,
     usage_type: "payroll",
@@ -2066,7 +2066,7 @@ submit("employee_bank_account", "create", {
     deposit_allocation_type: "remainder",
     deposit_order: 2,
     is_default: true
-})
+}))
 ```
 
 **Result:** Payroll split: $500 → savings, remainder → checking
@@ -2295,10 +2295,10 @@ View workflow definitions in the admin dashboard at `https://app.arfiti.com/work
 
 | Use Case | Workflow |
 |----------|----------|
-| Create company account | `submit("bank_account", "create", {...})` |
-| Create vendor account | `submit("vendor_bank_account", "create", {...})` |
-| Create employee account | `submit("employee_bank_account", "create", {...})` |
-| Verify account | `submit("[type]", "verify", {...})` |
+| Create company account | `submit(object_type="bank_account", operation="create", data='{...}')` |
+| Create vendor account | `submit(object_type="vendor_bank_account", operation="create", data='{...}')` |
+| Create employee account | `submit(object_type="employee_bank_account", operation="create", data='{...}')` |
+| Verify account | `submit(object_type="[type]", operation="verify", data='{...}')` |
 
 ---
 
@@ -2331,7 +2331,7 @@ View workflow definitions in the admin dashboard at `https://app.arfiti.com/work
 
 Only for bank accounts linked to a connector that supports FX (today: Revolut
 Business). You can quote; you cannot execute. An exchange moves money, so
-`submit("fx_exchange", "execute", …)`, and approving or editing
+`submit(object_type="fx_exchange", operation="execute", …)`, and approving or editing
 (`edit_payload`) a pending exchange, are refused through the connector with
 `operation_not_available_via_mcp`. Give the
 user the quote and tell them to exchange the currency at their bank. Rejecting
@@ -2413,14 +2413,14 @@ An excluded bank statement line is put back into its open state with `bank_state
 2. Submit:
 
 ```python
-submit("bank_statement_line", "revoke_exclusion", {
+submit(object_type="bank_statement_line", operation="revoke_exclusion", data=json.dumps({
     "legal_entity_id": 40,
     "source_id": 1560,                         # the statement line id
     "expected_exclusion_hash": "<from step 1>",
     "exclusion_decision_id": None,             # the decision_id for a typed exclusion
     "request_key": "restore-1560",             # your own key; a repeat with the same key and payload changes nothing
     "reason": "Both lines of the transfer can be matched now"
-})
+}))
 ```
 
 The line returns to `unmatched` and can be matched or excluded again. Its journal link, if it had one, and any review hold are left as they were. The original exclusion (reason, who, when) stays in the line's metadata, `metadata.exclusion_revocation` records who restored it and why, and an immutable before/after record is kept. The statement's status is recomputed: a statement that was reconciled only because the line was excluded is open again.

@@ -21,11 +21,11 @@ This resource covers the universal bulk import system for **master data** (custo
 The import system provides a single entry point for all object types:
 
 ```
-submit("<type>", "import", {
+submit(object_type="<type>", operation="import", data=JSON.stringify({
     legal_entity_id: <id>,
     records: [...],
     options: { on_duplicate: "skip", batch_size: 50 }
-})
+}))
 ```
 
 **Key features:**
@@ -37,7 +37,7 @@ submit("<type>", "import", {
 - Per-record error isolation (one failure doesn't block others)
 - External ID support for data migration from QuickBooks, Xero, etc.
 - Validate-only mode (dry run)
-- Real-time progress tracking via `get_imports(action="status", import_id=...)` (replaces `get_import_status()`, MCP registration removed)
+- Real-time progress tracking via `get_imports(action="status", import_id=...)`
 - Entity scope enforced before the import runs — a caller cannot import into a `legal_entity_id` outside their scope
 
 > **Two equivalent entry points:** `submit(object_type, "import", ...)` and `manage_imports(action, ...)` (see [manage_imports() in Tools Reference](tools-reference.md)) both route through the same import executor. Whichever you use, the same rules apply: any org-configured `import_batch.review` approval workflow can put a batch into `pending_approval` before it runs, and a zero-error run — including an idempotent re-run where every record is a duplicate skip — always reports `success: true`.
@@ -80,11 +80,11 @@ submit("<type>", "import", {
 Before importing transactions, run a preflight check to discover the required fields for a specific transaction type. Required fields are configured per company in the workflow definition, so they vary between organizations.
 
 ```javascript
-submit("transaction", "import", {
+submit(object_type="transaction", operation="import", data=JSON.stringify({
     "_operation": "preflight",
     "transaction_type_code": "AP_INVOICE",
     "legal_entity_id": 12
-})
+}))
 // Returns:
 // {
 //   "preflight": true,
@@ -136,7 +136,7 @@ Map the data to the import format:
 schema = get_submissions(action='schema', object_type="vendor", operation="import")
 
 // Step 2: Submit with discovered fields
-submit("vendor", "import", {
+submit(object_type="vendor", operation="import", data=JSON.stringify({
     legal_entity_id: 12,
     records: [
       {
@@ -154,7 +154,7 @@ submit("vendor", "import", {
     options: {
       on_duplicate: "skip"
     }
-})
+}))
 // Tip: Use options: { validate_only: true } to validate an import without persisting it.
 ```
 
@@ -193,11 +193,11 @@ Import complete:
 
 ```javascript
 // Step 1: Submit large import
-const result = submit("customer", "import", {
+const result = submit(object_type="customer", operation="import", data=JSON.stringify({
     legal_entity_id: 12,
     records: largeArray,  // 200+ records
     options: { on_duplicate: "skip" }
-})
+}))
 // Returns: { import_id: "uuid", async: true, status: "importing" }
 
 // Step 2: Poll for progress
@@ -233,11 +233,11 @@ get_imports(action="status", import_id="uuid")
 Run validation without persisting any records:
 
 ```javascript
-submit("vendor", "import", {
+submit(object_type="vendor", operation="import", data=JSON.stringify({
     legal_entity_id: 12,
     records: [...],
     options: { validate_only: true }
-})
+}))
 ```
 
 Returns validation results: which records would succeed, which would fail, and why.
@@ -251,14 +251,14 @@ For migrating from external systems (QuickBooks, Xero, etc.):
 ### Step 1: Import Master Data with External IDs
 
 ```javascript
-submit("vendor", "import", {
+submit(object_type="vendor", operation="import", data=JSON.stringify({
     records: [{
       vendor_name: "Acme Corp",
       email: "ap@acme.com",
       payment_terms_code: "NET_30",
       metadata: { external_id: "QB-VEND-1234" }
     }]
-})
+}))
 ```
 
 The `external_id` is stored in the `metadata` JSONB column. Later, transaction imports can reference entities by their external IDs (`external_vendor_id: "QB-VEND-1234"`).
@@ -287,7 +287,7 @@ The `external_id` is stored in the `metadata` JSONB column. Later, transaction i
 
 ## Opening Balance Import
 
-**CRITICAL:** Always use `manage_imports("opening_balances", ...)` for opening balances. **Never** use `submit("transaction", "post")` — it will fail with validation errors and miss auto-balancing, fiscal period checks, and subledger support.
+**CRITICAL:** Always use `manage_imports("opening_balances", ...)` for opening balances. **Never** use `submit(object_type="transaction", operation="post")` — it will fail with validation errors and miss auto-balancing, fiscal period checks, and subledger support.
 
 ### When to Use
 
@@ -307,14 +307,14 @@ If periods for the target year don't exist, **create them first**:
 
 ```javascript
 // Create the needed fiscal period
-submit("fiscal_period", "create", {
+submit(object_type="fiscal_period", operation="create", data=JSON.stringify({
     "legal_entity_id": 12,
     "period_name": "2025-01",
     "period_type": "month",
     "start_date": "2025-01-01",
     "end_date": "2025-01-31",
     "fiscal_year": 2025
-})
+}))
 ```
 
 **Do NOT just post to the earliest existing period** — opening balances MUST be in the correct fiscal year.

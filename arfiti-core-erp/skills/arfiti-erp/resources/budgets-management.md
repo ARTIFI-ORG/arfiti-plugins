@@ -184,7 +184,7 @@ Create a new budget version for a fiscal year.
 schema = get_submissions(action='schema', object_type="budget_version", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("budget_version", "create", {
+submit(object_type="budget_version", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     version_name: "FY2025 Operating Budget",
     fiscal_year: 2025,
@@ -192,7 +192,7 @@ submit("budget_version", "create", {
     version_type: "monthly",
     currency_code: "USD",
     notes: "Annual operating budget for 2025"
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -222,7 +222,7 @@ submit("budget_version", "create", {
 Create a new budget by copying from previous version.
 
 ```javascript
-submit("budget_version", "create", {
+submit(object_type="budget_version", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     version_name: "FY2025 Operating Budget",
     fiscal_year: 2025,
@@ -230,7 +230,7 @@ submit("budget_version", "create", {
     copy_from_version_id: 3,  // 2024 budget
     copy_lines: true,  // Copy all budget lines
     notes: "Rolled forward from 2024 baseline"
-})
+}))
 ```
 
 **Returns:**
@@ -249,7 +249,7 @@ submit("budget_version", "create", {
 Create mid-year forecast based on approved budget.
 
 ```javascript
-submit("budget_version", "create", {
+submit(object_type="budget_version", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     version_name: "FY2025 Q2 Forecast",
     fiscal_year: 2025,  // Same year
@@ -257,7 +257,7 @@ submit("budget_version", "create", {
     copy_from_version_id: 5,  // Current budget
     copy_lines: true,
     notes: "Q2 forecast based on Q1 actuals"
-})
+}))
 ```
 
 #### Update Budget Version
@@ -265,12 +265,12 @@ submit("budget_version", "create", {
 Update metadata (name, notes, owner).
 
 ```javascript
-submit("budget_version", "update", {
+submit(object_type="budget_version", operation="update", data=JSON.stringify({
     budget_version_id: 5,
     version_name: "FY2025 Operating Budget v2",
     notes: "Revised operating budget after Q1 review",
     owner_user_id: 12
-})
+}))
 ```
 
 **Validation:**
@@ -282,9 +282,9 @@ submit("budget_version", "update", {
 Soft-delete budget version (sets is_active = false).
 
 ```javascript
-submit("budget_version", "delete", {
+submit(object_type="budget_version", operation="delete", data=JSON.stringify({
     budget_version_id: 5
-})
+}))
 ```
 
 **Validation:**
@@ -301,10 +301,10 @@ submit("budget_version", "delete", {
 Submit draft budget for approval.
 
 ```javascript
-submit("budget_workflow", "submit", {
+submit(object_type="budget_workflow", operation="submit", data=JSON.stringify({
     budget_version_id: 5,
     comments: "FY2025 budget ready for CFO review"
-})
+}))
 ```
 
 **Status Change:** `draft` → `submitted`
@@ -319,10 +319,10 @@ submit("budget_workflow", "submit", {
 Approve submitted budget.
 
 ```javascript
-submit("budget_workflow", "approve", {
+submit(object_type="budget_workflow", operation="approve", data=JSON.stringify({
     budget_version_id: 5,
     comments: "Approved by CFO"
-})
+}))
 ```
 
 **Status Change:** `submitted` → `approved`
@@ -336,10 +336,10 @@ submit("budget_workflow", "approve", {
 Reject submitted budget, return to draft.
 
 ```javascript
-submit("budget_workflow", "reject", {
+submit(object_type="budget_workflow", operation="reject", data=JSON.stringify({
     budget_version_id: 5,
     rejection_reason: "Need to revise Q3 revenue projections"
-})
+}))
 ```
 
 **Status Change:** `submitted` → `draft`
@@ -353,10 +353,10 @@ submit("budget_workflow", "reject", {
 Lock approved budget (prevent edits).
 
 ```javascript
-submit("budget_workflow", "lock", {
+submit(object_type="budget_workflow", operation="lock", data=JSON.stringify({
     budget_version_id: 5,
     comments: "Locked for FY2025"
-})
+}))
 ```
 
 **Status Change:** `approved` → `locked`
@@ -371,10 +371,10 @@ submit("budget_workflow", "lock", {
 Archive old budget (historical record).
 
 ```javascript
-submit("budget_workflow", "archive", {
+submit(object_type="budget_workflow", operation="archive", data=JSON.stringify({
     budget_version_id: 5,
     comments: "Archived - superseded by v2"
-})
+}))
 ```
 
 **Status Change:** `draft`/`approved`/`locked` → `archived`
@@ -389,10 +389,10 @@ submit("budget_workflow", "archive", {
 Reopen archived/submitted budget to draft.
 
 ```javascript
-submit("budget_workflow", "reopen", {
+submit(object_type="budget_workflow", operation="reopen", data=JSON.stringify({
     budget_version_id: 5,
     comments: "Reopened for corrections"
-})
+}))
 ```
 
 **Status Change:** `submitted`/`archived` → `draft`
@@ -427,7 +427,7 @@ draft → submitted → approved → locked → archived
 Add a single budget line.
 
 ```javascript
-submit("budget_line", "create", {
+submit(object_type="budget_line", operation="create", data=JSON.stringify({
     budget_version_id: 5,
     account_number: "4000",
     amount: 50000.00,
@@ -436,7 +436,7 @@ submit("budget_line", "create", {
     description: "Q1 Revenue - Product Sales",
     memo: "Based on 10% YoY growth",
     source: "manual"
-})
+}))
 ```
 
 **Returns:**
@@ -464,7 +464,7 @@ submit("budget_line", "create", {
 Budget line with department and project tags.
 
 ```javascript
-submit("budget_line", "create", {
+submit(object_type="budget_line", operation="create", data=JSON.stringify({
     budget_version_id: 5,
     account_number: "6100",
     amount: 25000.00,
@@ -476,7 +476,7 @@ submit("budget_line", "create", {
       cost_center: "ENG-001",
       location: "NYC"
     }
-})
+}))
 ```
 
 #### Update Budget Line
@@ -484,12 +484,12 @@ submit("budget_line", "create", {
 Update amount or description.
 
 ```javascript
-submit("budget_line", "update", {
+submit(object_type="budget_line", operation="update", data=JSON.stringify({
     budget_line_id: 42,
     amount: 55000.00,
     description: "Q1 Revenue - Revised",
     memo: "Updated after sales forecast review"
-})
+}))
 ```
 
 **Validation:**
@@ -501,9 +501,9 @@ submit("budget_line", "update", {
 Remove budget line.
 
 ```javascript
-submit("budget_line", "delete", {
+submit(object_type="budget_line", operation="delete", data=JSON.stringify({
     budget_line_id: 42
-})
+}))
 ```
 
 **Validation:**
@@ -515,7 +515,7 @@ submit("budget_line", "delete", {
 Insert or update multiple lines at once (import/batch operation).
 
 ```javascript
-submit("budget_line", "bulk_upsert", {
+submit(object_type="budget_line", operation="bulk_upsert", data=JSON.stringify({
     budget_version_id: 5,
     lines: [
       {
@@ -540,7 +540,7 @@ submit("budget_line", "bulk_upsert", {
         }
       }
     ]
-})
+}))
 ```
 
 **Returns:**
@@ -575,7 +575,7 @@ If no match → INSERT new line
 Create reusable budget structure.
 
 ```javascript
-submit("budget_template", "create", {
+submit(object_type="budget_template", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     template_name: "Standard Operating Budget",
     template_code: "OPEX-STD",
@@ -586,7 +586,7 @@ submit("budget_template", "create", {
       cost_center: ["CC001", "CC002", "CC003"]
     },
     is_active: true
-})
+}))
 ```
 
 **Returns:**
@@ -602,14 +602,14 @@ submit("budget_template", "create", {
 Update template details.
 
 ```javascript
-submit("budget_template", "update", {
+submit(object_type="budget_template", operation="update", data=JSON.stringify({
     template_id: 1,
     template_name: "Standard Operating Budget v2",
     dimension_coverage: {
       department: ["SALES", "ENG", "HR", "ADMIN", "LEGAL"],
       cost_center: ["CC001", "CC002", "CC003", "CC004"]
     }
-})
+}))
 ```
 
 #### Delete Template
@@ -617,9 +617,9 @@ submit("budget_template", "update", {
 Soft-delete template (sets is_active = false).
 
 ```javascript
-submit("budget_template", "delete", {
+submit(object_type="budget_template", operation="delete", data=JSON.stringify({
     template_id: 1
-})
+}))
 ```
 
 **Validation:**
@@ -630,13 +630,13 @@ submit("budget_template", "delete", {
 Reference template when creating budget version.
 
 ```javascript
-submit("budget_version", "create", {
+submit(object_type="budget_version", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     version_name: "FY2025 OPEX",
     fiscal_year: 2025,
     scenario: "budget",
     template_id: 1  // Reference to template
-})
+}))
 ```
 
 ---
@@ -648,13 +648,13 @@ submit("budget_version", "create", {
 Define custom fiscal period (non-standard calendar).
 
 ```javascript
-submit("budget_period", "create", {
+submit(object_type="budget_period", operation="create", data=JSON.stringify({
     budget_version_id: 5,
     period_name: "Q1-2025",
     period_start: "2025-01-01",
     period_end: "2025-03-31",
     period_number: 1
-})
+}))
 ```
 
 **Use Cases:**
@@ -667,11 +667,11 @@ submit("budget_period", "create", {
 Update period dates or name.
 
 ```javascript
-submit("budget_period", "update", {
+submit(object_type="budget_period", operation="update", data=JSON.stringify({
     period_id: 10,
     period_end: "2025-04-05",  // Extend period
     period_name: "Q1-2025 Extended"
-})
+}))
 ```
 
 #### Delete Period
@@ -679,9 +679,9 @@ submit("budget_period", "update", {
 Remove custom period definition.
 
 ```javascript
-submit("budget_period", "delete", {
+submit(object_type="budget_period", operation="delete", data=JSON.stringify({
     period_id: 10
-})
+}))
 ```
 
 ---
@@ -693,14 +693,14 @@ submit("budget_period", "delete", {
 Start bulk import operation (Excel/CSV).
 
 ```javascript
-submit("budget_import", "create", {
+submit(object_type="budget_import", operation="create", data=JSON.stringify({
     legal_entity_id: 13,
     budget_version_id: 5,
     import_type: "excel",
     file_name: "budget_2025.xlsx",
     file_size: 45678,
     total_rows: 150
-})
+}))
 ```
 
 **Returns:**
@@ -723,7 +723,7 @@ submit("budget_import", "create", {
 Track import progress and errors.
 
 ```javascript
-submit("budget_import", "update", {
+submit(object_type="budget_import", operation="update", data=JSON.stringify({
     import_batch_id: 12,
     successful_rows: 148,
     failed_rows: 2,
@@ -732,7 +732,7 @@ submit("budget_import", "update", {
       row_45: "Invalid account number: 9999",
       row_89: "Amount must be numeric"
     }
-})
+}))
 ```
 
 **Import Status:**
@@ -746,10 +746,10 @@ submit("budget_import", "update", {
 Cancel running import operation.
 
 ```javascript
-submit("budget_import", "cancel", {
+submit(object_type="budget_import", operation="cancel", data=JSON.stringify({
     import_batch_id: 12,
     cancellation_reason: "Incorrect file uploaded"
-})
+}))
 ```
 
 ---
@@ -761,11 +761,11 @@ submit("budget_import", "cancel", {
 Tag budget line with single dimension.
 
 ```javascript
-submit("budget_line_dimension", "create", {
+submit(object_type="budget_line_dimension", operation="create", data=JSON.stringify({
     budget_line_id: 42,
     dimension_type_code: "DEPARTMENT",
     dimension_value_code: "ENG"
-})
+}))
 ```
 
 #### Remove Dimension from Line
@@ -773,10 +773,10 @@ submit("budget_line_dimension", "create", {
 Remove specific dimension tag.
 
 ```javascript
-submit("budget_line_dimension", "delete", {
+submit(object_type="budget_line_dimension", operation="delete", data=JSON.stringify({
     budget_line_id: 42,
     dimension_type_code: "DEPARTMENT"
-})
+}))
 ```
 
 #### Bulk Set Dimensions
@@ -784,7 +784,7 @@ submit("budget_line_dimension", "delete", {
 Replace all dimensions on a line at once.
 
 ```javascript
-submit("budget_line_dimension", "bulk_set", {
+submit(object_type="budget_line_dimension", operation="bulk_set", data=JSON.stringify({
     budget_line_id: 42,
     dimensions: [
       {
@@ -800,7 +800,7 @@ submit("budget_line_dimension", "bulk_set", {
         dimension_value_code: "NYC"
       }
     ]
-})
+}))
 ```
 
 **Effect:**
@@ -1007,26 +1007,26 @@ dimensions = {
 **Wrong:**
 ```javascript
 // Try to update line in locked budget
-submit("budget_line", "update", {
+submit(object_type="budget_line", operation="update", data=JSON.stringify({
     budget_line_id: 42,
     amount: 55000
-})
+}))
 // ERROR: Cannot modify locked budget
 ```
 
 **Correct:**
 ```javascript
 // Reopen budget first (requires admin permission)
-submit("budget_workflow", "reopen", {
+submit(object_type="budget_workflow", operation="reopen", data=JSON.stringify({
     budget_version_id: 5,
     comments: "Reopening for correction"
-})
+}))
 
 // Now update line
-submit("budget_line", "update", {
+submit(object_type="budget_line", operation="update", data=JSON.stringify({
     budget_line_id: 42,
     amount: 55000
-})
+}))
 
 // Re-submit and approve
 ```
@@ -1038,29 +1038,29 @@ submit("budget_line", "update", {
 **Wrong:**
 ```javascript
 // Create budget in USD
-submit("budget_version", "create", {
+submit(object_type="budget_version", operation="create", data=JSON.stringify({
     fiscal_year: 2025,
     currency_code: "USD"
-})
+}))
 
 // Try to add line in GBP
-submit("budget_line", "create", {
+submit(object_type="budget_line", operation="create", data=JSON.stringify({
     budget_version_id: 5,
     account_number: "4000",
     amount: 50000,
     currency_code: "GBP"  // Mismatch!
-})
+}))
 // ERROR: Currency must match version
 ```
 
 **Correct:**
 ```javascript
 // Create multi-currency budgets separately
-submit("budget_version", "create", {
+submit(object_type="budget_version", operation="create", data=JSON.stringify({
     version_name: "FY2025 UK Budget",
     fiscal_year: 2025,
     currency_code: "GBP"
-})
+}))
 ```
 
 ---
@@ -1070,26 +1070,26 @@ submit("budget_version", "create", {
 **Wrong:**
 ```javascript
 // Create two lines with same account/period
-submit("budget_line", "create", {
+submit(object_type="budget_line", operation="create", data=JSON.stringify({
     budget_version_id: 5,
     account_number: "4000",
     period_sequence: 1,
     amount: 50000
-})
+}))
 
-submit("budget_line", "create", {
+submit(object_type="budget_line", operation="create", data=JSON.stringify({
     budget_version_id: 5,
     account_number: "4000",
     period_sequence: 1,  // Same!
     amount: 60000
-})
+}))
 // ERROR: Duplicate line (unique constraint)
 ```
 
 **Correct:**
 ```javascript
 // Use different dimensions or update existing
-submit("budget_line", "create", {
+submit(object_type="budget_line", operation="create", data=JSON.stringify({
     budget_version_id: 5,
     account_number: "4000",
     period_sequence: 1,
@@ -1097,9 +1097,9 @@ submit("budget_line", "create", {
     dimensions: {
       department: "SALES"
     }
-})
+}))
 
-submit("budget_line", "create", {
+submit(object_type="budget_line", operation="create", data=JSON.stringify({
     budget_version_id: 5,
     account_number: "4000",
     period_sequence: 1,
@@ -1107,7 +1107,7 @@ submit("budget_line", "create", {
     dimensions: {
       department: "ENG"  // Different dimension
     }
-})
+}))
 ```
 
 ---

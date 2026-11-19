@@ -254,7 +254,7 @@ schema = get_submissions(action='schema', object_type="transaction", operation="
 // Step 2: Submit with discovered fields
 ```
 ```
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
     "transaction_type_code": "JOURNAL_ENTRY",
     "legal_entity_id": 9,
     "description": "Oct 2026 utility accrual",
@@ -262,7 +262,7 @@ submit("transaction", "post", {
         {"account_number": "6300", "debit": 2500.00, "credit": 0, "description": "Utilities expense - Oct estimate"},
         {"account_number": "2600", "debit": 0, "credit": 2500.00, "description": "Accrued expenses - utilities"}
     ]
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -278,7 +278,7 @@ When the actual bill arrives, reverse the accrual and book the real expense.
 
 **Reversal entry (next period):**
 ```
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
     "transaction_type_code": "JOURNAL_ENTRY",
     "legal_entity_id": 9,
     "description": "Reverse Oct utility accrual",
@@ -286,7 +286,7 @@ submit("transaction", "post", {
         {"account_number": "2600", "debit": 2500.00, "credit": 0, "description": "Reverse accrual"},
         {"account_number": "6300", "debit": 0, "credit": 2500.00, "description": "Reverse accrual"}
     ]
-})
+}))
 ```
 
 Then post the actual AP invoice for $2,450 through the normal billing workflow. Net effect: October shows the estimated expense, November shows the small $50 variance.
@@ -297,7 +297,7 @@ Then post the actual AP invoice for $2,450 through the normal billing workflow. 
 Oct 31: 3 working days after last bi-weekly payroll
 Daily salary cost: $5,000
 
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
     "transaction_type_code": "JOURNAL_ENTRY",
     "legal_entity_id": 9,
     "description": "Salary accrual - 3 days Oct 29-31",
@@ -305,7 +305,7 @@ submit("transaction", "post", {
         {"account_number": "6500", "debit": 15000.00, "credit": 0, "description": "Salary expense accrual"},
         {"account_number": "2600", "debit": 0, "credit": 15000.00, "description": "Accrued salaries"}
     ]
-})
+}))
 ```
 
 ---
@@ -366,7 +366,7 @@ favor of the plugin-based `allocation_run.*` model and has no executor; the
 deferred revenue/expense amortization instead.)
 
 ```
-submit("amortization_schedule", "create", {
+submit(object_type="amortization_schedule", operation="create", data=JSON.stringify({
     "kind": "expense",
     "legal_entity_id": 9,
     "start_date": "2026-01-01",
@@ -376,22 +376,22 @@ submit("amortization_schedule", "create", {
     "target_account_id": 6200,
     "schedule_type": "straight_line",
     "frequency": "monthly"
-})
+}))
 ```
 
 Then recognize the lines that have come due (run monthly, or as part of month-end close):
 
 ```
-submit("amortization_schedule", "recognize", {
+submit(object_type="amortization_schedule", operation="recognize", data=JSON.stringify({
     "legal_entity_id": 9,
     "as_of_date": "2026-01-31"
-})
+}))
 ```
 
 ### Software License Prepaid
 
 ```
-submit("amortization_schedule", "create", {
+submit(object_type="amortization_schedule", operation="create", data=JSON.stringify({
     "kind": "expense",
     "legal_entity_id": 9,
     "start_date": "2026-01-01",
@@ -401,7 +401,7 @@ submit("amortization_schedule", "create", {
     "target_account_id": 6400,
     "schedule_type": "straight_line",
     "frequency": "monthly"
-})
+}))
 ```
 
 ---
@@ -414,7 +414,7 @@ Complete month-end with expense accruals before closing the period.
 
 ```
 -- 1. Post expense accruals for incurred but unbilled costs
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
     "transaction_type_code": "JOURNAL_ENTRY",
     "legal_entity_id": 9,
     "description": "Jan 2026 month-end accruals",
@@ -424,13 +424,13 @@ submit("transaction", "post", {
         {"account_number": "6500", "debit": 5000.00, "credit": 0, "description": "Salary accrual"},
         {"account_number": "2600", "debit": 0, "credit": 17500.00, "description": "Accrued expenses"}
     ]
-})
+}))
 
 -- 2. Recognize prepaid amortization schedules due this period
-submit("amortization_schedule", "recognize", {
+submit(object_type="amortization_schedule", operation="recognize", data=JSON.stringify({
     "legal_entity_id": 9,
     "as_of_date": "2026-01-31"
-})
+}))
 
 -- 3. Review income statement for completeness
 -- 4. Close the period
@@ -442,27 +442,27 @@ Sell inventory items, then post the COGS entry yourself.
 
 ```
 -- Post AR invoice with inventory items
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
     "transaction_type_code": "AR_INVOICE",
     "legal_entity_id": 9,
     "customer_id": 42,
     "lines": [
         {"item_id": 10, "quantity": 100, "unit_price": 50.00, "description": "Standard Widgets"}
     ]
-})
+}))
 
 -- The invoice posts the revenue entry only:
 -- Revenue: DR 1200 AR $5,000 / CR 4000 Revenue $5,000
 
 -- Then post COGS (100 units * $30 unit cost):
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
     "transaction_type_code": "JOURNAL_ENTRY",
     "legal_entity_id": 9,
     "lines": [
         {"account_number": "5000", "debit": 3000.00, "credit": 0, "description": "COGS - Standard Widgets"},
         {"account_number": "1400", "debit": 0, "credit": 3000.00, "description": "Inventory relief - Standard Widgets"}
     ]
-})
+}))
 
 -- Verify with:
 get_entity("transaction", id=<transaction_id>)
@@ -471,7 +471,7 @@ get_entity("transaction", id=<transaction_id>)
 ### Scenario 3: Mixed Invoice (Inventory + Service Items)
 
 ```
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
     "transaction_type_code": "AR_INVOICE",
     "legal_entity_id": 9,
     "customer_id": 42,
@@ -479,7 +479,7 @@ submit("transaction", "post", {
         {"item_id": 10, "quantity": 50, "unit_price": 100.00, "description": "Widgets"},
         {"item_id": 20, "quantity": 10, "unit_price": 150.00, "description": "Consulting Hours"}
     ]
-})
+}))
 
 -- The invoice posts revenue for both lines.
 -- Post a COGS journal entry for the Widget line only (product item);
@@ -494,7 +494,7 @@ When actual costs differ from standard costs:
 -- Standard cost: $60/unit, actual purchase at $62/unit for 100 units
 
 -- Record variance via journal entry
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
     "transaction_type_code": "JOURNAL_ENTRY",
     "legal_entity_id": 9,
     "description": "Purchase price variance - Widget batch 2026-01",
@@ -502,7 +502,7 @@ submit("transaction", "post", {
         {"account_number": "5100", "debit": 200.00, "credit": 0, "description": "Unfavorable price variance (100 * $2)"},
         {"account_number": "1400", "debit": 0, "credit": 200.00, "description": "Inventory adjustment"}
     ]
-})
+}))
 ```
 
 ---

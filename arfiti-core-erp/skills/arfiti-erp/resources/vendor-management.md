@@ -104,7 +104,7 @@ Vendors are the companies and individuals you pay for goods and services. The wo
 - **No flag, no IDs** → defaults to `is_global=true` → fanout (today's behaviour preserved).
 - **`is_global=false` + no IDs** → master only (template); `vendor_currencies`, `vendor_dimensions`, `bank_accounts`, `addresses` REJECTED loudly. (Pre-Batch C this was the implicit fanout fallback — now requires an explicit choice.)
 
-**Fields left out are stored empty** (AR-1193): `vendor_type`, `payment_terms_code`, `credit_limit`, `tax_code` and `payment_method` are optional, and a vendor created without them holds none. The server assumes nothing: it used to store `supplier` and `net_30`, which then read as the vendor's agreed type and terms. Send a value only when the vendor's records, the organisation's rules or your own stated judgement give one; otherwise leave it out and, where it is needed, raise it with a person. A filter on type or terms does not return vendors that have none; filter the field for `null` to find them. A bill posted through `submit("transaction", "post")` for a vendor without terms keeps the due date it is given; with none given it is due on its invoice date, and no term is added. (The built-in bill agent is separate: it still applies the organisation's default terms, or 30 days, to a vendor without terms.) A new bank account (`bank_accounts` on create, where `vendor_bank_accounts` is accepted as the same key, and `vendor_bank_accounts` with `_action: "add"` on update) must name its `payment_method`; it is refused otherwise, with the field named. Its `usage_type` and `account_type` are stored empty when omitted, and its `currency_code` is the vendor's primary currency in that entity (also on `vendor_bank_account.create`; nothing is assumed). An update changes only the fields it names. An organisation can still make any of these mandatory in its `vendor.create` workflow definition (the shipped template lists `vendor_type` and `payment_terms` among its required fields). The server used to satisfy such a rule itself by adding `supplier`; now the caller has to send the value, and the create is refused without it.
+**Fields left out are stored empty** (AR-1193): `vendor_type`, `payment_terms_code`, `credit_limit`, `tax_code` and `payment_method` are optional, and a vendor created without them holds none. The server assumes nothing: it used to store `supplier` and `net_30`, which then read as the vendor's agreed type and terms. Send a value only when the vendor's records, the organisation's rules or your own stated judgement give one; otherwise leave it out and, where it is needed, raise it with a person. A filter on type or terms does not return vendors that have none; filter the field for `null` to find them. A bill posted through `submit(object_type="transaction", operation="post")` for a vendor without terms keeps the due date it is given; with none given it is due on its invoice date, and no term is added. (The built-in bill agent is separate: it still applies the organisation's default terms, or 30 days, to a vendor without terms.) A new bank account (`bank_accounts` on create, where `vendor_bank_accounts` is accepted as the same key, and `vendor_bank_accounts` with `_action: "add"` on update) must name its `payment_method`; it is refused otherwise, with the field named. Its `usage_type` and `account_type` are stored empty when omitted, and its `currency_code` is the vendor's primary currency in that entity (also on `vendor_bank_account.create`; nothing is assumed). An update changes only the fields it names. An organisation can still make any of these mandatory in its `vendor.create` workflow definition (the shipped template lists `vendor_type` and `payment_terms` among its required fields). The server used to satisfy such a rule itself by adding `supplier`; now the caller has to send the value, and the create is refused without it.
 
 **Currency when omitted** (AR-1184): the vendor takes the functional currency of the legal entities it is created in, on the header and on each entity's primary `vendor_currencies` row. There is no USD fallback. A named `currency` is the header currency and the primary row; the codes of a `currencies` list (or, without one, of `vendor_currencies`) follow it, upper-cased and without duplicates (without `currency`, the first is the header and the primary row). When nothing is named and the create targets no entity (`is_global=false`, no IDs), or the target entities have different functional currencies, the create is refused before anything is written and the message asks for `currency`. A bank account in the same payload without `currency_code` takes the vendor's primary currency; on `vendor.update` an added bank account takes the vendor's primary currency in that entity (else the vendor's own currency, else it is refused), and an added currency row must name its `currency`. When nothing is named, the derived currency is written into the submitted payload as `currency` before the organisation's required-fields rule for `vendor.create` is checked (AR-1201), so a rule that lists `currency` as required is met by it. The currency is the one read when the request is submitted: a create that waits for approval stores that currency. A payload that names only a `currencies` list is not changed.
 
@@ -292,7 +292,7 @@ into `metadata`, check whether a custom field exists for it:
   vendor you propose (including from bills and bank lines) must carry it;
   ask for the value rather than inventing one.
 - A field the organisation needs but has not defined is created by an admin
-  with `submit("custom_field", "create", …)`; do not invent `metadata` keys.
+  with `submit(object_type="custom_field", operation="create", …)`; do not invent `metadata` keys.
 
 All rules (register, types, required fields, transactions, filters, import, merge): the custom-fields resource; full contract `docs/GUIDES/GUIDE_CUSTOM_FIELDS.md`.
 
@@ -393,7 +393,7 @@ Use the `vendor.create` workflow to add new vendors.
 schema = get_submissions(action='schema', object_type="vendor", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("vendor", "create", '{...}')
+submit(object_type="vendor", operation="create", data='{...}')
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -924,7 +924,7 @@ Permanently removes all vendor data:
 Use the `vendor.import` workflow:
 
 ```javascript
-submit("vendor", "import", {
+submit(object_type="vendor", operation="import", data=JSON.stringify({
     "records": [
       {
         "vendor_name": "Office Supplies Corp",
@@ -953,7 +953,7 @@ submit("vendor", "import", {
       "stop_on_error": false,
       "validate_only": false
     }
-})
+}))
 ```
 
 ### Import Options
@@ -1036,12 +1036,12 @@ The importer performs comprehensive validation:
 Test your import without making changes:
 
 ```javascript
-submit("vendor", "import", {
+submit(object_type="vendor", operation="import", data=JSON.stringify({
     "records": [...],
     "options": {
       "validate_only": true
     }
-})
+}))
 ```
 
 This returns validation errors without creating any vendors.
@@ -1429,13 +1429,13 @@ Many business counterparties act as both a customer and a vendor. The customer-v
 ### Link a Vendor to a Customer
 
 ```
-submit("customer_vendor_link", "create", {
+submit(object_type="customer_vendor_link", operation="create", data=JSON.stringify({
   "master_customer_id": 42,
   "master_vendor_id": 15,
   "sync_direction": "bidirectional",
   "sync_fields": ["name", "email", "phone", "tax_id"],
   "link_reason": "Same business entity - Acme Corp"
-})
+}))
 ```
 
 **Sync directions**: `none` (default), `customer_to_vendor`, `vendor_to_customer`, `bidirectional`
@@ -1461,20 +1461,20 @@ query("customer", query="<vendor's name>")
 ### Update Link
 
 ```
-submit("customer_vendor_link", "update", {
+submit(object_type="customer_vendor_link", operation="update", data=JSON.stringify({
   "master_vendor_id": 15,
   "sync_direction": "vendor_to_customer",
   "sync_fields": ["name", "tax_id"]
-})
+}))
 ```
 
 ### Remove Link
 
 ```
-submit("customer_vendor_link", "delete", {
+submit(object_type="customer_vendor_link", operation="delete", data=JSON.stringify({
   "master_vendor_id": 15,
   "deletion_reason": "No longer trading with this party"
-})
+}))
 ```
 
 Removing a link does **not** delete either the customer or vendor record.

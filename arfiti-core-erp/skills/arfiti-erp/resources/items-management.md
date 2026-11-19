@@ -248,12 +248,12 @@ Use the `item.create` workflow:
 schema = get_submissions(action='schema', object_type="item", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("item", "create", '{...}')
+submit(object_type="item", operation="create", data='{...}')
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
 ```javascript
-submit("item", "create", {
+submit(object_type="item", operation="create", data=JSON.stringify({
     // Required
     "item_number": "WIDGET-001",
     "item_name": "Premium Wireless Earbuds",
@@ -284,13 +284,13 @@ submit("item", "create", {
       "warranty_months": 12,
       "supplier_code": "SUP-TECH-001"
     }
-})
+}))
 ```
 
 **Create Service Item:**
 
 ```javascript
-submit("item", "create", {
+submit(object_type="item", operation="create", data=JSON.stringify({
     "item_number": "CONS-HR-001",
     "item_name": "Consulting - Hourly Rate",
     "item_type": "revenue_service",
@@ -302,13 +302,13 @@ submit("item", "create", {
     "revenue_account_number": "4100",  // Service Revenue
     "expense_account_number": "5200",  // Contract Labor
     "tax_code": "EXEMPT"
-})
+}))
 ```
 
 **Create Entity-Specific Item:**
 
 ```javascript
-submit("item", "create", {
+submit(object_type="item", operation="create", data=JSON.stringify({
     "item_number": "EU-MUG-001",
     "item_name": "Artisan Ceramic Coffee Mug",
     "item_type": "revenue_product",
@@ -320,7 +320,7 @@ submit("item", "create", {
     "revenue_account_number": "4000",
     "cogs_account_number": "5000",
     "tax_code": "VAT"
-})
+}))
 
 // Result:
 // - Entity 9 sees this item
@@ -330,7 +330,7 @@ submit("item", "create", {
 **Create Item with Pricing:**
 
 ```javascript
-submit("item", "create", {
+submit(object_type="item", operation="create", data=JSON.stringify({
     "item_number": "WIDGET-001",
     "item_name": "Premium Widget",
     "item_type": "revenue_product",
@@ -356,13 +356,13 @@ submit("item", "create", {
         "cost_price": 35.00
       }
     ]
-})
+}))
 ```
 
 **Create Item with Volume Pricing Tiers:**
 
 ```javascript
-submit("item", "create", {
+submit(object_type="item", operation="create", data=JSON.stringify({
     "item_number": "BULK-WIDGET-001",
     "item_name": "Bulk Widget",
     "item_type": "revenue_product",
@@ -395,7 +395,7 @@ submit("item", "create", {
         "discount_percent": 20
       }
     ]
-})
+}))
 ```
 
 ---
@@ -407,7 +407,7 @@ Use the `item.update` workflow:
 **Update Master Item:**
 
 ```javascript
-submit("item", "update", {
+submit(object_type="item", operation="update", data=JSON.stringify({
     // Identifier (at least one required)
     "item_number": "WIDGET-001",
     // OR "item_id": 42,
@@ -418,27 +418,27 @@ submit("item", "update", {
     "description": "Updated with new features",
     "unit_price": 159.99,
     "cost_price": 48.00
-})
+}))
 ```
 
 **Update GL Account Mappings:**
 
 ```javascript
-submit("item", "update", {
+submit(object_type="item", operation="update", data=JSON.stringify({
     "item_number": "WIDGET-001",
     "revenue_account_number": "4100",  // Change to Service Revenue
     "cogs_account_number": "5100"      // Change COGS account
-})
+}))
 ```
 
 **Create Entity Override (Rename for Entity):**
 
 ```javascript
-submit("item", "update", {
+submit(object_type="item", operation="update", data=JSON.stringify({
     "item_number": "WIDGET-001",
     "legal_entity_id": 9,  // Create entity-specific override
     "item_name": "Premium Earbuds - EU Edition"
-})
+}))
 
 // Result:
 // - Entity 9 sees: "Premium Earbuds - EU Edition"
@@ -448,11 +448,11 @@ submit("item", "update", {
 **Hide Item from Entity:**
 
 ```javascript
-submit("item", "update", {
+submit(object_type="item", operation="update", data=JSON.stringify({
     "item_number": "WIDGET-002",
     "legal_entity_id": 13,
     "is_active": false  // Entity-specific deactivation
-})
+}))
 
 // Result:
 // - Entity 13 won't see item WIDGET-002
@@ -464,7 +464,7 @@ submit("item", "update", {
 Use `_action` field for CRUD operations on related entities:
 
 ```javascript
-submit("item", "update", {
+submit(object_type="item", operation="update", data=JSON.stringify({
     "item_number": "WIDGET-001",
 
     "item_prices": [
@@ -488,13 +488,13 @@ submit("item", "update", {
         "price_id": 8
       }
     ]
-})
+}))
 ```
 
 **Update Volume Pricing Tiers:**
 
 ```javascript
-submit("item", "update", {
+submit(object_type="item", operation="update", data=JSON.stringify({
     "item_number": "BULK-WIDGET-001",
 
     "item_pricing_tiers": [
@@ -520,7 +520,7 @@ submit("item", "update", {
         "tier_id": 3
       }
     ]
-})
+}))
 ```
 
 ---
@@ -532,31 +532,31 @@ Use the `item.delete` workflow to deactivate or remove items.
 **Soft delete (default):**
 
 ```javascript
-submit("item", "delete", {
+submit(object_type="item", operation="delete", data=JSON.stringify({
     "item_number": "WIDGET-001",
     "deletion_reason": "Product discontinued",
     "hard_delete": false  // Default - preserves historical data
-})
+}))
 ```
 
 **Hard delete (use with caution):**
 
 ```javascript
-submit("item", "delete", {
+submit(object_type="item", operation="delete", data=JSON.stringify({
     "item_number": "TEST-WIDGET-001",
     "deletion_reason": "Test item - never used in transactions",
     "hard_delete": true  // Will fail if item has transaction history
-})
+}))
 ```
 
 **Delete Entity Override Only:**
 
 ```javascript
-submit("item", "delete", {
+submit(object_type="item", operation="delete", data=JSON.stringify({
     "item_number": "WIDGET-001",
     "legal_entity_id": 9,  // Only delete Entity 9's override
     "deletion_reason": "Reverting to master values"
-})
+}))
 
 // Result:
 // - Entity 9 now sees master name "Premium Wireless Earbuds"
@@ -585,7 +585,7 @@ For importing multiple items at once:
 Use the `item.import` workflow:
 
 ```javascript
-submit("item", "import", {
+submit(object_type="item", operation="import", data=JSON.stringify({
     "records": [
       {
         "item_number": "WIDGET-001",
@@ -619,7 +619,7 @@ submit("item", "import", {
       "stop_on_error": false,
       "validate_only": false
     }
-})
+}))
 ```
 
 ### Import Options
@@ -697,12 +697,12 @@ The importer performs comprehensive validation:
 Test your import without making changes:
 
 ```javascript
-submit("item", "import", {
+submit(object_type="item", operation="import", data=JSON.stringify({
     "records": [...],
     "options": {
       "validate_only": true
     }
-})
+}))
 ```
 
 This returns validation errors without creating any items.
@@ -761,7 +761,7 @@ This returns validation errors without creating any items.
 Set up product catalog visible to all entities:
 
 ```javascript
-submit("item", "create", {
+submit(object_type="item", operation="create", data=JSON.stringify({
     "item_number": "WIDGET-001",
     "item_name": "Premium Wireless Earbuds",
     "description": "Bluetooth 5.0 earbuds with ANC",
@@ -772,7 +772,7 @@ submit("item", "create", {
     "asset_account_number": "1200",
     "tax_code": "SALES_TAX",
     "is_global": true  // Visible to all entities
-})
+}))
 ```
 
 ### Regional Products (Entity-Specific)
@@ -781,7 +781,7 @@ Create products visible only to specific entities:
 
 ```javascript
 // US-only product
-submit("item", "create", {
+submit(object_type="item", operation="create", data=JSON.stringify({
     "item_number": "US-WIDGET-001",
     "item_name": "US-Market Widget",
     "item_type": "revenue_product",
@@ -789,10 +789,10 @@ submit("item", "create", {
     "legal_entity_id": 13,  // US entity
     "revenue_account_number": "4000",
     "tax_code": "SALES_TAX"
-})
+}))
 
 // EU-only product
-submit("item", "create", {
+submit(object_type="item", operation="create", data=JSON.stringify({
     "item_number": "EU-WIDGET-001",
     "item_name": "EU-Market Widget",
     "item_type": "revenue_product",
@@ -800,7 +800,7 @@ submit("item", "create", {
     "legal_entity_id": 9,  // EU entity
     "revenue_account_number": "4000",
     "tax_code": "VAT"
-})
+}))
 ```
 
 ### Service Items with Hourly Rates
@@ -808,7 +808,7 @@ submit("item", "create", {
 Track professional services by hour:
 
 ```javascript
-submit("item", "create", {
+submit(object_type="item", operation="create", data=JSON.stringify({
     "item_number": "CONS-SR",
     "item_name": "Senior Consultant",
     "description": "Senior-level consulting services",
@@ -821,7 +821,7 @@ submit("item", "create", {
       { "legal_entity_id": 9, "currency": "EUR", "unit_price": 180.00, "cost_price": 75.00 },
       { "legal_entity_id": 13, "currency": "USD", "unit_price": 200.00, "cost_price": 80.00 }
     ]
-})
+}))
 ```
 
 ### Multi-Currency Pricing
@@ -829,13 +829,13 @@ submit("item", "create", {
 Set entity-specific pricing in different currencies:
 
 ```javascript
-submit("item", "update", {
+submit(object_type="item", operation="update", data=JSON.stringify({
     "item_number": "WIDGET-001",
     "item_prices": [
       { "_action": "add", "legal_entity_id": 9, "currency": "EUR", "unit_price": 129.99, "cost_price": 39.00 },
       { "_action": "add", "legal_entity_id": 13, "currency": "USD", "unit_price": 149.99, "cost_price": 45.00 }
     ]
-})
+}))
 ```
 
 ### Entity-Specific GL Account Mappings
@@ -844,21 +844,21 @@ Different entities use different GL accounts for same item:
 
 ```javascript
 // Create master item with standard GL accounts
-submit("item", "create", {
+submit(object_type="item", operation="create", data=JSON.stringify({
     "item_number": "WIDGET-001",
     "item_name": "Premium Widget",
     "item_type": "revenue_product",
     "revenue_account_number": "4000",
     "cogs_account_number": "5000",
     "is_global": true
-})
+}))
 
 // Create entity override with different GL accounts
-submit("item", "update", {
+submit(object_type="item", operation="update", data=JSON.stringify({
     "item_number": "WIDGET-001",
     "legal_entity_id": 10,  // Create override for Entity 10
     "revenue_account_number": "4100"  // Override revenue account
-})
+}))
 
 // Result:
 // - Entity 10: Revenue -> 4100
@@ -915,10 +915,10 @@ let updated_metadata = {
 }
 
 // 3. Update with complete metadata
-submit("item", "update", {
+submit(object_type="item", operation="update", data=JSON.stringify({
     "item_id": 42,
     "metadata": updated_metadata
-})
+}))
 ```
 
 ### Entity-Specific Items

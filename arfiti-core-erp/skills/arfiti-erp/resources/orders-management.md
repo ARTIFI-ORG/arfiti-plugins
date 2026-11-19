@@ -53,7 +53,7 @@ draft ──confirm──→ confirmed ──(fully invoiced)──→ closed
 ### Create
 
 ```
-submit("sales_order", "create", {
+submit(object_type="sales_order", operation="create", data=JSON.stringify({
   "legal_entity_id": 12,
   "customer_id": 387,
   "order_date": "2026-09-01",
@@ -63,7 +63,7 @@ submit("sales_order", "create", {
     {"item_id": 5, "quantity": 10},
     {"description": "Onboarding services", "quantity": 1, "unit_price": "1500.00"}
   ]
-})
+}))
 ```
 
 - `customer_id` is the **master** customer id (the same id space
@@ -91,10 +91,10 @@ submit("sales_order", "create", {
 ### Generating the invoice — create_invoice
 
 ```
-submit("sales_order", "create_invoice", {
+submit(object_type="sales_order", operation="create_invoice", data=JSON.stringify({
   "sales_order_id": 18,
   "legal_entity_id": 12
-})
+}))
 ```
 
 Posts a **real AR_INVOICE** through the normal transaction executor (GL, tax,
@@ -110,11 +110,11 @@ When the invoice already exists (posted directly, or came in through a
 connector), link it instead of generating a new one:
 
 ```
-submit("sales_order", "match_invoice", {
+submit(object_type="sales_order", operation="match_invoice", data=JSON.stringify({
   "sales_order_id": 18,
   "legal_entity_id": 12,
   "transaction_id": 4402
-})
+}))
 ```
 
 Omitting `line_pairs` auto-pairs lines by item then by position and **refuses
@@ -140,10 +140,10 @@ where the AP world differs:
 ### create_bill — generate the AP bill
 
 ```
-submit("purchase_order", "create_bill", {
+submit(object_type="purchase_order", operation="create_bill", data=JSON.stringify({
   "purchase_order_id": 7,
   "legal_entity_id": 12
-})
+}))
 ```
 
 Posts a real AP_INVOICE linked to the order. Omitting `lines` bills **all
@@ -175,7 +175,7 @@ when the best candidate clearly beats the runner-up, otherwise flags for
 review). Controlled by `orders.po_match_enabled` (absent = OFF) and
 `orders.po_match_required` (absent = advisory only). The agent only ever
 *matches* — the sole way a purchase order is created is
-`submit("purchase_order", "create", ...)`.
+`submit(object_type="purchase_order", operation="create", ...)`.
 
 ---
 
@@ -196,7 +196,7 @@ draft ──confirm──→ confirmed
 ### Create
 
 ```
-submit("purchase_receipt", "create", {
+submit(object_type="purchase_receipt", operation="create", data=JSON.stringify({
   "legal_entity_id": 12,
   "purchase_order_id": 7,
   "receipt_date": "2026-09-03",
@@ -204,7 +204,7 @@ submit("purchase_receipt", "create", {
     {"purchase_order_line_id": 21, "received_quantity": "6"},
     {"purchase_order_line_id": 22, "received_quantity": "2.5"}
   ]
-})
+}))
 ```
 
 - The order must be **confirmed** (or closed). There is **no `vendor_id`** in

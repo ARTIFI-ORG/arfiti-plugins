@@ -181,11 +181,11 @@ schema = get_submissions(action='schema', object_type="role", operation="create"
 // Tip: Use validate_only=true to check payload before submitting
 ```
 ```
-submit("role", "create", {
+submit(object_type="role", operation="create", data=JSON.stringify({
     "role_name": "payment_manager",
     "description": "Manages all payment operations",
     "permissions": ["payments:*", "ap:read", "ar:read", "master_data:read"]
-})
+}))
 ```
 
 **Required Fields:**
@@ -227,12 +227,12 @@ Use the `user_role.assign` workflow to grant a user a specific permission role.
 **A second owner or admin approves role and access changes by default** (change governance, AR-1217). `role.create`, `role.update`, `role.toggle`, `user_role.assign`, `user_role.remove`, `membership_role_default.save` and the `organization_user` membership and invitation operations return `status: "pending"` even when an owner or admin asks, and someone other than the person who asked approves them. When nobody else can approve (a sole owner), that person approves their own request; the approval records it. An organisation can change this in its policy (`change_governance.policy`, section `approvals`, group `access`): with `second_person` off, an owner's or admin's own change runs at once. With `dashboard_only` on, only an approval given on the dashboard counts; an approval through `manage_submissions(action="decide")` is refused with a sentence that says so. Tell the user where the request waits (Tasks on the dashboard) and who can approve it.
 
 ```
-submit("user_role", "assign", {
+submit(object_type="user_role", operation="assign", data=JSON.stringify({
     "user_id": 42,
     "role_name": "controller",
     "entity_ids": [1, 2],
     "expires_at": "2026-12-31T00:00:00Z"
-})
+}))
 ```
 
 **Required Fields:**
@@ -263,18 +263,18 @@ A managed agent signs in as its own user. That user is a member with the
 reserved `system` level, which grants nothing: what the agent may do is the
 roles assigned to it, built from the same permission groups as a person's.
 
-- Assign with `submit("user_role", "assign", {user_id: <agent user>, role_name, entity_ids?})`.
-  `submit("agent_api_key", "create", {..., identity: "agent_user"})` returns the user id.
+- Assign with `submit(object_type="user_role", operation="assign", data=JSON.stringify({user_id: <agent user>, role_name, entity_ids?}))`.
+  `submit(object_type="agent_api_key", operation="create", data=JSON.stringify({..., identity: "agent_user"}))` returns the user id.
 - Owners and admins only, and never for entities outside their own access.
 - A role with a wildcard or an admin permission is refused for an agent user.
 - Agent users are not listed as team members and are never approvers or assignees.
 
 ## Removing a Role from a User
 
-Use `submit("user_role", "remove", ...)`, or `manage_organization(action="remove_role", ...)`, which submits the same operation. It is governed like assigning: by default a second owner or admin approves (a sole owner approves their own request), so the answer is usually `status: "pending"` with a `workflow_id`.
+Use `submit(object_type="user_role", operation="remove", ...)`, or `manage_organization(action="remove_role", ...)`, which submits the same operation. It is governed like assigning: by default a second owner or admin approves (a sole owner approves their own request), so the answer is usually `status: "pending"` with a `workflow_id`.
 
 ```
-submit("user_role", "remove", {"user_id": 42, "role_name": "controller"})
+submit(object_type="user_role", operation="remove", data=JSON.stringify({"user_id": 42, "role_name": "controller"}))
 manage_organization(action="remove_role", user_id=42, role_name="controller")
 ```
 
@@ -289,8 +289,8 @@ manage_organization(action="remove_role", user_id=42, role_name="controller")
 ## Editing or Switching Off a Custom Role
 
 ```
-submit("role", "update", {"role_name": "ap_clerk", "permissions": ["ap:read", "ap:write"], "description": "AP clerk"})
-submit("role", "toggle", {"role_name": "ap_clerk", "is_active": false})
+submit(object_type="role", operation="update", data=JSON.stringify({"role_name": "ap_clerk", "permissions": ["ap:read", "ap:write"], "description": "AP clerk"}))
+submit(object_type="role", operation="toggle", data=JSON.stringify({"role_name": "ap_clerk", "is_active": false}))
 ```
 
 - `permissions` is the role's complete list after the edit, not an addition.
@@ -336,10 +336,10 @@ API keys provide programmatic access to MCP tools. They are organization-scoped 
 ### Creating an API Key
 
 ```
-submit("api_key", "create", {
+submit(object_type="api_key", operation="create", data=JSON.stringify({
     "name": "CI/CD Pipeline Key",
     "scope": {"permissions": ["read", "write"]}
-})
+}))
 ```
 
 **Required Fields:**
@@ -355,9 +355,9 @@ submit("api_key", "create", {
 ### Revoking an API Key
 
 ```
-submit("api_key", "revoke", {
+submit(object_type="api_key", operation="revoke", data=JSON.stringify({
     "key_id": 5
-})
+}))
 ```
 
 Permanently revokes the key. This action cannot be undone. The key stops working on its next request. Allowed while the organisation is still being set up, so an unused initial key can be revoked before onboarding completes. An agent's key is refused here: use `agent_api_key.revoke`. People can also revoke an ordinary key from its quick view under Configuration → API keys.
@@ -450,7 +450,7 @@ When a client org is created, partner owners and admins receive admin membership
 
 ## Invitation Flow
 
-Use `submit("organization_user", "invite", {...})` or Admin Users & team. Payload:
+Use `submit(object_type="organization_user", operation="invite", data='{...}')` or Admin Users & team. Payload:
 
 ```json
 {"email":"invitee@example.com","membership_role":"user","entity_ids":null,"role_assignments":[{"role_name":"ap_accountant","entity_ids":null}]}
@@ -468,7 +468,7 @@ confirm the list with the user before submitting. The defaults are the
 organisation's own choice and grant nothing by themselves; with none saved, ask
 which roles the person needs. Never invent a default. Owners and admins with access
 to every entity change them with
-`submit("membership_role_default", "save", {"membership_role": "user", "role_names": ["ap_accountant"]})`
+`submit(object_type="membership_role_default", operation="save", data=JSON.stringify({"membership_role": "user", "role_names": ["ap_accountant"]}))`
 (`role_names: []` clears that level).
 
 `revoke_invite` and `resend_invite` take `{"invitation_id":123}`. Revocation is soft
@@ -528,11 +528,11 @@ Query the audit log to review who made access control changes and when.
    ```
 3. If additional roles needed:
    ```
-   submit("user_role", "assign", {
+   submit(object_type="user_role", operation="assign", data=JSON.stringify({
        "user_id": 42,
        "role_name": "ap_accountant",
        "entity_ids": [1, 2]
-   })
+   }))
    ```
 
 ### Create a Read-Only Auditor Role
@@ -540,20 +540,20 @@ Query the audit log to review who made access control changes and when.
 The built-in `auditor` role covers most cases. If a more restricted role is needed:
 
 ```
-submit("role", "create", {
+submit(object_type="role", operation="create", data=JSON.stringify({
     "role_name": "limited_auditor",
     "description": "Read-only access to GL and reports only",
     "permissions": ["accounting:read", "reports:read"]
-})
+}))
 ```
 
 Then assign it:
 
 ```
-submit("user_role", "assign", {
+submit(object_type="user_role", operation="assign", data=JSON.stringify({
     "user_id": 55,
     "role_name": "limited_auditor"
-})
+}))
 ```
 
 ### Grant Temporary Access
@@ -561,12 +561,12 @@ submit("user_role", "assign", {
 Assign a role with expiration for contractors or temporary staff:
 
 ```
-submit("user_role", "assign", {
+submit(object_type="user_role", operation="assign", data=JSON.stringify({
     "user_id": 60,
     "role_name": "ap_accountant",
     "entity_ids": [3],
     "expires_at": "2026-06-30T00:00:00Z"
-})
+}))
 ```
 
 ### Restrict a User to Specific Entities
@@ -574,19 +574,19 @@ submit("user_role", "assign", {
 Assign the same role multiple times with different entity scopes:
 
 ```
-submit("user_role", "assign", {
+submit(object_type="user_role", operation="assign", data=JSON.stringify({
     "user_id": 42,
     "role_name": "controller",
     "entity_ids": [1]
-})
+}))
 ```
 
 ```
-submit("user_role", "assign", {
+submit(object_type="user_role", operation="assign", data=JSON.stringify({
     "user_id": 42,
     "role_name": "ar_accountant",
     "entity_ids": [2, 3]
-})
+}))
 ```
 
 This gives the user Controller access to Entity 1 and AR Accountant access to Entities 2 and 3.
@@ -595,9 +595,9 @@ This gives the user Controller access to Entity 1 and AR Accountant access to En
 
 1. Create an API key:
    ```
-   submit("api_key", "create", {
+   submit(object_type="api_key", operation="create", data=JSON.stringify({
        "name": "Claude Desktop - Finance Team"
-   })
+   }))
    ```
 2. Store the returned key securely (shown only once)
 3. Use the key in the `X-API-Key` header for API calls
@@ -610,15 +610,15 @@ This gives the user Controller access to Entity 1 and AR Accountant access to En
    ```
 2. Revoke it:
    ```
-   submit("api_key", "revoke", {
+   submit(object_type="api_key", operation="revoke", data=JSON.stringify({
        "key_id": 5
-   })
+   }))
    ```
 3. Create a replacement:
    ```
-   submit("api_key", "create", {
+   submit(object_type="api_key", operation="create", data=JSON.stringify({
        "name": "Claude Desktop - Finance Team (rotated)"
-   })
+   }))
    ```
 
 ### Review Who Has Access

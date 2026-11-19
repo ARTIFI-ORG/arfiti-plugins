@@ -114,7 +114,7 @@ All write operations use the workflow system via `submit()`.
 schema = get_submissions(action='schema', object_type="posting_profile", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("posting_profile", "create", '{
+submit(object_type="posting_profile", operation="create", data='{
     "legal_entity_id": 13,
     "profile_name": "Customer Receivables",
     "profile_type": "customer",
@@ -156,7 +156,7 @@ submit("posting_profile", "create", '{
 ### Update a Posting Profile
 
 ```javascript
-submit("posting_profile", "update", '{
+submit(object_type="posting_profile", operation="update", data='{
     "posting_profile_id": 42,
     "legal_entity_id": 13,
     "debit_account_number": "6350",
@@ -177,7 +177,7 @@ submit("posting_profile", "update", '{
 ### Delete (Deactivate) a Posting Profile
 
 ```javascript
-submit("posting_profile", "delete", '{
+submit(object_type="posting_profile", operation="delete", data='{
     "posting_profile_id": 42,
     "legal_entity_id": 13
 }')
@@ -322,7 +322,7 @@ query("posting_profile", filters={"legal_entity_id": 13, "profile_type": "custom
 
 ```javascript
 // Example: Create a new expense profile for marketing expenses with auto-linkage
-submit("posting_profile", "create", '{
+submit(object_type="posting_profile", operation="create", data='{
     "legal_entity_id": 13,
     "profile_name": "Marketing Expenses",
     "profile_type": "expense",
@@ -357,7 +357,7 @@ query("transaction_type_posting_profile", filters={"legal_entity_id": 13, "trans
 
 If no mapping exists, create a posting profile with `transaction_type_code` to auto-link:
 ```javascript
-submit("posting_profile", "create", '{
+submit(object_type="posting_profile", operation="create", data='{
     "legal_entity_id": 13,
     "profile_name": "AR Invoice Posting",
     "profile_type": "customer",
@@ -390,7 +390,7 @@ query("posting_profile", filters={"legal_entity_id": 13, "profile_type": "custom
 
 **Option A — Update in place** (preferred):
 ```javascript
-submit("posting_profile", "update", '{
+submit(object_type="posting_profile", operation="update", data='{
     "posting_profile_id": 42,
     "legal_entity_id": 13,
     "debit_account_number": "1100",
@@ -400,7 +400,7 @@ submit("posting_profile", "update", '{
 
 **Option B — Create new default** (old one remains but loses default):
 ```javascript
-submit("posting_profile", "create", '{
+submit(object_type="posting_profile", operation="create", data='{
     "legal_entity_id": 13,
     "profile_name": "Customer Receivables - Corrected",
     "profile_type": "customer",

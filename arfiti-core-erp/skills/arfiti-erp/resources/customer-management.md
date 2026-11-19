@@ -250,7 +250,7 @@ date, preferred contact method…). Before putting a business fact into
 - Find customers with `query("customer", filters={"custom_fields.<key>": value})`
   — also lists, `None` (no value), `{"exists": true}` and `{"gte"|"lte"|"gt"|"lt": n}`.
 - A field the organisation needs but has not defined is created by an admin
-  with `submit("custom_field", "create", …)`; do not invent `metadata` keys
+  with `submit(object_type="custom_field", operation="create", …)`; do not invent `metadata` keys
   for it. A list that classifies customers for reporting is a dimension.
 
 All rules (register, types, required fields, transactions, filters, import, merge): the custom-fields resource; full contract `docs/GUIDES/GUIDE_CUSTOM_FIELDS.md`.
@@ -351,7 +351,7 @@ Use the `customer.create` workflow to add new customers.
 schema = get_submissions(action='schema', object_type="customer", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("customer", "create", '{...}')
+submit(object_type="customer", operation="create", data='{...}')
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -933,7 +933,7 @@ Permanently removes all customer data:
 Use the `customer.import` workflow:
 
 ```javascript
-submit("customer", "import", {
+submit(object_type="customer", operation="import", data=JSON.stringify({
     "records": [
       {
         "customer_name": "Acme Corp",
@@ -961,7 +961,7 @@ submit("customer", "import", {
       "stop_on_error": false,
       "validate_only": false
     }
-})
+}))
 ```
 
 ### Import Options
@@ -1040,12 +1040,12 @@ The importer performs comprehensive validation:
 Test your import without making changes:
 
 ```javascript
-submit("customer", "import", {
+submit(object_type="customer", operation="import", data=JSON.stringify({
     "records": [...],
     "options": {
       "validate_only": true
     }
-})
+}))
 ```
 
 This returns validation errors without creating any customers.
@@ -1392,13 +1392,13 @@ Many business counterparties act as both a customer and a vendor. The customer-v
 ### Link a Customer to a Vendor
 
 ```
-submit("customer_vendor_link", "create", {
+submit(object_type="customer_vendor_link", operation="create", data=JSON.stringify({
   "master_customer_id": 42,
   "master_vendor_id": 15,
   "sync_direction": "bidirectional",
   "sync_fields": ["name", "email", "phone", "tax_id"],
   "link_reason": "Same business entity - Acme Corp"
-})
+}))
 ```
 
 **Sync directions**: `none` (default), `customer_to_vendor`, `vendor_to_customer`, `bidirectional`
@@ -1424,20 +1424,20 @@ query("vendor", query="<customer's name>")
 ### Update Link
 
 ```
-submit("customer_vendor_link", "update", {
+submit(object_type="customer_vendor_link", operation="update", data=JSON.stringify({
   "master_customer_id": 42,
   "sync_direction": "customer_to_vendor",
   "sync_fields": ["name", "tax_id"]
-})
+}))
 ```
 
 ### Remove Link
 
 ```
-submit("customer_vendor_link", "delete", {
+submit(object_type="customer_vendor_link", operation="delete", data=JSON.stringify({
   "master_customer_id": 42,
   "deletion_reason": "No longer trading with this party"
-})
+}))
 ```
 
 Removing a link does **not** delete either the customer or vendor record.

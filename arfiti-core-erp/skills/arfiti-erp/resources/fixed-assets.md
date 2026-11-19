@@ -134,7 +134,7 @@ Use the `fixed_asset_category.create` workflow to set up asset types.
 schema = get_submissions(action='schema', object_type="fixed_asset_category", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("fixed_asset_category", "create", {
+submit(object_type="fixed_asset_category", operation="create", data=JSON.stringify({
   "category_code": "COMPUTER",
   "name": "Computer Equipment",
   "description": "Desktop computers, laptops, tablets",
@@ -144,7 +144,7 @@ submit("fixed_asset_category", "create", {
   "default_gl_cost_account": "1500",
   "default_gl_accum_depr_account": "1510",
   "default_gl_expense_account": "6400"
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -683,7 +683,7 @@ This ensures:
 - One book writes the ledger, set by governed policy `fixed_assets.policy` →
   `ledger_posting_book` (`{"book_code": "<code>"}`; default: each asset's primary book,
   a deliberate default, not a missing setting).
-  Change it with `submit("policy", "save", ...)`; never assume a book code means anything.
+  Change it with `submit(object_type="policy", operation="save", ...)`; never assume a book code means anything.
 - Other books are calculation-only: their run ends `calculated`, their lines are
   `calculated`, and no journal is written.
 - A run takes each scheduled line once, even when runs for overlapping periods or a

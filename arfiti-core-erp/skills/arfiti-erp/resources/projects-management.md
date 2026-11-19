@@ -188,7 +188,7 @@ Create a new master project (organization-wide).
 schema = get_submissions(action='schema', object_type="project", operation="create")
 
 // Step 2: Submit with discovered fields
-submit("project", "create", {
+submit(object_type="project", operation="create", data=JSON.stringify({
     project_name: "Website Redesign",
     description: "Complete redesign of corporate website with modern UI",
     customer_id: 123,
@@ -198,7 +198,7 @@ submit("project", "create", {
     currency_code: "USD",
     start_date: "2024-01-15",
     end_date: "2024-06-30"
-})
+}))
 // Tip: Use validate_only=true to check payload before submitting
 ```
 
@@ -226,13 +226,13 @@ submit("project", "create", {
 Update master project fields.
 
 ```javascript
-submit("project", "update", {
+submit(object_type="project", operation="update", data=JSON.stringify({
     global_project_id: "PROJ-000001",
     project_name: "Website Redesign & Mobile App",
     description: "Expanded scope to include mobile app",
     end_date: "2024-08-31",
     budget_amount: 75000.00
-})
+}))
 ```
 
 #### Delete Project
@@ -240,10 +240,10 @@ submit("project", "update", {
 Soft-delete project (sets status to archived/deleted).
 
 ```javascript
-submit("project", "delete", {
+submit(object_type="project", operation="delete", data=JSON.stringify({
     global_project_id: "PROJ-000001",
     deletion_reason: "Project cancelled by client"
-})
+}))
 ```
 
 **Validation:**
@@ -256,7 +256,7 @@ submit("project", "delete", {
 Assign project to a legal entity for execution.
 
 ```javascript
-submit("project", "assign_to_entity", {
+submit(object_type="project", operation="assign_to_entity", data=JSON.stringify({
     global_project_id: "PROJ-000001",
     legal_entity_id: 13,
     project_manager_employee_id: 67,
@@ -266,7 +266,7 @@ submit("project", "assign_to_entity", {
     currency_code: "USD",
     billing_model: "time_and_materials",
     planned_margin_pct: 25.00
-})
+}))
 ```
 
 **Returns:**
@@ -292,24 +292,24 @@ submit("project", "assign_to_entity", {
 // Same project assigned to US (billing) and UK (delivery)
 
 // US entity - client-facing
-submit("project", "assign_to_entity", {
+submit(object_type="project", operation="assign_to_entity", data=JSON.stringify({
     global_project_id: "PROJ-000010",
     legal_entity_id: 10,  // US Corp
     project_manager_employee_id: 12,
     billing_model: "milestone",
     budget_amount: 200000.00,
     currency_code: "USD"
-})
+}))
 
 // UK entity - delivery team
-submit("project", "assign_to_entity", {
+submit(object_type="project", operation="assign_to_entity", data=JSON.stringify({
     global_project_id: "PROJ-000010",
     legal_entity_id: 11,  // UK Ltd
     project_manager_employee_id: 34,
     billing_model: "time_and_materials",
     budget_amount: 150000.00,
     currency_code: "GBP"
-})
+}))
 ```
 
 #### Close Project
@@ -317,11 +317,11 @@ submit("project", "assign_to_entity", {
 Close/complete project with final status.
 
 ```javascript
-submit("project", "close", {
+submit(object_type="project", operation="close", data=JSON.stringify({
     global_project_id: "PROJ-000001",
     completion_notes: "Project delivered successfully, client very satisfied",
     final_status: "completed"
-})
+}))
 ```
 
 **Final Status Options:**
@@ -345,7 +345,7 @@ submit("project", "close", {
 Add team member to project.
 
 ```javascript
-submit("project.team_member", "manage", {
+submit(object_type="project.team_member", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: "PROJ-000001",
     legal_entity_id: 13,
@@ -354,7 +354,7 @@ submit("project.team_member", "manage", {
     billable_rate: 150.00,
     allocation_pct: 75.00,
     start_date: "2024-01-15"
-})
+}))
 ```
 
 **Returns:**
@@ -380,13 +380,13 @@ submit("project.team_member", "manage", {
 Update team member allocation or rate.
 
 ```javascript
-submit("project.team_member", "manage", {
+submit(object_type="project.team_member", operation="manage", data=JSON.stringify({
     action: "update",
     team_member_id: 456,
     global_project_id: "PROJ-000001",
     allocation_pct: 100.00,
     billable_rate: 175.00
-})
+}))
 ```
 
 #### Remove Team Member
@@ -394,12 +394,12 @@ submit("project.team_member", "manage", {
 Remove team member from project.
 
 ```javascript
-submit("project.team_member", "manage", {
+submit(object_type="project.team_member", operation="manage", data=JSON.stringify({
     action: "delete",
     team_member_id: 456,
     global_project_id: "PROJ-000001",
     end_date: "2024-03-31"
-})
+}))
 ```
 
 **Building a Complete Team:**
@@ -409,7 +409,7 @@ const project_id = "PROJ-000001";
 const entity_id = 13;
 
 // Senior Developer
-submit("project.team_member", "manage", {
+submit(object_type="project.team_member", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: project_id,
     legal_entity_id: entity_id,
@@ -417,10 +417,10 @@ submit("project.team_member", "manage", {
     role: "developer",
     billable_rate: 150.00,
     allocation_pct: 75.00
-})
+}))
 
 // Junior Developer
-submit("project.team_member", "manage", {
+submit(object_type="project.team_member", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: project_id,
     legal_entity_id: entity_id,
@@ -428,10 +428,10 @@ submit("project.team_member", "manage", {
     role: "developer",
     billable_rate: 80.00,
     allocation_pct: 100.00
-})
+}))
 
 // Designer
-submit("project.team_member", "manage", {
+submit(object_type="project.team_member", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: project_id,
     legal_entity_id: entity_id,
@@ -439,10 +439,10 @@ submit("project.team_member", "manage", {
     role: "designer",
     billable_rate: 120.00,
     allocation_pct: 50.00
-})
+}))
 
 // QA Engineer
-submit("project.team_member", "manage", {
+submit(object_type="project.team_member", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: project_id,
     legal_entity_id: entity_id,
@@ -450,7 +450,7 @@ submit("project.team_member", "manage", {
     role: "qa",
     billable_rate: 100.00,
     allocation_pct: 50.00
-})
+}))
 ```
 
 ---
@@ -462,7 +462,7 @@ submit("project.team_member", "manage", {
 Create project milestone/deliverable.
 
 ```javascript
-submit("project.milestone", "manage", {
+submit(object_type="project.milestone", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: "PROJ-000001",
     legal_entity_id: 13,
@@ -472,7 +472,7 @@ submit("project.milestone", "manage", {
     amount: 10000.00,
     currency_code: "USD",
     sequence_number: 1
-})
+}))
 ```
 
 **Returns:**
@@ -489,7 +489,7 @@ submit("project.milestone", "manage", {
 Update milestone details or status.
 
 ```javascript
-submit("project.milestone", "manage", {
+submit(object_type="project.milestone", operation="manage", data=JSON.stringify({
     action: "update",
     milestone_id: 567,
     global_project_id: "PROJ-000001",
@@ -500,7 +500,7 @@ submit("project.milestone", "manage", {
       approval_date: "2024-02-25",
       notes: "Client very satisfied with mockups"
     }
-})
+}))
 ```
 
 **Milestone Status Flow:**
@@ -513,11 +513,11 @@ planned → in_progress → completed → invoiced
 Remove milestone from project.
 
 ```javascript
-submit("project.milestone", "manage", {
+submit(object_type="project.milestone", operation="manage", data=JSON.stringify({
     action: "delete",
     milestone_id: 567,
     global_project_id: "PROJ-000001"
-})
+}))
 ```
 
 **Fixed-Price Milestone Project Example:**
@@ -534,7 +534,7 @@ const milestones = [
 ];
 
 for (let i = 0; i < milestones.length; i++) {
-  submit("project.milestone", "manage", {
+  submit(object_type="project.milestone", operation="manage", data=JSON.stringify({
       action: "add",
       global_project_id: "PROJ-000001",
       legal_entity_id: 13,
@@ -542,8 +542,7 @@ for (let i = 0; i < milestones.length; i++) {
       due_date: milestones[i].due,
       amount: milestones[i].amount,
       sequence_number: i + 1
-    }
-  })
+    }))
 }
 ```
 
@@ -556,7 +555,7 @@ for (let i = 0; i < milestones.length; i++) {
 Record billable or non-billable time.
 
 ```javascript
-submit("project.time_entry", "manage", {
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: "PROJ-000001",
     legal_entity_id: 13,
@@ -567,7 +566,7 @@ submit("project.time_entry", "manage", {
     task_id: 890,  // Optional: link to task
     billable_flag: true,
     billable_rate: 150.00
-})
+}))
 ```
 
 **Returns:**
@@ -585,13 +584,13 @@ submit("project.time_entry", "manage", {
 Update time entry details (only if status = draft).
 
 ```javascript
-submit("project.time_entry", "manage", {
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({
     action: "update",
     time_entry_id: 1234,
     global_project_id: "PROJ-000001",
     hours: 7.5,
     description: "Implemented login UI and authentication flow - updated hours"
-})
+}))
 ```
 
 #### Submit Time Entry
@@ -599,12 +598,12 @@ submit("project.time_entry", "manage", {
 Submit time entry for approval.
 
 ```javascript
-submit("project.time_entry", "manage", {
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({
     action: "submit",
     time_entry_id: 1234,
     global_project_id: "PROJ-000001",
     submission_notes: "Week of Feb 10-16"
-})
+}))
 ```
 
 **Status:** `draft` → `submitted`
@@ -614,12 +613,12 @@ submit("project.time_entry", "manage", {
 Approve submitted time entry (requires manager permission).
 
 ```javascript
-submit("project.time_entry", "manage", {
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({
     action: "approve",
     time_entry_id: 1234,
     global_project_id: "PROJ-000001",
     approval_notes: "Approved for billing"
-})
+}))
 ```
 
 **Status:** `submitted` → `approved`
@@ -629,12 +628,12 @@ submit("project.time_entry", "manage", {
 Reject submitted time entry with reason.
 
 ```javascript
-submit("project.time_entry", "manage", {
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({
     action: "reject",
     time_entry_id: 1234,
     global_project_id: "PROJ-000001",
     rejection_reason: "Please add more detail to description"
-})
+}))
 ```
 
 **Status:** `submitted` → `rejected` (employee can edit and resubmit)
@@ -651,11 +650,11 @@ draft → submitted → approved → billed
 Delete time entry (only if status = draft or rejected).
 
 ```javascript
-submit("project.time_entry", "manage", {
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({
     action: "delete",
     time_entry_id: 1234,
     global_project_id: "PROJ-000001"
-})
+}))
 ```
 
 ---
@@ -667,7 +666,7 @@ submit("project.time_entry", "manage", {
 Link expense transaction to project.
 
 ```javascript
-submit("project.expense", "manage", {
+submit(object_type="project.expense", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: "PROJ-000001",
     legal_entity_id: 13,
@@ -675,7 +674,7 @@ submit("project.expense", "manage", {
     allocation_amount: 5000.00,
     expense_category: "cloud_hosting",
     notes: "AWS costs for Feb 2024"
-})
+}))
 ```
 
 **Returns:**
@@ -701,24 +700,24 @@ submit("project.expense", "manage", {
 // $10K contractor invoice split between 2 projects
 
 // 60% to Website project
-submit("project.expense", "manage", {
+submit(object_type="project.expense", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: "PROJ-000001",
     legal_entity_id: 13,
     transaction_id: 456,
     allocation_amount: 6000.00,
     expense_category: "contractors"
-})
+}))
 
 // 40% to Mobile App project
-submit("project.expense", "manage", {
+submit(object_type="project.expense", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: "PROJ-000002",
     legal_entity_id: 13,
     transaction_id: 456,
     allocation_amount: 4000.00,
     expense_category: "contractors"
-})
+}))
 
 // Total allocations: $10K (matches transaction)
 ```
@@ -728,13 +727,13 @@ submit("project.expense", "manage", {
 Update expense allocation amount or category.
 
 ```javascript
-submit("project.expense", "manage", {
+submit(object_type="project.expense", operation="manage", data=JSON.stringify({
     action: "update",
     allocation_id: 789,
     global_project_id: "PROJ-000001",
     allocation_amount: 5500.00,
     notes: "Adjusted allocation after invoice correction"
-})
+}))
 ```
 
 #### Delete Expense Allocation
@@ -742,11 +741,11 @@ submit("project.expense", "manage", {
 Remove expense allocation from project.
 
 ```javascript
-submit("project.expense", "manage", {
+submit(object_type="project.expense", operation="manage", data=JSON.stringify({
     action: "delete",
     allocation_id: 789,
     global_project_id: "PROJ-000001"
-})
+}))
 ```
 
 #### Allocate Revenue
@@ -754,7 +753,7 @@ submit("project.expense", "manage", {
 Link revenue transaction (invoice) to project.
 
 ```javascript
-submit("project.revenue", "manage", {
+submit(object_type="project.revenue", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: "PROJ-000001",
     legal_entity_id: 13,
@@ -763,7 +762,7 @@ submit("project.revenue", "manage", {
     revenue_category: "milestone_billing",
     milestone_id: 567,
     notes: "Phase 1 completion invoice"
-})
+}))
 ```
 
 **Revenue Categories:**
@@ -778,13 +777,13 @@ submit("project.revenue", "manage", {
 Update revenue allocation details.
 
 ```javascript
-submit("project.revenue", "manage", {
+submit(object_type="project.revenue", operation="manage", data=JSON.stringify({
     action: "update",
     allocation_id: 890,
     global_project_id: "PROJ-000001",
     allocation_amount: 12000.00,
     notes: "Updated to reflect scope expansion"
-})
+}))
 ```
 
 #### Delete Revenue Allocation
@@ -792,11 +791,11 @@ submit("project.revenue", "manage", {
 Remove revenue allocation from project.
 
 ```javascript
-submit("project.revenue", "manage", {
+submit(object_type="project.revenue", operation="manage", data=JSON.stringify({
     action: "delete",
     allocation_id: 890,
     global_project_id: "PROJ-000001"
-})
+}))
 ```
 
 ---
@@ -808,13 +807,13 @@ submit("project.revenue", "manage", {
 Tag project with department, cost center, or other dimensions.
 
 ```javascript
-submit("project.dimension", "manage", {
+submit(object_type="project.dimension", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: "PROJ-000001",
     legal_entity_id: 13,
     dimension_type_code: "DEPT",
     dimension_value_code: "Engineering"
-})
+}))
 ```
 
 **Multiple Dimensions Example:**
@@ -824,31 +823,31 @@ const project_id = "PROJ-000001";
 const entity_id = 13;
 
 // Department
-submit("project.dimension", "manage", {
+submit(object_type="project.dimension", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: project_id,
     legal_entity_id: entity_id,
     dimension_type_code: "DEPT",
     dimension_value_code: "Engineering"
-})
+}))
 
 // Cost Center
-submit("project.dimension", "manage", {
+submit(object_type="project.dimension", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: project_id,
     legal_entity_id: entity_id,
     dimension_type_code: "COST_CENTER",
     dimension_value_code: "ENG-001"
-})
+}))
 
 // Location
-submit("project.dimension", "manage", {
+submit(object_type="project.dimension", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: project_id,
     legal_entity_id: entity_id,
     dimension_type_code: "LOCATION",
     dimension_value_code: "NYC"
-})
+}))
 ```
 
 #### Remove Dimension
@@ -856,11 +855,11 @@ submit("project.dimension", "manage", {
 Remove dimension assignment from project.
 
 ```javascript
-submit("project.dimension", "manage", {
+submit(object_type="project.dimension", operation="manage", data=JSON.stringify({
     action: "delete",
     project_dimension_id: 999,
     global_project_id: "PROJ-000001"
-})
+}))
 ```
 
 ---
@@ -873,28 +872,28 @@ submit("project.dimension", "manage", {
 
 ```javascript
 // 1. Create master project
-const project = submit("project", "create", {
+const project = submit(object_type="project", operation="create", data=JSON.stringify({
     project_name: "Management Consulting Services",
     description: "Strategic advisory for digital transformation",
     customer_id: 123,
     project_type: "consulting",
     budget_amount: 100000.00,
     currency_code: "USD"
-})
+}))
 // Returns: { global_project_id: "PROJ-000001" }
 
 // 2. Assign to entity
-submit("project", "assign_to_entity", {
+submit(object_type="project", operation="assign_to_entity", data=JSON.stringify({
     global_project_id: "PROJ-000001",
     legal_entity_id: 13,
     project_manager_employee_id: 12,
     status: "active",
     billing_model: "time_and_materials",
     planned_margin_pct: 30.00
-})
+}))
 
 // 3. Add team
-submit("project.team_member", "manage", {
+submit(object_type="project.team_member", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: "PROJ-000001",
     legal_entity_id: 13,
@@ -902,14 +901,14 @@ submit("project.team_member", "manage", {
     role: "consultant",
     billable_rate: 200.00,
     allocation_pct: 100.00
-})
+}))
 ```
 
 **Weekly Time Tracking:**
 
 ```javascript
 // Employee records time daily
-submit("project.time_entry", "manage", {
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: "PROJ-000001",
     legal_entity_id: 13,
@@ -919,23 +918,23 @@ submit("project.time_entry", "manage", {
     description: "Client workshop - digital strategy session",
     billable_flag: true,
     billable_rate: 200.00
-})
+}))
 
 // End of week: Submit for approval
-submit("project.time_entry", "manage", {
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({
     action: "submit",
     time_entry_id: 1234,
     global_project_id: "PROJ-000001",
     submission_notes: "Week of Feb 10-16, 40 hours total"
-})
+}))
 
 // Manager approves
-submit("project.time_entry", "manage", {
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({
     action: "approve",
     time_entry_id: 1234,
     global_project_id: "PROJ-000001",
     approval_notes: "Approved"
-})
+}))
 ```
 
 **Monthly Invoicing:**
@@ -943,14 +942,14 @@ submit("project.time_entry", "manage", {
 ```javascript
 // Create invoice for approved time
 // Then link revenue to project
-submit("project.revenue", "manage", {
+submit(object_type="project.revenue", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: "PROJ-000001",
     legal_entity_id: 13,
     transaction_id: 789,  // Invoice transaction ID
     allocation_amount: 16000.00,  // 40 hrs × 4 weeks × $200
     revenue_category: "time_and_materials"
-})
+}))
 ```
 
 ---
@@ -961,23 +960,23 @@ submit("project.revenue", "manage", {
 
 ```javascript
 // 1. Create project
-const project = submit("project", "create", {
+const project = submit(object_type="project", operation="create", data=JSON.stringify({
     project_name: "Mobile App Development",
     customer_id: 456,
     project_type: "development",
     budget_amount: 75000.00,
     start_date: "2024-03-01",
     end_date: "2024-08-31"
-})
+}))
 
 // 2. Assign to entity
-submit("project", "assign_to_entity", {
+submit(object_type="project", operation="assign_to_entity", data=JSON.stringify({
     global_project_id: project.global_project_id,
     legal_entity_id: 13,
     project_manager_employee_id: 12,
     billing_model: "milestone",
     status: "active"
-})
+}))
 
 // 3. Create milestones
 const milestones = [
@@ -988,7 +987,7 @@ const milestones = [
 ];
 
 for (let i = 0; i < milestones.length; i++) {
-  submit("project.milestone", "manage", {
+  submit(object_type="project.milestone", operation="manage", data=JSON.stringify({
       action: "add",
       global_project_id: project.global_project_id,
       legal_entity_id: 13,
@@ -996,8 +995,7 @@ for (let i = 0; i < milestones.length; i++) {
       due_date: milestones[i].due,
       amount: milestones[i].amount,
       sequence_number: i + 1
-    }
-  })
+    }))
 }
 ```
 
@@ -1005,7 +1003,7 @@ for (let i = 0; i < milestones.length; i++) {
 
 ```javascript
 // 1. Complete milestone
-submit("project.milestone", "manage", {
+submit(object_type="project.milestone", operation="manage", data=JSON.stringify({
     action: "update",
     milestone_id: 567,
     global_project_id: "PROJ-000002",
@@ -1015,13 +1013,13 @@ submit("project.milestone", "manage", {
       client_approved: true,
       approval_date: "2024-03-28"
     }
-})
+}))
 
 // 2. Create invoice for milestone
 // (Create invoice transaction via unified transactions)
 
 // 3. Link revenue to project
-submit("project.revenue", "manage", {
+submit(object_type="project.revenue", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: "PROJ-000002",
     legal_entity_id: 13,
@@ -1029,16 +1027,16 @@ submit("project.revenue", "manage", {
     allocation_amount: 15000.00,
     revenue_category: "milestone_billing",
     milestone_id: 567
-})
+}))
 
 // 4. Update milestone status
-submit("project.milestone", "manage", {
+submit(object_type="project.milestone", operation="manage", data=JSON.stringify({
     action: "update",
     milestone_id: 567,
     global_project_id: "PROJ-000002",
     status: "invoiced",
     linked_transaction_id: 890
-})
+}))
 ```
 
 ---
@@ -1049,37 +1047,37 @@ submit("project.milestone", "manage", {
 
 ```javascript
 // 1. Create internal project (no customer)
-const project = submit("project", "create", {
+const project = submit(object_type="project", operation="create", data=JSON.stringify({
     project_name: "ERP System Upgrade",
     project_type: "internal",
     budget_amount: 50000.00,
     start_date: "2024-02-01",
     end_date: "2024-06-30"
-})
+}))
 
 // 2. Assign to entity
-submit("project", "assign_to_entity", {
+submit(object_type="project", operation="assign_to_entity", data=JSON.stringify({
     global_project_id: project.global_project_id,
     legal_entity_id: 13,
     project_manager_employee_id: 12,
     status: "active"
-})
+}))
 
 // 3. Tag with IT department
-submit("project.dimension", "manage", {
+submit(object_type="project.dimension", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: project.global_project_id,
     legal_entity_id: 13,
     dimension_type_code: "DEPT",
     dimension_value_code: "IT"
-})
+}))
 ```
 
 **Track Internal Costs:**
 
 ```javascript
 // Track employee time (non-billable)
-submit("project.time_entry", "manage", {
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: "PROJ-000003",
     legal_entity_id: 13,
@@ -1088,10 +1086,10 @@ submit("project.time_entry", "manage", {
     hours: 8.0,
     description: "Data migration and testing",
     billable_flag: false  // Internal time
-})
+}))
 
 // Allocate vendor costs
-submit("project.expense", "manage", {
+submit(object_type="project.expense", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: "PROJ-000003",
     legal_entity_id: 13,
@@ -1099,7 +1097,7 @@ submit("project.expense", "manage", {
     allocation_amount: 25000.00,
     expense_category: "software_licenses",
     notes: "ERP software licenses"
-})
+}))
 ```
 
 **Result:**
@@ -1115,17 +1113,17 @@ submit("project.expense", "manage", {
 
 ```javascript
 // 1. Create master project
-const project = submit("project", "create", {
+const project = submit(object_type="project", operation="create", data=JSON.stringify({
     project_name: "Global Customer Portal",
     customer_id: 789,
     budget_amount: 150000.00,
     currency_code: "USD",
     start_date: "2024-03-01",
     end_date: "2024-12-31"
-})
+}))
 
 // 2. Assign to US entity (client-facing, billing)
-submit("project", "assign_to_entity", {
+submit(object_type="project", operation="assign_to_entity", data=JSON.stringify({
     global_project_id: project.global_project_id,
     legal_entity_id: 10,  // US Corp
     project_manager_employee_id: 12,
@@ -1133,10 +1131,10 @@ submit("project", "assign_to_entity", {
     budget_amount: 150000.00,  // Revenue budget
     currency_code: "USD",
     status: "active"
-})
+}))
 
 // 3. Assign to India entity (delivery team)
-submit("project", "assign_to_entity", {
+submit(object_type="project", operation="assign_to_entity", data=JSON.stringify({
     global_project_id: project.global_project_id,
     legal_entity_id: 15,  // India Pvt Ltd
     project_manager_employee_id: 45,
@@ -1144,13 +1142,13 @@ submit("project", "assign_to_entity", {
     budget_amount: 75000.00,  // Cost budget
     currency_code: "INR",
     status: "active"
-})
+}))
 ```
 
 **US Team: Create milestones and bill client**
 
 ```javascript
-submit("project.milestone", "manage", {
+submit(object_type="project.milestone", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: project.global_project_id,
     legal_entity_id: 10,  // US
@@ -1158,13 +1156,13 @@ submit("project.milestone", "manage", {
     amount: 50000.00,
     due_date: "2024-05-31",
     sequence_number: 1
-})
+}))
 ```
 
 **India Team: Track delivery costs**
 
 ```javascript
-submit("project.time_entry", "manage", {
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: project.global_project_id,
     legal_entity_id: 15,  // India
@@ -1173,7 +1171,7 @@ submit("project.time_entry", "manage", {
     hours: 8.0,
     billable_rate: 25.00,  // USD equivalent
     billable_flag: false  // Internal cost
-})
+}))
 ```
 
 **Consolidated View:**
@@ -1263,11 +1261,9 @@ query("transaction_line",
 
 ```javascript
 // GOOD: Create master, then assign to entities
-const project = submit("project", "create", { project_name: "Website Redesign", ... }
-})
+const project = submit(object_type="project", operation="create", data=JSON.stringify({ project_name: "Website Redesign", ... }))
 
-submit("project", "assign_to_entity", { global_project_id: project.global_project_id, ... }
-})
+submit(object_type="project", operation="assign_to_entity", data=JSON.stringify({ global_project_id: project.global_project_id, ... }))
 
 // BAD: Can't assign without master
 ```
@@ -1276,18 +1272,18 @@ submit("project", "assign_to_entity", { global_project_id: project.global_projec
 
 ```javascript
 // GOOD: Add team member with rate first
-submit("project.team_member", "manage", {
+submit(object_type="project.team_member", operation="manage", data=JSON.stringify({
     action: "add",
     employee_id: 67,
     billable_rate: 150.00
-})
+}))
 
 // Then record time
-submit("project.time_entry", "manage", {
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({
     action: "add",
     employee_id: 67,
     billable_rate: 150.00  // Uses team member rate
-})
+}))
 ```
 
 **3. Create Milestones at Project Start:**
@@ -1296,7 +1292,7 @@ submit("project.time_entry", "manage", {
 // GOOD: Define all milestones upfront
 const milestones = [...];
 for (let m of milestones) {
-  submit("project.milestone", "manage", { action: "add", ... })
+  submit(object_type="project.milestone", operation="manage", data=JSON.stringify({ action: "add", ... }))
 }
 
 // Gives clear roadmap and billing schedule
@@ -1310,10 +1306,10 @@ for (let m of milestones) {
 // GOOD: Weekly time submission
 // Monday-Friday: Record time daily (status: draft)
 // Friday EOD: Submit all entries for the week
-submit("project.time_entry", "manage", {
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({
     action: "submit",
     time_entry_ids: [1234, 1235, 1236, 1237, 1238]
-})
+}))
 
 // BAD: Submitting once per month (too late for corrections)
 ```
@@ -1347,11 +1343,11 @@ submit("project.time_entry", "manage", {
 
 ```javascript
 // GOOD: Allocate immediately after expense recorded
-submit("project.expense", "manage", {
+submit(object_type="project.expense", operation="manage", data=JSON.stringify({
     action: "add",
     transaction_id: 456,  // Just created
     allocation_amount: 5000.00
-})
+}))
 
 // BAD: Allocating expenses at month-end (hard to track)
 ```
@@ -1360,15 +1356,15 @@ submit("project.expense", "manage", {
 
 ```javascript
 // GOOD: $10K contractor split 60/40 based on actual work
-submit("project.expense", "manage", {
+submit(object_type="project.expense", operation="manage", data=JSON.stringify({
     global_project_id: "PROJ-000001",
     allocation_amount: 6000.00  // 60%
-})
+}))
 
-submit("project.expense", "manage", {
+submit(object_type="project.expense", operation="manage", data=JSON.stringify({
     global_project_id: "PROJ-000002",
     allocation_amount: 4000.00  // 40%
-})
+}))
 
 // Total = $10K (matches transaction)
 ```
@@ -1380,27 +1376,27 @@ submit("project.expense", "manage", {
 ```javascript
 // GOOD: Follow the sequence
 // Step 1: Complete milestone
-submit("project.milestone", "manage", {
+submit(object_type="project.milestone", operation="manage", data=JSON.stringify({
     action: "update",
     status: "completed",
     completion_date: "2024-02-28"
-})
+}))
 
 // Step 2: Create invoice transaction
 
 // Step 3: Link revenue to project
-submit("project.revenue", "manage", {
+submit(object_type="project.revenue", operation="manage", data=JSON.stringify({
     action: "add",
     milestone_id: 567,
     transaction_id: 789
-})
+}))
 
 // Step 4: Update milestone
-submit("project.milestone", "manage", {
+submit(object_type="project.milestone", operation="manage", data=JSON.stringify({
     action: "update",
     status: "invoiced",
     linked_transaction_id: 789
-})
+}))
 ```
 
 ### Project Closure
@@ -1417,11 +1413,11 @@ submit("project.milestone", "manage", {
 // ✓ Fixed assets reassigned or unassigned
 
 // Then close:
-submit("project", "close", {
+submit(object_type="project", operation="close", data=JSON.stringify({
     global_project_id: "PROJ-000001",
     completion_notes: "...",
     final_status: "completed"
-})
+}))
 ```
 
 ---
@@ -1433,37 +1429,35 @@ submit("project", "close", {
 **Wrong:**
 ```javascript
 // Create master project
-const project = submit("project", "create", { project_name: "Website Redesign" }
-})
+const project = submit(object_type="project", operation="create", data=JSON.stringify({ project_name: "Website Redesign" }))
 
 // Try to add team member (will fail!)
-submit("project.team_member", "manage", {
+submit(object_type="project.team_member", operation="manage", data=JSON.stringify({
     global_project_id: project.global_project_id,
     legal_entity_id: 13,
     employee_id: 67
-})
+}))
 // ERROR: Project not assigned to entity 13
 ```
 
 **Correct:**
 ```javascript
 // Create master
-const project = submit("project", "create", { project_name: "Website Redesign" }
-})
+const project = submit(object_type="project", operation="create", data=JSON.stringify({ project_name: "Website Redesign" }))
 
 // Assign to entity first
-submit("project", "assign_to_entity", {
+submit(object_type="project", operation="assign_to_entity", data=JSON.stringify({
     global_project_id: project.global_project_id,
     legal_entity_id: 13
-})
+}))
 
 // Now add team member
-submit("project.team_member", "manage", {
+submit(object_type="project.team_member", operation="manage", data=JSON.stringify({
     action: "add",
     global_project_id: project.global_project_id,
     legal_entity_id: 13,
     employee_id: 67
-})
+}))
 ```
 
 ---
@@ -1473,28 +1467,23 @@ submit("project.team_member", "manage", {
 **Wrong:**
 ```javascript
 // Record time (status: draft)
-submit("project.time_entry", "manage", { action: "add", ... }
-})
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({ action: "add", ... }))
 
 // Try to approve immediately (will fail!)
-submit("project.time_entry", "manage", { action: "approve", time_entry_id: 1234 }
-})
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({ action: "approve", time_entry_id: 1234 }))
 // ERROR: Cannot approve time entry in 'draft' status
 ```
 
 **Correct:**
 ```javascript
 // Record time
-submit("project.time_entry", "manage", { action: "add", ... }
-})
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({ action: "add", ... }))
 
 // Submit first
-submit("project.time_entry", "manage", { action: "submit", time_entry_id: 1234 }
-})
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({ action: "submit", time_entry_id: 1234 }))
 
 // Now approve
-submit("project.time_entry", "manage", { action: "approve", time_entry_id: 1234 }
-})
+submit(object_type="project.time_entry", operation="manage", data=JSON.stringify({ action: "approve", time_entry_id: 1234 }))
 ```
 
 ---
@@ -1504,10 +1493,10 @@ submit("project.time_entry", "manage", { action: "approve", time_entry_id: 1234 
 **Wrong:**
 ```javascript
 // Try to close project with open time entries
-submit("project", "close", {
+submit(object_type="project", operation="close", data=JSON.stringify({
     global_project_id: "PROJ-000001",
     final_status: "completed"
-})
+}))
 // ERROR: Project has 15 draft time entries
 ```
 
@@ -1518,10 +1507,10 @@ submit("project", "close", {
 // Close all open tasks
 // Then close project
 
-submit("project", "close", {
+submit(object_type="project", operation="close", data=JSON.stringify({
     global_project_id: "PROJ-000001",
     final_status: "completed"
-})
+}))
 ```
 
 ---
@@ -1531,27 +1520,27 @@ submit("project", "close", {
 **Wrong:**
 ```javascript
 // $10K transaction, but allocations don't match
-submit("project.expense", "manage", {
+submit(object_type="project.expense", operation="manage", data=JSON.stringify({
     transaction_id: 456,  // $10,000 transaction
     allocation_amount: 7000.00  // Only allocated $7K!
-})
+}))
 // Unallocated: $3,000
 ```
 
 **Correct:**
 ```javascript
 // Fully allocate the transaction
-submit("project.expense", "manage", {
+submit(object_type="project.expense", operation="manage", data=JSON.stringify({
     global_project_id: "PROJ-000001",
     transaction_id: 456,
     allocation_amount: 6000.00  // 60%
-})
+}))
 
-submit("project.expense", "manage", {
+submit(object_type="project.expense", operation="manage", data=JSON.stringify({
     global_project_id: "PROJ-000002",
     transaction_id: 456,
     allocation_amount: 4000.00  // 40%
-})
+}))
 
 // Total: $10K (matches transaction)
 ```

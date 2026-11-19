@@ -24,13 +24,13 @@ This guide covers employee expense reports: reimbursements, per-diem claims, and
 Employee submits expense(s) via Claude.ai / email / admin dashboard
     |
     v
-submit("expense_report", "create", {...})
+submit(object_type="expense_report", operation="create", data='{...}')
     |
     v
 ExpenseReportCreateExecutor -> creates expense_report + lines (status: draft)
     |
     v
-submit("expense_report", "submit", {"expense_report_id": 42})
+submit(object_type="expense_report", operation="submit", data=JSON.stringify({"expense_report_id": 42}))
     |
     v
 Workflow engine -> risk lane assessment -> approval if needed
@@ -78,7 +78,7 @@ schema = get_submissions(action='schema', object_type="expense_report", operatio
 // Tip: Use validate_only=true to check payload before submitting
 ```
 ```
-submit("expense_report", "create", {
+submit(object_type="expense_report", operation="create", data=JSON.stringify({
     "legal_entity_id": 9,
     "employee_id": 5,
     "title": "Business Lunch - March 2026",
@@ -93,7 +93,7 @@ submit("expense_report", "create", {
         "receipt_url": "https://..."
       }
     ]
-})
+}))
 ```
 
 ### Per-Diem Claim
@@ -101,7 +101,7 @@ submit("expense_report", "create", {
 Per-diem amounts are automatically calculated from configured rates.
 
 ```
-submit("expense_report", "create", {
+submit(object_type="expense_report", operation="create", data=JSON.stringify({
     "legal_entity_id": 9,
     "employee_id": 5,
     "title": "NYC Business Trip Per-Diem",
@@ -116,7 +116,7 @@ submit("expense_report", "create", {
         "description": "NYC client visit Mar 1-3"
       }
     ]
-})
+}))
 ```
 
 The system will:
@@ -130,7 +130,7 @@ The system will:
 Mileage amounts are automatically calculated from configured rates.
 
 ```
-submit("expense_report", "create", {
+submit(object_type="expense_report", operation="create", data=JSON.stringify({
     "legal_entity_id": 9,
     "employee_id": 5,
     "title": "Client Visit Mileage",
@@ -146,7 +146,7 @@ submit("expense_report", "create", {
         "description": "Round trip to client office"
       }
     ]
-})
+}))
 ```
 
 The system will:
@@ -158,7 +158,7 @@ The system will:
 ### Mixed Report (Multiple Line Types)
 
 ```
-submit("expense_report", "create", {
+submit(object_type="expense_report", operation="create", data=JSON.stringify({
     "legal_entity_id": 9,
     "employee_id": 5,
     "title": "Chicago Trip - March 2026",
@@ -190,7 +190,7 @@ submit("expense_report", "create", {
         "item_id": <EXP-TRANSPORT item ID>
       }
     ]
-})
+}))
 ```
 
 ---
@@ -200,7 +200,7 @@ submit("expense_report", "create", {
 ### Adding Lines to Existing Report
 
 ```
-submit("expense_report", "update", {
+submit(object_type="expense_report", operation="update", data=JSON.stringify({
     "expense_report_id": 42,
     "action": "add_line",
     "line": {
@@ -210,28 +210,28 @@ submit("expense_report", "update", {
       "merchant_name": "Taxi",
       "description": "Airport transfer"
     }
-})
+}))
 ```
 
 ### Attaching a Receipt
 
 ```
-submit("expense_report", "update", {
+submit(object_type="expense_report", operation="update", data=JSON.stringify({
     "expense_report_id": 42,
     "action": "attach_receipt",
     "line_number": 1,
     "receipt_url": "https://files.example.com/receipts/abc123.pdf"
-})
+}))
 ```
 
 ### Removing a Line
 
 ```
-submit("expense_report", "update", {
+submit(object_type="expense_report", operation="update", data=JSON.stringify({
     "expense_report_id": 42,
     "action": "remove_line",
     "line_number": 3
-})
+}))
 ```
 
 ---
@@ -239,7 +239,7 @@ submit("expense_report", "update", {
 ## Submitting for Approval
 
 ```
-submit("expense_report", "submit", {"expense_report_id": 42})
+submit(object_type="expense_report", operation="submit", data=JSON.stringify({"expense_report_id": 42}))
 ```
 
 ### What Happens on Submit
@@ -264,7 +264,7 @@ submit("expense_report", "submit", {"expense_report_id": 42})
 ### Rejection
 
 ```
-submit("expense_report", "reject", {"expense_report_id": 42, "reason": "Missing receipt for line 2"})
+submit(object_type="expense_report", operation="reject", data=JSON.stringify({"expense_report_id": 42, "reason": "Missing receipt for line 2"}))
 ```
 
 After rejection, the employee can update the report and resubmit.
@@ -272,7 +272,7 @@ After rejection, the employee can update the report and resubmit.
 ### Cancellation
 
 ```
-submit("expense_report", "cancel", {"expense_report_id": 42})
+submit(object_type="expense_report", operation="cancel", data=JSON.stringify({"expense_report_id": 42}))
 ```
 
 Cancellation only moves `draft`/`submitted`/`rejected` reports to `cancelled` (no
@@ -283,7 +283,7 @@ delete, keeps the row). To actually remove a report, use delete (below).
 Permanently removes a report — and its GL document — for any state **up to posted**:
 
 ```
-submit("expense_report", "delete", {"expense_report_id": 42, "reason": "duplicate"})
+submit(object_type="expense_report", operation="delete", data=JSON.stringify({"expense_report_id": 42, "reason": "duplicate"}))
 ```
 
 Behavior:
@@ -376,14 +376,14 @@ Tier **amounts** live on the rate (`daily_rate`, `tier_threshold_days`,
 `first_last_day_pct`, `deduction_basis`). Set tier amounts via `submit`:
 
 ```
-submit("per_diem_rate", "create", {
+submit(object_type="per_diem_rate", operation="create", data=JSON.stringify({
     "legal_entity_id": 9,
     "country_code": "EE",
     "daily_rate": 75.00,
     "tier_threshold_days": 15,
     "tier_daily_rate": 40.00,
     "effective_from": "2026-01-01"
-})
+}))
 ```
 
 > **Now settable:** the tier fields (`tier_threshold_days` / `tier_daily_rate`) are
