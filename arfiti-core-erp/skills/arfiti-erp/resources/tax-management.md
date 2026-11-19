@@ -168,10 +168,10 @@ Rates are percentage points: `default_rate: 7.25` is 7.25%. A non-zero rate belo
 | `legal_entity_id` | integer | No | Entity-specific rate | `13` |
 | `component_name` | varchar(100) | No | Rate component name | `"primary"`, `"surcharge"` |
 | `component_type` | varchar(50) | No | Type of component | `"base"`, `"additional"`, `"surcharge"` |
-| `rate` | numeric(9,6) | Yes | Tax rate (decimal) | `0.0725` (7.25%) |
+| `rate` | numeric(9,6) | Yes | Tax rate as a percentage | `7.25` (7.25%) |
 | `calculation_order` | integer | No | Order for compound taxes | `1`, `2`, `3` |
 | `applies_on_component` | varchar(100) | No | Base for compound tax | `"base_tax"` |
-| `taxable_basis` | varchar(20) | No | What to tax | `"subtotal"`, `"total"`, `"tax"` |
+| `taxable_basis` | varchar(20) | No | What to tax | `"subtotal"`, `"gross"`, `"custom"`, `"net_amount"` |
 | `effective_from` | date | Yes | Rate effective start date | `2025-01-01` |
 | `effective_to` | date | No | Rate effective end date | `2025-12-31` |
 | `tax_account_number` | varchar(50) | No | Override GL account | `"2211"` |
@@ -360,6 +360,8 @@ submit(object_type="tax_code", operation="delete", data=JSON.stringify({
 
 ### Tax Code Rate Workflows
 
+> **Rate components (`tax_code_rate`) are configuration only today.** They are stored and shown in Admin, but posting does not use them yet: every document line is taxed at its tax code's rate (`v_tax_codes_effective.default_rate`). Using components in posting is planned. A component's `rate` is a percentage, the same unit as the tax code's rate (7.25 means 7.25%); dates are `YYYY-MM-DD`; `taxable_basis` is one of `subtotal`, `gross`, `custom`, `net_amount`. The compound examples below show the intended configuration, not a calculation the platform performs today.
+
 #### Create Tax Code Rate
 
 Create a new tax rate for a specific date range. Supports time-based rate changes and entity-specific rates.
@@ -370,7 +372,7 @@ submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     legal_entity_id: null,  // null = applies to all entities
     component_name: "primary",
     component_type: "base",
-    rate: 0.0725,
+    rate: 7.25,
     calculation_order: 1,
     taxable_basis: "subtotal",
     effective_from: "2025-01-01",
@@ -389,7 +391,7 @@ submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 456,
     component_name: "GST",
     component_type: "base",
-    rate: 0.05,
+    rate: 5,
     calculation_order: 1,
     taxable_basis: "subtotal",
     effective_from: "2025-01-01",
@@ -401,10 +403,10 @@ submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 456,
     component_name: "PST",
     component_type: "additional",
-    rate: 0.07,
+    rate: 7,
     calculation_order: 2,
     applies_on_component: "GST",
-    taxable_basis: "total",  // Tax on subtotal + GST
+    taxable_basis: "gross",  // Tax on subtotal + GST
     effective_from: "2025-01-01",
     is_compound: true
 }))
@@ -863,7 +865,7 @@ submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 456,
     component_name: "GST",
     component_type: "base",
-    rate: 0.05,
+    rate: 5,
     calculation_order: 1,
     taxable_basis: "subtotal",
     is_compound: false,
@@ -875,10 +877,10 @@ submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 456,
     component_name: "PST",
     component_type: "additional",
-    rate: 0.07,
+    rate: 7,
     calculation_order: 2,
     applies_on_component: "GST",
-    taxable_basis: "total",
+    taxable_basis: "gross",
     is_compound: true,
     effective_from: "2025-01-01"
 }))
@@ -1128,7 +1130,7 @@ submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 789,
     component_name: "California State",
     component_type: "base",
-    rate: 0.0725,
+    rate: 7.25,
     calculation_order: 1,
     taxable_basis: "subtotal",
     effective_from: "2025-01-01",
@@ -1139,7 +1141,7 @@ submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 789,
     component_name: "LA County",
     component_type: "additional",
-    rate: 0.01,
+    rate: 1,
     calculation_order: 2,
     taxable_basis: "subtotal",
     effective_from: "2025-01-01",
@@ -1150,7 +1152,7 @@ submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 789,
     component_name: "LA City",
     component_type: "additional",
-    rate: 0.005,
+    rate: 0.5,
     calculation_order: 3,
     taxable_basis: "subtotal",
     effective_from: "2025-01-01",
@@ -1260,7 +1262,7 @@ submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 123,
     component_name: "primary",
     component_type: "base",
-    rate: 0.0725,  // New rate
+    rate: 7.25,  // New rate
     calculation_order: 1,
     taxable_basis: "subtotal",
     effective_from: "2025-07-01",
@@ -1275,15 +1277,16 @@ submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
 **Transaction Behavior:**
 ```javascript
 // Invoice dated June 30, 2025
-const june_invoice_tax = 1000.00 * 0.07;   // $70.00 (old rate)
+const june_invoice_tax = 1000.00 * 7 / 100;    // $70.00 (old rate)
 
 // Invoice dated July 1, 2025
-const july_invoice_tax = 1000.00 * 0.0725; // $72.50 (new rate)
+const july_invoice_tax = 1000.00 * 7.25 / 100; // $72.50 (new rate)
 
-// System automatically selects correct rate based on transaction date
+// Intended behaviour once posting uses components. Today posting taxes every
+// line at the tax code's own rate; change it (or use a new code) when the law changes.
 ```
 
-**Rate Lookup Query:**
+**Rate lookup (how a dated component is chosen; not run by posting today):**
 ```sql
 SELECT rate
 FROM tax_code_rates
@@ -1293,7 +1296,7 @@ WHERE master_tax_code_id = 123
   AND is_active = true
 ORDER BY effective_from DESC
 LIMIT 1;
--- Returns: 0.07
+-- Returns: 7.00
 
 SELECT rate
 FROM tax_code_rates
@@ -1303,7 +1306,7 @@ WHERE master_tax_code_id = 123
   AND is_active = true
 ORDER BY effective_from DESC
 LIMIT 1;
--- Returns: 0.0725
+-- Returns: 7.25
 ```
 
 ---
@@ -1411,7 +1414,7 @@ submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 456,
     component_name: "GST",
     component_type: "base",
-    rate: 0.05,
+    rate: 5,
     calculation_order: 1,
     taxable_basis: "subtotal",
     effective_from: "2025-01-01",
@@ -1424,10 +1427,10 @@ submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 456,
     component_name: "PST",
     component_type: "additional",
-    rate: 0.07,
+    rate: 7,
     calculation_order: 2,
     applies_on_component: "GST",
-    taxable_basis: "total",  // Tax on subtotal + GST
+    taxable_basis: "gross",  // Tax on subtotal + GST
     effective_from: "2025-01-01",
     is_compound: true,
     tax_account_number: "2210-PST"
@@ -1605,7 +1608,7 @@ submit(object_type="tax_code_rate", operation="update", data=JSON.stringify({
 
 submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 123,
-    rate: 0.0725,  // New rate
+    rate: 7.25,  // New rate
     effective_from: "2025-07-01"
 }))
 
@@ -1647,7 +1650,7 @@ Use `calculation_order` and `applies_on_component` for clarity:
 // Base tax (order 1)
 submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     component_name: "GST",
-    rate: 0.05,
+    rate: 5,
     calculation_order: 1,
     taxable_basis: "subtotal",
     is_compound: false
@@ -1656,10 +1659,10 @@ submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
 // Compound tax (order 2, applies on GST)
 submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     component_name: "PST",
-    rate: 0.07,
+    rate: 7,
     calculation_order: 2,
     applies_on_component: "GST",
-    taxable_basis: "total",  // subtotal + GST
+    taxable_basis: "gross",  // subtotal + GST
     is_compound: true
 }))
 ```
@@ -1697,13 +1700,13 @@ submit(object_type="tax_code", operation="create", data=JSON.stringify({
 // Component rates (for detailed reporting)
 submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     component_name: "California State",
-    rate: 0.0725,
+    rate: 7.25,
     tax_account_number: "2210-CA-STATE"  // Separate GL account
 }))
 
 submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     component_name: "LA County",
-    rate: 0.01,
+    rate: 1,
     tax_account_number: "2210-CA-COUNTY"  // Separate GL account
 }))
 ```
@@ -1772,7 +1775,7 @@ submit(object_type="customer", operation="update", data=JSON.stringify({
 // DON'T: Update existing rate
 submit(object_type="tax_code_rate", operation="update", data=JSON.stringify({
     tax_code_rate_id: 100,
-    rate: 0.0725  // Changed from 0.07
+    rate: 7.25  // Changed from 7
 }))
 // Problem: Loses historical rate, affects past transactions
 ```
@@ -1787,7 +1790,7 @@ submit(object_type="tax_code_rate", operation="update", data=JSON.stringify({
 
 submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     master_tax_code_id: 123,
-    rate: 0.0725,
+    rate: 7.25,
     effective_from: "2025-07-01"
 }))
 // Result: Historical transactions use 0.07, new transactions use 0.0725
@@ -1832,7 +1835,7 @@ where the amounts you enter are the shelf price including VAT.
 // DON'T: Create compound tax without calculation_order
 submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     component_name: "PST",
-    rate: 0.07,
+    rate: 7,
     is_compound: true
     // Missing: calculation_order, applies_on_component
 }))
@@ -1844,10 +1847,10 @@ submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
 // DO: Specify calculation_order and applies_on_component
 submit(object_type="tax_code_rate", operation="create", data=JSON.stringify({
     component_name: "PST",
-    rate: 0.07,
+    rate: 7,
     calculation_order: 2,  // ← After GST (order 1)
     applies_on_component: "GST",  // ← Tax on GST
-    taxable_basis: "total",  // ← Subtotal + GST
+    taxable_basis: "gross",  // ← Subtotal + GST
     is_compound: true
 }))
 ```
