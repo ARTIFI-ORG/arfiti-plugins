@@ -77,7 +77,7 @@ Items are the products and services your business sells or purchases. The workfl
 
 **GL Account Mappings:**
 - `revenue_account_number` (string, max 50 chars) - Revenue GL account (AR side)
-- `expense_account_number` (string, max 50 chars) - Expense GL account (AP side)
+- `expense_account_number` (string, max 50 chars) - The item's expense account. Bills from purchase orders, AP invoice item lines and expense reports post to the account the item read shows (`default_expense_account` from `get_entity("item")`): the entity override, else this field, else the seeded `default_expense_account`; bills fall back to the vendor default only when the item has none
 - `asset_account_number` (string, max 50 chars) - Inventory asset GL account
 - `cogs_account_number` (string, max 50 chars) - Cost of Goods Sold GL account
 - `tax_code` (string, max 50 chars) - Default tax code (SALES_TAX, VAT, EXEMPT, etc.)
@@ -116,7 +116,7 @@ Entity overrides allow per-entity customization without affecting other entities
 - `cost_price_override` (decimal) - Entity-specific default cost
 - `is_taxable_override` (boolean) - Entity-specific tax status
 - `revenue_account_number_override` (string, max 50 chars) - Entity-specific revenue account
-- `expense_account_number_override` (string, max 50 chars) - Entity-specific expense account
+- Entity-specific expense account: stored as `items.expense_account_override` and honoured by every flow, but `item.update` does not set it today; to change an item's account for one entity, tell the user rather than updating the master item
 - `asset_account_number_override` (string, max 50 chars) - Entity-specific asset account
 - `cogs_account_number_override` (string, max 50 chars) - Entity-specific COGS account
 - `tax_code_override` (string, max 50 chars) - Entity-specific tax code

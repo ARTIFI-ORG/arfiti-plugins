@@ -138,13 +138,15 @@ get_entity("tax_code", id=115)
 | `city` | varchar(100) | No | City name | `"San Francisco"` |
 | `postal_code` | varchar(20) | No | Postal code | `"94102"` |
 | `tax_authority_name` | varchar(255) | No | Authority name | `"California Department of Tax and Fee Administration"` |
-| `default_rate` | numeric(9,6) | No | Default tax rate (decimal) | `0.0725` (7.25%) |
+| `default_rate` | numeric(9,6) | No | Default tax rate in percentage points (0-100); posting divides it by 100 | `7.25` (7.25%) |
 | `default_tax_account_number` | varchar(50) | Yes | Legacy single account; the fallback for a side that has no account of its own | `"2210"` |
 | `sales_account_number` | varchar(50) | No | Output-VAT account — AR invoices, credit memos. Onboarding fills it from the chart's `vat_payable` account | `"2300"` |
 | `purchase_account_number` | varchar(50) | No | Input-VAT account — AP invoices. Onboarding fills it from the chart's `vat_recoverable` account, or the sales account when the chart has none | `"2310"` |
 | `is_tax_inclusive` | boolean | No | Tax included in price | `false` |
 
 A code needs BOTH sides: with one account, input VAT lands in the output-VAT account, and a default pointed at an input-VAT account "for AP" makes AR credit output VAT there (Hala Digital, 2026-09). AR refuses a code whose sales side resolves to an input-VAT account (`vat_recoverable` subtype) — set `sales_account_number` on the code.
+
+Rates are percentage points: `default_rate: 7.25` is 7.25%. A non-zero rate below 1 that the code's own name or description gives as a larger percentage (a US state code at `0.04` described as 4.0%) was seeded as a fraction: report it to the user instead of posting with it, and do not change it yourself.
 | `is_compound` | boolean | No | Compound tax (tax on tax) | `false` |
 | `is_recoverable` | boolean | No | Can claim input tax credit | `true` |
 | `is_reverse_charge` | boolean | No | Reverse charge mechanism | `false` |
@@ -300,7 +302,7 @@ submit(object_type="tax_code", operation="create", data=JSON.stringify({
   jurisdiction_level: "state",
   country_code: "US",
   state_province: "California",
-  default_rate: 0.0725,
+  default_rate: 7.25,
   default_tax_account_number: "2210",
   is_tax_inclusive: false,
   is_compound: false,
@@ -795,7 +797,7 @@ submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "SALES-US-NY",
     tax_name: "New York Sales Tax",
     tax_type: "sales",
-    default_rate: 0.07,
+    default_rate: 7,
     is_tax_inclusive: false,
     is_compound: false
 }))
@@ -917,7 +919,7 @@ submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "VAT-EU-IE",
     tax_name: "Ireland VAT",
     tax_type: "vat",
-    default_rate: 0.23,
+    default_rate: 23,
     is_tax_inclusive: true,  // ← Key field
     is_compound: false
 }))
@@ -970,7 +972,7 @@ submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "VAT-EU-RC",
     tax_name: "EU Reverse Charge VAT",
     tax_type: "vat",
-    default_rate: 0.20,
+    default_rate: 20,
     is_reverse_charge: true,  // ← Key field
     is_recoverable: true,
     is_active: true
@@ -1113,7 +1115,7 @@ submit(object_type="tax_code", operation="create", data=JSON.stringify({
     state_province: "California",
     county: "Los Angeles",
     city: "Los Angeles",
-    default_rate: 0.0875,  // Combined rate
+    default_rate: 8.75,  // Combined rate
     default_tax_account_number: "2210"
 }))
 // Returns: { tax_code_id: 789 }
@@ -1315,7 +1317,7 @@ submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_name: "EU Reverse Charge VAT",
     tax_type: "vat",
     tax_scope: "services",
-    default_rate: 0.20,
+    default_rate: 20,
     is_reverse_charge: true,
     is_recoverable: true,
     default_tax_account_number: "2220",
@@ -1484,7 +1486,7 @@ submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "VAT-EU-IE",
     tax_name: "Ireland VAT Standard Rate",
     tax_type: "vat",
-    default_rate: 0.23,
+    default_rate: 23,
     is_tax_inclusive: true,  // ← Key field
     is_recoverable: true,
     default_tax_account_number: "2220",
@@ -1554,7 +1556,7 @@ query("tax_code", query="SALES-US-CA", filters={legal_entity_id: 13})
 get_entity("tax_code", id=123)
 
 // Returns fields such as:
-// { tax_code: "SALES-US-CA", tax_name: "California Sales Tax", default_rate: 0.0725,
+// { tax_code: "SALES-US-CA", tax_name: "California Sales Tax", default_rate: 7.25,
 //   is_tax_inclusive: false, is_recoverable: ..., is_active: true }
 ```
 
@@ -1686,7 +1688,7 @@ Break down component rates for accurate reporting:
 // Combined rate (for quick calculation)
 submit(object_type="tax_code", operation="create", data=JSON.stringify({
     tax_code: "SALES-US-CA-LA-CITY",
-    default_rate: 0.0875  // Combined: 7.25% + 1% + 0.5%
+    default_rate: 8.75  // Combined: 7.25% + 1% + 0.5%
 }))
 
 // Component rates (for detailed reporting)
