@@ -300,10 +300,12 @@ This creates a reversing GL entry and frees up the source account for re-allocat
 
 ## Error Handling
 
-- **"Source line account(s) X do not appear in the source transaction's GL lines"**: The source line in the allocation uses the wrong account. Check the source transaction's GL lines and use the correct account number.
-- **"Account X from source transaction is already fully allocated"**: The source document has already been allocated. The user must void the existing allocation before creating a new one.
-- **"Source amount X exceeds remaining unallocated balance"**: Only part of the source line is available. Reduce the allocation amount or void existing allocations.
+- **"Account X carries no allocatable amount in source Y"**: The source line uses an account the source did not post a cost to (or its offset side, such as cash or payables). Use one of the allocatable accounts the message lists.
+- **"Source line for account X must be CR"**: A cost allocation takes the cost off the account with a CR source line (DR for a revenue allocation).
+- **"Account X from source Y is already fully allocated"**: The source document has already been allocated. The user must void the existing allocation (or reject an unposted one) before creating a new one.
+- **"Source lines for account X total A, more than the B left"**: Only part of the source line is available. Reduce the allocation amount or void existing allocations.
+- **"Source transaction X is reversed / not posted"**: Only a posted, unreversed document can be allocated. If execute refuses an approved run for this reason, reject it.
 - **Account not found**: Suggest the user check the chart of accounts. Use `query("account", query="<number>")`.
-- **Unbalanced lines**: Recalculate. Adjust the largest target line to absorb rounding differences.
+- **Unbalanced lines or "more than 2 decimal places"**: Debits must equal credits exactly and amounts carry at most the currency's decimals. Round each line, then adjust the largest target line to absorb the remainder.
 - **Period closed**: The fiscal period must be open for posting.
 - **Run not in draft**: If the run is already calculated, lines will be replaced (recalculation is supported).

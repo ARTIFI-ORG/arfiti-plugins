@@ -202,27 +202,32 @@ result = submit("allocation_run", "submit_lines", {
 0. **No unknown top-level keys.** Every `allocation_run.*` payload rejects keys
    not listed in the tables above. A misspelled optional field used to be
    silently dropped — misspell `source_transaction_id` and the run is created
-   standalone instead of document-linked, skipping the source-account match and
-   the per-account limit in rules 8–10 below. Send the exact field names.
+   standalone instead of document-linked, skipping the source checks and
+   the per-account limit in rules 9–12 below. Send the exact field names.
 
    Line dicts inside `lines` are *not* restricted this way — extra per-line keys
    are still accepted, since per-line rules are enforced by the executor.
 
 ### Basic (all allocation runs)
 
-1. **Balance**: Total DR amounts must equal total CR amounts (tolerance: 0.01)
-2. **Accounts**: All account numbers must exist in `v_accounts_effective` for the entity
-3. **Active**: All accounts must be active (not deactivated)
-4. **Source + Target**: At least one `source` line and one `target` line required
-5. **Minimum lines**: At least 2 lines total
-6. **Positive amounts**: All amounts must be > 0
-7. **Run status**: Run must be in `draft` or `calculated` status
+1. **Balance**: Total DR amounts must equal total CR amounts exactly — there is no tolerance
+2. **Exact amounts**: Every amount is > 0 with no more decimals than the run's currency carries (at most 2). Excess precision is refused, not rounded: put any rounding remainder on a line yourself
+3. **Accounts**: All account numbers must exist in `v_accounts_effective` for the entity
+4. **Active**: All accounts must be active (not deactivated)
+5. **Dimensions**: Every dimension code/value pair must resolve for the entity; an unknown dimension is refused at `submit_lines`
+6. **Source + Target**: At least one `source` line and one `target` line required
+7. **Minimum lines**: At least 2 lines total
+8. **Run status**: Run must be in `draft` or `calculated` status
 
 ### Document-linked validations (when `source_transaction_id` exists)
 
-8. **Account match**: Source-type allocation lines must use accounts that appear in the source transaction's GL lines. Error: "Source line account(s) X do not appear in the source transaction's GL lines. Available accounts: ..."
-9. **Per-account limit**: Each account from the source transaction is tracked. The allocation amount cannot exceed the remaining unallocated balance. Error: "Account X is already fully allocated (Y of Z) by: ALLOC-NNNN"
-10. **Partial allocation**: A multi-line source transaction can have separate allocations per account line. E.g., allocate account 60002 in one run, account 61000 in another.
+9. **Eligible source**: The source must be posted and not reversed, voided or cancelled (checked at create, submit_lines and execute). Error: "Source transaction X is reversed …; it has no cost left to allocate."
+10. **Cost side only**: Capacity per account is what the source posted on the cost side (net debit; net credit for `revenue_allocation`). The offset side (cash, payables) is not allocatable. Error: "Account X carries no allocatable amount in source Y. Allocatable accounts: …"
+11. **Direction**: Source lines are `CR` for a cost allocation, `DR` for a revenue allocation. Error: "Source line for account X must be CR …"
+12. **Per-account limit**: All source lines for an account are summed and cannot exceed what is left after other runs that are not voided or rejected. One cent left is allocatable; one cent over is not. Errors: "Account X from source Y is already fully allocated (A of B) by: ALLOC-NNNN" / "Source lines for account X total A, more than the B left of source Y …"
+13. **Partial allocation**: A multi-line source transaction can have separate allocations per account line. E.g., allocate account 60002 in one run, account 61000 in another.
+
+Execute re-checks rules 9–12. A run that can no longer post (for example its source was reversed after approval) is released with `reject`.
 
 ---
 

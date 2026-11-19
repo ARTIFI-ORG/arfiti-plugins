@@ -121,16 +121,21 @@ Returns `source_transaction_number` for confirmation.
 ### Validation Rules
 
 **Basic (all allocation runs):**
-- Total DR must equal total CR (tolerance: 0.01)
+- Every amount is positive with no more decimals than the run's currency carries (at most 2); excess precision is refused, not rounded — place the rounding remainder on a line yourself
+- Total DR must equal total CR exactly (no tolerance)
 - At least one source line and one target line
 - All accounts must exist and be active
-- All amounts must be positive
+- Dimension codes and values must resolve for the entity (unknown dimensions are refused at `submit_lines`)
 - Run must be in `draft` or `calculated` status
+- `period_name`, when given, must be a fiscal period containing `run_date`; `run_date` is the accounting date the journal posts on
 
 **Source document validations (when `source_transaction_id` exists):**
-- Source-type lines must use accounts from the source transaction's GL lines (`transaction_lines.gl_account_number`)
-- Per-account: new allocation amount cannot exceed the remaining unallocated balance
-- A multi-line source transaction can have separate allocations per account line
+- The source must be posted and not reversed, voided or cancelled (checked at create, submit_lines and execute)
+- Capacity per account is what the source posted on the cost side (net debit; net credit for `revenue_allocation`). The offset side (cash, payables) is not allocatable
+- Source lines take the amount off that side: `CR` for cost, `DR` for revenue
+- All source lines for an account are summed; the sum cannot exceed what is left after other runs that are not voided or rejected. One cent left is allocatable; one cent over is not
+- Execute re-checks all of this; a source reversed after approval stops the posting, and the run is released with `reject` (calculated or approved, not posted)
+- A source with a posted allocation cannot be reversed or deleted until the allocation is voided; the allocation's own journal is reversed only by voiding the run (`transaction.reverse` on it is refused)
 
 ### Example: Fixed Percentage Split
 
