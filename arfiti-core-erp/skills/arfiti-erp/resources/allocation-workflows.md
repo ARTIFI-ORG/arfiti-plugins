@@ -282,9 +282,28 @@ submit(object_type="allocation_run", operation="create", data=JSON.stringify({
 
 ## Document Chain (Admin Dashboard)
 
-The generic MCP `get_entity` tool does not currently support `allocation_run`.
-Use the Admin allocation detail for the run and chain, and
-`get_entity(entity_type="transaction", id=...)` for the posted journal.
+Read runs through MCP (AR-1379). Runs need `accounting:read`, the run's entity and
+the source document's own read grant (a run made from a payroll document needs
+`payroll:read`); `transaction_type` on a run is the journal type it posts.
+The capacity report needs `accounting:read` or `reports:read`, the entity, and the
+same source grant:
+
+- `query("allocation_run", filters={"legal_entity_id": <id>, "source_transaction_id": <tx>})`
+  lists runs with status, source, posted journal (`transaction_id`) and reversal.
+- `get_entity("allocation_run", <run_id>, include_related=True)` adds the run's lines,
+  including each line's `metadata` and `source_reference` as submitted (run-level
+  `metadata` is not returned).
+- `generate_report("allocation_capacity", {"legal_entity_id": <id>, "source_transaction_id": <tx>})`
+  shows per account what the source posted (`original`), what runs hold
+  (`reserved`, each run with its status) and what is left (`available`), and
+  whether the source can be allocated at all (`eligible`). It is the same
+  calculation `submit_lines` enforces, but a preview: submission re-checks it.
+  Which runs hold the capacity (`reserved_by`) is shown only with `accounting:read`;
+  otherwise `run_detail_included` is false and only the amounts are returned.
+- After an unknown submission outcome, read the run back with these before
+  submitting again.
+
+Use `get_entity(entity_type="transaction", id=...)` for the posted journal.
 Do not present the Admin `getTransactionAllocations` API as an MCP tool.
 
 When an allocation links documents, the admin dashboard provides navigation:

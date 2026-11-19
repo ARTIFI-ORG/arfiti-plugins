@@ -315,6 +315,7 @@ Cost allocation analysis.
 | Report Type | Description | Required Params |
 |-------------|-------------|-----------------|
 | `allocation_waterfall` | Step-by-step allocation flow | `legal_entity_id`, `schedule_number` |
+| `allocation_capacity` | What a source document can still allocate, per account: `original`, `reserved` (each holding run and its status), `available` | `legal_entity_id`, `source_transaction_id` (optional `allocation_type`, default `cost_allocation`) |
 
 **Examples:**
 
@@ -324,6 +325,15 @@ generate_report("allocation_waterfall", {
     "legal_entity_id": 9,
     "schedule_number": "ALLOC-0007"
 })
+
+# What is left to allocate from a source document (AR-1379)
+generate_report("allocation_capacity", {
+    "legal_entity_id": 9,
+    "source_transaction_id": 4821
+})
+# -> data.eligible, data.ineligible_reason, data.accounts[]:
+#    {account_number, original, reserved, available, over_allocated, reserved_by[]}
+# Same calculation submit_lines enforces; a preview, not a reservation.
 ```
 
 ---
