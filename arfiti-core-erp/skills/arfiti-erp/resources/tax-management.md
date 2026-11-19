@@ -450,7 +450,10 @@ submit(object_type="tax_code_rate", operation="delete", data=JSON.stringify({
 
 #### Create Tax Authority
 
-Create a tax authority (government agency that collects taxes).
+Create a tax authority (government agency that collects taxes). The authority
+belongs to the caller's organisation; never send `organization_id`. Read the
+returned `tax_authority_id`: update, delete and jurisdictions name the authority
+by that id, not by its code.
 
 ```javascript
 submit(object_type="tax_authority", operation="create", data=JSON.stringify({
@@ -481,7 +484,7 @@ Update tax authority details.
 
 ```javascript
 submit(object_type="tax_authority", operation="update", data=JSON.stringify({
-    code: "CA-CDTFA",
+    tax_authority_id: 789,
     filing_frequency: "quarterly",
     contact_info: {
       phone: "800-400-7115",
@@ -499,7 +502,7 @@ Soft-delete tax authority.
 
 ```javascript
 submit(object_type="tax_authority", operation="delete", data=JSON.stringify({
-    code: "CA-CDTFA"
+    tax_authority_id: 789
 }))
 ```
 
@@ -559,7 +562,7 @@ Update jurisdiction details.
 
 ```javascript
 submit(object_type="tax_jurisdiction", operation="update", data=JSON.stringify({
-    code: "US-CA-LA",
+    jurisdiction_id: 101,
     name: "Los Angeles County (Updated)",
     zip_code_pattern: "90001-90899,91001-91899",
     metadata: {
@@ -575,7 +578,7 @@ Soft-delete jurisdiction.
 
 ```javascript
 submit(object_type="tax_jurisdiction", operation="delete", data=JSON.stringify({
-    code: "US-CA-LA"
+    jurisdiction_id: 101
 }))
 ```
 

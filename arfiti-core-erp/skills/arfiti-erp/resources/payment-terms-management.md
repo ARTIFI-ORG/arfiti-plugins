@@ -2,16 +2,16 @@
 
 ## Overview
 
-**Payment terms** define when invoices are due and whether early payment discounts apply. They are universal reference data used across all customers, vendors, and invoices to ensure consistent payment expectations and automated due date calculations.
+**Payment terms** define when invoices are due and whether early payment discounts apply. They are organisation-owned and used across customers, vendors and invoices for due dates and early-payment discounts.
 
 **Key Features:**
 - Standard payment term definitions (NET_30, NET_60, etc.)
 - Early payment discount support (e.g., 2% discount if paid within 10 days)
 - Automatic due date calculation
 - Cash flow management tools
-- Organization-wide consistency (no entity-specific variations)
+- Organisation-wide definitions; an entity overrides a term only when it needs a different value
 
-**Architecture**: Simple reference data table (no MSEO pattern) - same payment terms apply to all legal entities within an organization.
+**Architecture**: `master_payment_terms` (owned by the organisation) with optional per-entity overrides; read through `v_payment_terms_effective`, which `query("payment_term")` and `get_entity` use. A term created with `payment_term.create` is visible to every entity immediately.
 
 > **IMPORTANT — Schema Discovery Required**: Before calling `submit()` for payment term operations, you MUST first call `get_submissions(action='schema', object_type, operation)` to discover the exact required and optional fields. Each organization configures different field requirements. Never assume the fields listed below are complete — always check the schema first.
 
@@ -67,24 +67,7 @@
 
 ### Standard Pre-Seeded Payment Terms
 
-The system comes with 17 standard payment terms:
-
-**Immediate Terms:**
-- `DUE_ON_RECEIPT` (0 days)
-- `COD` (0 days)
-
-**Standard Net Terms:**
-- `NET_7`, `NET_14`, `NET_15`, `NET_30`, `NET_45`, `NET_60`, `NET_90`, `NET_120`, `NET_180`
-
-**Terms with Discounts:**
-- `NET_30_1_10` (1% discount within 10 days)
-- `NET_30_2_10` (2% discount within 10 days)
-- `NET_45_2_15` (2% discount within 15 days)
-- `NET_60_2_10` (2% discount within 10 days)
-
-**End of Month:**
-- `EOM` (30 days)
-- `EOM_30` (60 days)
+Onboarding seeds six terms in every new organisation: `DUE_ON_RECEIPT` (0 days), `NET_10`, `NET_15`, `NET_30`, `NET_60` and `NET_90`. Every other code shown here is a common example an organisation creates itself with `payment_term.create`; it is not seeded, so read the organisation's terms with `query("payment_term")` before naming one.
 
 ---
 
@@ -806,7 +789,7 @@ submit(object_type="payment_term", operation="create", data=JSON.stringify({
 
 ## Getting Reference Data
 
-Payment terms are universal reference data - use dynamic queries instead of hardcoded values.
+Payment terms differ by organisation - use dynamic queries instead of hardcoded values.
 
 **Dynamic Queries:**
 
@@ -825,7 +808,7 @@ query("payment_term", query="NET_30")
 query("payment_term", filters={"is_active": true}, sort_by="days_until_due", sort_order="asc")
 ```
 
-**Tip**: Always query payment terms dynamically rather than hardcoding values, as organizations may have custom terms beyond the standard 17 pre-seeded terms.
+**Tip**: Always query payment terms dynamically rather than hardcoding values, as organizations may have custom terms beyond the six seeded ones.
 
 ---
 
@@ -993,8 +976,8 @@ submit(object_type="payment_term", operation="create", data=JSON.stringify({
 
 ## Key Takeaways
 
-1. **Universal Reference Data**: Payment terms are organization-wide, not entity-specific (no MSEO pattern)
-2. **Pre-Seeded Terms**: System comes with 17 standard payment terms covering most business needs
+1. **Organisation-owned**: One master per term, read per entity through the effective view
+2. **Seeded Terms**: Six terms are seeded (`DUE_ON_RECEIPT`, `NET_10/15/30/60/90`); any other term is created by the organisation
 3. **All Writes Use Workflows**: `payment_term.create`, `payment_term.update`, `payment_term.deactivate`
 4. **Early Payment Discounts**: Powerful tool for improving cash flow (e.g., NET_30_2_10)
 5. **Soft Delete Only**: Deactivated terms preserved for historical records and audit trail
