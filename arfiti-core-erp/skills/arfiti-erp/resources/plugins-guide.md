@@ -4,7 +4,7 @@ Arfiti ERP has a plugin system that extends the base skill with specialized, dom
 
 ## Plugins vs. Base Skill
 
-You can accomplish most ERP tasks using just the base skill and its 37 resource guides. Plugins are an **optional enhancement** that provide deeper, step-by-step workflows for specific domains.
+You can accomplish most ERP tasks using just the base skill and its resource guides. Plugins are an **optional enhancement** that provide deeper, step-by-step workflows for specific domains.
 
 | Aspect | Base Skill | Plugin |
 |--------|-----------|--------|
@@ -34,9 +34,11 @@ Plugins are published to the public marketplace:
 - **Claude (web, Desktop, Cowork):** Customize > Plugins > Add > Add marketplace, enter `arfiti-technologies/arfiti-plugins`, then install each plugin you need.
 - **Claude Code:** `/plugin marketplace add arfiti-technologies/arfiti-plugins`, then `/plugin install <plugin>@arfiti-plugins`.
 
-Adding the marketplace installs nothing: each plugin is installed separately. Start with `arfiti-core-erp` (this guide), then add the country and domain plugins the organisation needs. The admin dashboard's Plugins page (Administration > Plugins) lists the published catalogue; it is the same for every organisation.
+Adding the marketplace installs nothing: each plugin is installed separately. Start with `arfiti-core-erp` (the operating skill this guide belongs to), then add the country and domain plugins the organisation needs. The admin dashboard's Plugins page (Administration > Plugins) lists the published catalogue; it is the same for every organisation.
 
 **Nothing in the ERP knows which plugins a user has installed in Claude.** Onboarding does not install plugins, and there is no tool that lists them. To know whether a plugin is available in this conversation, look at the skills and commands you have; if one is missing, tell the user how to install it.
+
+**This guide is also served by the connector.** `get_guidance(topic="plugins")` returns it, and a broad topic such as `get_guidance(topic="reporting")` starts with a short list of the plugins that cover that domain. Country plugins are listed only for an organisation that has an entity in that country.
 
 ## Customising
 
@@ -53,7 +55,7 @@ These work with any chart of accounts and any country.
 
 **When to recommend:** User asks for formatted financial statements, comparative reports, or dimension-based analysis. While the base skill can run `generate_report()` for raw data, this plugin produces polished, presentation-ready reports with proper formatting, notes, and comparatives.
 
-**Commands:** `/balance-sheet`, `/profit-and-loss`, `/cash-flow`, `/trial-balance`, `/aged-receivables`, `/aged-payables`, `/dimension-analysis`
+**Commands:** `/balance-sheet`, `/profit-and-loss`, `/cash-flow`, `/trial-balance`, `/aged-receivables`, `/aged-payables`, `/dimension-analysis`, `/financial-summary`
 
 ---
 
@@ -91,6 +93,15 @@ These work with any chart of accounts and any country.
 
 ---
 
+#### Agent Procedures (`arfiti-core-agent-procedures`)
+**Purpose:** The procedures Arfiti's own agents follow (bills, bank and card lines, reconciliation, parties, configuration, expenses, period close, billing usage), published so the user's own Claude, Cowork or agent can do the same work the same way through the connector.
+
+**When to recommend:** The user wants to process bills, bank or card lines, or run a close themselves in a conversation, or is building their own agent and wants it to follow the same steps as the built-in ones.
+
+**Commands:** none; it is a set of skills Claude loads when the task matches.
+
+---
+
 #### Country Setup (`arfiti-core-country-setup`)
 **Purpose:** Generates country-specific tax and payroll configuration templates. Researches a country's tax system (VAT/GST rates, authorities, withholding taxes) and payroll rules to produce structured JSON templates.
 
@@ -100,11 +111,11 @@ These work with any chart of accounts and any country.
 
 ---
 
-### Estonia-Specific Plugins
+### Estonia Country Pack (`arfiti-ee-country-pack`)
 
-These are designed for Estonian companies (OÜ/AS) and handle Estonian compliance requirements.
+One plugin for Estonian companies (OÜ/AS). It holds four skills, each loaded only when the task matches; install it once for an organisation with an Estonian entity. A country pack is named `arfiti-<country code>-country-pack`.
 
-#### Year-End Bookkeeping (`arfiti-ee-year-end-bookkeeping`)
+#### Year-End Bookkeeping (skill `year-end-bookkeeping`)
 **Purpose:** Builds a complete year's accounting from scratch for an Estonian company. Covers chart of accounts setup, opening balances, bank statement processing (month by month), source document posting, reconciliation, and period close.
 
 **When to recommend:** Estonian company needs to build accounting for a full fiscal year — common for new clients of accounting firms, companies switching accountants, or businesses that haven't kept proper books. This is a 5-phase guided workflow with 10 mandatory checkpoints.
@@ -113,16 +124,16 @@ These are designed for Estonian companies (OÜ/AS) and handle Estonian complianc
 
 ---
 
-#### Annual Report (`arfiti-ee-annual-report`)
+#### Annual Report (skill `estonian-annual-report`)
 **Purpose:** Prepares the Estonian annual report (majandusaasta aruanne) for filing at ariregister.rik.ee. Generates financial statements, notes, management report, and XBRL files.
 
-**When to recommend:** Estonian entity has completed year-end close and needs to prepare the annual report for the Estonian Business Register. Typically follows the year-end-bookkeeping plugin.
+**When to recommend:** Estonian entity has completed year-end close and needs to prepare the annual report for the Estonian Business Register. Typically follows the year-end bookkeeping skill.
 
 **Commands:** `/prepare-annual-report`, `/check-prerequisites`, `/generate-xbrl-file`, `/generate-xbrl-mapping`
 
 ---
 
-#### VAT Declaration (`arfiti-ee-vat-declaration`)
+#### VAT Declaration (skill `estonian-vat-declaration`)
 **Purpose:** Prepares the monthly Estonian VAT declaration (KMD) for EMTA filing, including KMD INF annex and EC Sales List (Form VD).
 
 **When to recommend:** Estonian VAT-registered company needs to file their monthly KMD. Generates the XML files for upload to e-MTA.
@@ -131,7 +142,7 @@ These are designed for Estonian companies (OÜ/AS) and handle Estonian complianc
 
 ---
 
-#### Payroll Calculator (`arfiti-ee-payroll-calculator`)
+#### Payroll Calculator (skill `estonian-payroll`)
 **Purpose:** Calculates Estonian payroll (gross-to-net) with all mandatory deductions: income tax, social tax, unemployment insurance, funded pension. Also generates TSD (monthly tax declaration) XML for EMTA.
 
 **When to recommend:** Estonian company needs to run payroll — calculate net pay from gross, determine employer costs, and generate the TSD declaration.

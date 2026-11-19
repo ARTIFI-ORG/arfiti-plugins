@@ -1,0 +1,9 @@
+{
+  "name": "arfiti-ee-country-pack",
+  "description": "Estonia country pack for the Arfiti ERP: the monthly VAT return (KMD2 CSV and XSD-validated XML with the KMD INF annex, pre-close validation gate, EC Sales List), gross-to-net payroll with the TSD declaration, the annual report with XBRL for the e-Business Register, and a guided build of a full year's books.",
+  "version": "1.0.0",
+  "license": "MIT",
+  "author": {
+    "name": "Arfiti"
+  }
+}

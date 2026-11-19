@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "arfiti": {
-      "type": "http",
-      "url": "https://mcp.arfiti.com/streamable/mcp"
-    }
-  }
-}

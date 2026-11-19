@@ -49,55 +49,24 @@
       ]
     },
     {
-      "name": "arfiti-ee-annual-report",
-      "source": "./arfiti-ee-annual-report",
-      "description": "Estonian Annual Report (majandusaasta aruanne) preparation for the e-Business Register. Financial statements, notes, management report, and XBRL filing.",
-      "version": "2.0.0",
+      "name": "arfiti-ee-country-pack",
+      "source": "./arfiti-ee-country-pack",
+      "description": "Estonia country pack: VAT return (KMD) and EC Sales List, payroll and TSD, annual report with XBRL, and year-end bookkeeping.",
+      "version": "1.0.0",
       "category": "compliance",
       "keywords": [
         "estonia",
         "annual-report",
         "xbrl",
         "ariregister",
-        "majandusaasta-aruanne"
-      ]
-    },
-    {
-      "name": "arfiti-ee-payroll-calculator",
-      "source": "./arfiti-ee-payroll-calculator",
-      "description": "Estonian payroll calculator. Income tax, social tax, unemployment insurance, funded pension, and TSD declaration generation for EMTA.",
-      "version": "2.0.0",
-      "category": "compliance",
-      "keywords": [
-        "estonia",
+        "majandusaasta-aruanne",
         "payroll",
         "tsd",
         "emta",
-        "social-tax"
-      ]
-    },
-    {
-      "name": "arfiti-ee-vat-declaration",
-      "source": "./arfiti-ee-vat-declaration",
-      "description": "Estonian VAT return (KMD) in the official KMD2 format: pre-close validation gate, KMD2 machine CSV + XSD-validated XML with KMD INF annex, file→lock workflow, and EC Sales List (Form VD) preparation.",
-      "version": "3.1.6",
-      "category": "compliance",
-      "keywords": [
-        "estonia",
+        "social-tax",
         "vat",
         "kmd",
-        "emta",
-        "ec-sales-list"
-      ]
-    },
-    {
-      "name": "arfiti-ee-year-end-bookkeeping",
-      "source": "./arfiti-ee-year-end-bookkeeping",
-      "description": "Full year-end bookkeeping for Estonian companies. Chart of accounts setup, opening balances, bank statement processing, reconciliation, and period close.",
-      "version": "2.0.0",
-      "category": "compliance",
-      "keywords": [
-        "estonia",
+        "ec-sales-list",
         "year-end",
         "bookkeeping",
         "reconciliation",
@@ -153,7 +122,7 @@
       "name": "arfiti-core-erp",
       "source": "./arfiti-core-erp",
       "description": "Core operating skill for the Arfiti ERP: post, query, report and run workflows through the Arfiti MCP connector, with a domain guide for each area of the ledger.",
-      "version": "2.0.81",
+      "version": "2.0.82",
       "category": "accounting",
       "keywords": [
         "erp",

@@ -10,12 +10,12 @@ This guide explains how to manage payroll in the AI-Native ERP system, including
 
 The payroll system supports multi-country payroll processing with a **plugin-based calculation architecture**:
 - The ERP backend is **country-agnostic** — it stores data and receives pre-calculated results
-- Country-specific tax calculation logic lives in **Cowork plugins** (e.g., `arfiti-ee-payroll-calculator`)
+- Country-specific tax calculation logic lives in **Cowork plugins** (e.g., `arfiti-ee-country-pack`)
 - Claude.ai reads employee data via MCP tools, calculates payroll using plugin formulas, and submits results via `submit_calculation`
 - Employees are paid directly via `employee_bank_accounts` (not through vendor mappings)
 
 **Supported Countries (via Plugins):**
-- **Estonia**: `arfiti-ee-payroll-calculator` plugin — Income tax (22%), Social tax (33%), Unemployment, Funded pension
+- **Estonia**: `arfiti-ee-country-pack` plugin — Income tax (22%), Social tax (33%), Unemployment, Funded pension
 - Additional countries can be added by creating new plugins without any backend code changes
 
 **What you can do:**
@@ -582,7 +582,7 @@ Before creating vendor config, ensure:
 
 3. **Employee bank accounts exist** — Each employee needs a bank account in `employee_bank_accounts` for net pay batch lines.
 
-The exact accounts, vendors and configuration per country are in that country's payroll plugin where one is published (Estonia: `arfiti-ee-payroll-calculator`); otherwise they are the organisation's own setup, kept in a skill of its own.
+The exact accounts, vendors and configuration per country are in that country's payroll plugin where one is published (Estonia: `arfiti-ee-country-pack`); otherwise they are the organisation's own setup, kept in a skill of its own.
 
 ### Create Vendor Config
 

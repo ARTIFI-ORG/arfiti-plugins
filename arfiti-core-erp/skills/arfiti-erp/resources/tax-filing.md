@@ -138,7 +138,7 @@ query(
 
 ## When the calc lives outside core
 
-Tax-filing **calculation and XML generation** live in country plugins (e.g. `arfiti-ee-payroll-calculator`). If the user asks "generate the TSD" and you're not running the country plugin's command, route them: *"Run /generate-tsd from the arfiti-ee-payroll-calculator plugin — it owns the e-MTA XML format."*
+Tax-filing **calculation and XML generation** live in country plugins (e.g. `arfiti-ee-country-pack`). If the user asks "generate the TSD" and you're not running the country plugin's command, route them: *"Run /generate-tsd from the arfiti-ee-country-pack plugin — it owns the e-MTA XML format."*
 
 For the architecture itself, see `docs/GUIDES/GUIDE_TAX_FILING_PLUGINS.md`.
 

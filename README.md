@@ -20,12 +20,14 @@ Universal plugins that work with any chart of accounts and any country.
 
 ### Estonia (EE)
 
-| Plugin | What it does | Commands |
+One plugin, [arfiti-ee-country-pack](./arfiti-ee-country-pack), with four skills. A country pack is one plugin per country, named `arfiti-<country code>-country-pack`.
+
+| Area | What it does | Commands |
 |--------|-------------|----------|
-| [arfiti-ee-year-end-bookkeeping](./arfiti-ee-year-end-bookkeeping) | Builds a full year's accounting from scratch for Estonian companies (OÜ/AS). Guides through chart of accounts setup, opening balances, bank statement processing (month by month), source document posting, reconciliation, and period close — preparing the entity for annual report filing. | `/setup-entity` `/upload-opening-balance` `/process-bank-statements` `/fill-gaps` `/reconcile-and-close` `/check-progress` |
-| [arfiti-ee-annual-report](./arfiti-ee-annual-report) | Prepares the full annual report (balance sheet, income statement, notes, management report) and generates XBRL for e-Business Register filing. Uses the et-gaap-2026 taxonomy. | `/prepare-annual-report` `/check-prerequisites` `/generate-xbrl-file` |
-| [arfiti-ee-payroll-calculator](./arfiti-ee-payroll-calculator) | Calculates gross-to-net payroll with Estonian tax formulas (social tax, income tax, unemployment insurance, funded pension) and generates TSD declarations for EMTA. | `/calculate-payroll` `/generate-tsd` |
-| [arfiti-ee-vat-declaration](./arfiti-ee-vat-declaration) | Prepares & validates VAT returns (KMD2 machine CSV + XML) and KMD INF annexes. Runs a pre-close validation gate, then generates. The EC Sales List (Form VD) is a separate filing. Dynamically discovers tax codes and maps to KMD lines. | `/prepare-vat-declaration` (add `validate` to run the gate only) `/prepare-ec-sales-list` |
+| Year-end bookkeeping | Builds a full year's accounting from scratch for Estonian companies (OÜ/AS). Guides through chart of accounts setup, opening balances, bank statement processing (month by month), source document posting, reconciliation, and period close — preparing the entity for annual report filing. | `/setup-entity` `/upload-opening-balance` `/process-bank-statements` `/fill-gaps` `/reconcile-and-close` `/check-progress` |
+| Annual report | Prepares the full annual report (balance sheet, income statement, notes, management report) and generates XBRL for e-Business Register filing. Uses the et-gaap-2026 taxonomy. | `/prepare-annual-report` `/check-prerequisites` `/generate-xbrl-file` |
+| Payroll and TSD | Calculates gross-to-net payroll with Estonian tax formulas (social tax, income tax, unemployment insurance, funded pension) and generates TSD declarations for EMTA. | `/calculate-payroll` `/generate-tsd` |
+| VAT return | Prepares & validates VAT returns (KMD2 machine CSV + XML) and KMD INF annexes. Runs a pre-close validation gate, then generates. The EC Sales List (Form VD) is a separate filing. Dynamically discovers tax codes and maps to KMD lines. | `/prepare-vat-declaration` (add `validate` to run the gate only) `/prepare-ec-sales-list` |
 
 More countries coming soon.
 

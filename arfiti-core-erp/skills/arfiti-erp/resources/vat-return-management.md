@@ -203,7 +203,7 @@ The `tax_return.create` operation is generic. Each jurisdiction's plugin fills i
 
 | Jurisdiction | Plugin | Form | return_data Contains |
 |---|---|---|---|
-| Estonia | `arfiti-ee-vat-declaration` | KMD (13 lines) | kmd_lines, kmd_inf, vd_entries, validation_results |
+| Estonia | `arfiti-ee-country-pack` | KMD (13 lines) | kmd_lines, kmd_inf, vd_entries, validation_results |
 | UK | `vat_uk` agent | VAT100 (9 boxes) | vat_boxes, adjustments, fuel_scale_charges |
 | US | Core tools | State-specific | gross_sales, exempt_sales, taxable_sales, tax_collected |
 | EU (generic) | `eu_vat_returns.py` | Country-specific | output_vat_categories, input_vat, reverse_charge |

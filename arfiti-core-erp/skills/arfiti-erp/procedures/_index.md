@@ -18,5 +18,5 @@ practice: keep it in a skill of its own beside the plugins.
 |------|-------|
 | Close a period, reopen it, read close evidence | [Financial Period Management](../resources/financial-period-management.md) |
 | Bank and payment reconciliation | [Bank Statements](../resources/bank-statements-management.md), [Reconciliation](../resources/reconciliation-management.md) |
-| Tax returns and filings | [Tax Filing](../resources/tax-filing.md) and the country plugin where one is published (Estonia: `arfiti-ee-vat-declaration`, `arfiti-ee-payroll-calculator`, `arfiti-ee-annual-report`, `arfiti-ee-year-end-bookkeeping`) |
+| Tax returns and filings | [Tax Filing](../resources/tax-filing.md) and the country plugin where one is published (Estonia: `arfiti-ee-country-pack`) |
 | Migration from another system | The `arfiti-core-implementation-consultant` plugin |
