@@ -1,13 +1,11 @@
 ---
 name: dimension-analysis
-description: Generate a P&L breakdown by dimension (department, project, cost center) with profitability ranking. Uses format_dimension_analysis.py for deterministic output.
+description: Present a P&L by department, project or other dimension: one server income statement per dimension value, an untagged column and the entity total, without adding the columns up. Uses format_dimension_analysis.py.
 ---
 
-# Dimension Analysis
+# P&L by Dimension
 
-Analyze profitability by department, project, cost center, or any custom dimension.
-
-**How it works:** This command fetches dimension-level P&L data via the MCP tool, builds a compact JSON, and runs `scripts/format_dimension_analysis.py` — a Python script that produces a consistently formatted P&L matrix with profitability ranking, budget variance, and recommendations.
+Builds a P&L table by dimension value from the server's own income statement, requested once per value with a dimension selection. The server classifies every line by subtype, so revenue, cost of sales and expenses are real statement sections.
 
 ## Usage
 
@@ -15,108 +13,51 @@ Analyze profitability by department, project, cost center, or any custom dimensi
 /arfiti-core-financial-reports:dimension-analysis
 ```
 
-## Prerequisites
+Requires Python 3.9+ (`python3 --version`) when a formatter runs.
 
-- Transactions must have dimension tags for meaningful analysis
-- Python 3.9+ available (`python3 --version`)
+## Rules
 
-## Step 1: Discover Dimensions
+- Add `"report_contract": 1` to every `generate_report` call and save the result **unchanged** as JSON. Never retype amounts, re-classify accounts, sum rows into totals or round them.
+- A `null` amount is **Unavailable**, never zero. Show every evidence gap, warnings included.
+- If the result is `success: false`, show its message (for example `REPORT_SCOPE_FORBIDDEN`: the user has no access to that entity) and stop.
+- If the formatter exits with code 2, show its reason and fix the request; do not work around it.
 
-Ask for the legal entity and date range, then discover available dimensions:
-
-```
-query("dimension_value", filters={"legal_entity_id": ID})
-```
-
-Present options and let the user choose which dimension to analyze.
-
-## Step 2: Collect Data
+## Step 1: Choose the dimension
 
 ```
-generate_report("dimension_analysis", {
-    "legal_entity_id": ID,
-    "start_date": "YYYY-MM-DD",
-    "end_date": "YYYY-MM-DD",
-    "dimension_type": "department"
-})
+query("dimension_type")
+query("dimension_value", filters={"legal_entity_id": ID, "dimension_type_id": TYPE_ID})
 ```
 
-If budget data exists:
+`dimension_value` returns a flat list. Use each value's `master_dimension_value_id`. Inactive values are valid for past periods. A parent value includes its children.
+
+## Step 2: Fetch one income statement per value
+
+For each chosen value:
+
 ```
-generate_report("variance_summary", {"legal_entity_id": ID, "start_date": "...", "end_date": "..."})
+generate_report("income_statement", {"legal_entity_id": ID, "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "report_contract": 1,
+  "dimension_filter": {"conditions": [{"dimension_type_id": TYPE_ID, "operator": "is_any_of", "value_ids": [VALUE_ID]}], "connectors": []}})
 ```
 
-## Step 3: Build Input JSON
+Also fetch the untagged lines (`"operator": "is_empty", "value_ids": []`) and the entity total (the same call without `dimension_filter`). Use the same period for every call.
 
-See `scripts/input_schema_dimension.json` for the full schema.
+## Step 3: Build the input and format
 
 ```json
-{
-  "entity_name": "Company Name",
-  "start_date": "YYYY-MM-DD",
-  "end_date": "YYYY-MM-DD",
-  "currency": "EUR",
-  "dimension_type": "Department",
-  "unallocated_amount": 12500.00,
-  "dimensions": [
-    {
-      "name": "Sales",
-      "revenue": 380000.00,
-      "direct_costs": 95000.00,
-      "operating_expenses": 38000.00,
-      "prior": {"contribution": 198000.00},
-      "budget": {"contribution": 230000.00}
-    }
-  ]
-}
+{"dimension_type": "Department",
+ "columns": [{"label": "Sales", "report": <result>}, {"label": "Untagged", "report": <result>}],
+ "entity_total": <result>}
 ```
-
-Write to: `/tmp/dimension_{ENTITY_ID}_{TYPE}_{DATE}.json`
-
-## Step 4: Run the Formatter
 
 ```bash
-python3 format_dimension_analysis.py --input /tmp/dimension_{ENTITY_ID}_{TYPE}_{DATE}.json --output /tmp/dimension_report.md
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/format_dimension_analysis.py" --input /tmp/dimension_{ENTITY_ID}_{TYPE}.json --output /tmp/dimension_report.md --entity-name "ENTITY NAME"
 ```
 
-The script produces:
-- **P&L matrix**: Revenue, direct costs, gross profit, operating expenses, contribution per dimension
-- **Margin percentages**: Gross margin and contribution margin per dimension
-- **Profitability ranking**: Dimensions ranked by contribution with health status
-- **Unallocated warning**: Flags if >20% of transactions lack dimension tags
-- **Period comparison** (if prior data): changes with variance flags
-- **Budget variance** (if budget data): actual vs budget with favorable/unfavorable status
-- **Recommendations**: Actionable items for underperforming dimensions
+Example input: `scripts/examples/dimension_analysis.json`.
 
-## Step 5: Present Results
+## Present
 
-Read and present the generated markdown report.
+Show the generated markdown. Each column is a separate selection: a line can carry several values and a parent includes its children, so the columns can overlap. They are not an allocation and are not summed. Compare each column with the entity total, not with a sum of columns.
 
-## Example Output
-
-```markdown
-# Dimension Analysis
-**Acme Corp OÜ** | 2026-01-01 to 2026-03-31 | By: Department | Currency: EUR
-
-## P&L by Department
-
-| | Sales | Marketing | Engineering | Operations | **Total** |
-|---|---|---|---|---|---|
-| Revenue | 380,000.00 | 50,000.00 | — | 20,000.00 | **450,000.00** |
-| Direct costs | (95,000.00) | (15,000.00) | — | (45,000.00) | **(155,000.00)** |
-| **Contribution** | 247,000.00 | -7,000.00 | -120,000.00 | -57,000.00 | **63,000.00** |
-
-## Profitability Ranking
-
-| Rank | Department | Contribution | Margin | Status |
-|------|---|---|---|---|
-| 1 | Sales | 247,000.00 | 65.0% | Healthy |
-| 2 | Marketing | -7,000.00 | -14.0% | Below breakeven |
-
-## Recommendations
-
-- **Marketing**: Negative contribution (-7,000.00). Review pricing or cost structure.
-- **Unallocated**: 12,500.00 untagged. Assign department tags for accuracy.
-```
-
-Use the identity and reconciliation rules in `skills/financial-reports/references/dimension-reporting.md`. Preserve unassigned groups and surface unresolved mappings. Show the currency and period basis of any budget comparison.
+For a budget comparison by dimension, use `generate_report("budget_actual", {"legal_entity_id": ID, "budget_version_id": VERSION, "report_contract": 1, "dimension_filter": {...}})`. Find the version first: `variance_summary` and `budget_actual` both need `budget_version_id`.

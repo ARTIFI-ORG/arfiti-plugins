@@ -1,13 +1,11 @@
 ---
 name: cash-flow
-description: Generate a Cash Flow Statement using the indirect method, with balance sheet reconciliation and cash quality analysis.
+description: Present the server's cash flow statement with its opening-to-closing cash bridge and reconciliation verdict. No formatter; the server's rows and totals are shown as returned.
 ---
 
 # Cash Flow Statement
 
-Generate a cash flow statement for a legal entity using the indirect method.
-
-**How it works:** This command fetches cash flow, balance sheet, and P&L data via MCP tools. The SKILL.md workflow guides the indirect method calculation, and the output follows the format in **references/cash-flow-indirect-method.md**.
+Presents the server's cash flow statement for a period. The server classifies every movement by account subtype and proves the bridge from opening to closing cash.
 
 ## Usage
 
@@ -15,104 +13,36 @@ Generate a cash flow statement for a legal entity using the indirect method.
 /arfiti-core-financial-reports:cash-flow
 ```
 
-## Prerequisites
+Requires Python 3.9+ (`python3 --version`) when a formatter runs.
 
-- All transactions for the period must be posted
-- Both current and prior period balance sheets must be available (for working capital changes)
+## Rules
 
-## Step 1: Collect Data
+- Add `"report_contract": 1` to every `generate_report` call and save the result **unchanged** as JSON. Never retype amounts, re-classify accounts, sum rows into totals or round them.
+- A `null` amount is **Unavailable**, never zero. Show every evidence gap, warnings included.
+- If the result is `success: false`, show its message (for example `REPORT_SCOPE_FORBIDDEN`: the user has no access to that entity) and stop.
+- If the formatter exits with code 2, show its reason and fix the request; do not work around it.
 
-Ask for the legal entity and date range, then fetch:
+## Step 1: Fetch
 
 ```
-# Cash flow report (if available)
-generate_report("cash_flow_statement", {"legal_entity_id": ID, "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD"})
-
-# Current and prior balance sheets (for working capital changes)
-generate_report("balance_sheet", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-DD"})
-generate_report("balance_sheet", {"legal_entity_id": ID, "as_of_date": "PRIOR-YYYY-MM-DD"})
-
-# Income statement (for net profit starting point)
-generate_report("income_statement", {"legal_entity_id": ID, "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD"})
+generate_report("cash_flow_statement", {"legal_entity_id": ID, "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "report_contract": 1})
 ```
 
-## Step 2: Build the Cash Flow
+The method defaults to indirect; pass `"method": "direct"` if asked. Cash flow has no comparison mode: for a prior period, make a second call.
 
-Follow the indirect method structure from **references/cash-flow-indirect-method.md**:
+## Step 2: Build the statement from the result
 
-**A. Operating Activities:**
-- Start with net profit
-- Add back depreciation, amortization, impairment
-- Remove gains/losses on asset disposal
-- Adjust for working capital changes (receivables, inventory, payables)
+- Header: entity, `dates.effective` (and `dates.requested` if different), `currency.code`, `details.method`.
+- Quality and every gap from `quality.evidence_gaps`; partial delivery from `coverage`.
+- Rows: group by `section` (operating, investing, financing) in the server's order. Show `row_kind: "line"` rows with `movement_label` and `amount`; account rows (`row_kind: "account"`) are detail under their `parent_row_id`.
+- Totals: the server's `opening_cash`, `operating`, `investing`, `financing`, `fx_effect_on_cash`, `other_cash_balance_adjustments`, `net_cash_flow`, `closing_cash`.
+- Verdict: `details.reconciliation.status` (`tied`, `difference` with its amount, or `unavailable`) and `details.bridge.status`.
+- List `details.unresolved_movements` and `details.non_cash_movements` if present.
 
-**B. Investing Activities:**
-- PP&E purchases and disposals
-- Investment purchases and sales
+Format amounts with `currency.decimal_places`; show a `null` as Unavailable.
 
-**C. Financing Activities:**
-- Loan proceeds and repayments
-- Equity transactions
-- Dividends paid
+## Present
 
-## Step 3: Validate
+Present the bridge as opening cash + operating + investing + financing + FX effect + other balance adjustments = closing cash, with the server's verdict. Don't recompute cash flow from balance sheet differences; if the user wants a cross-check, closing cash equals the balance sheet's cash accounts only for an unfiltered report.
 
-**Mandatory check:** Net change in cash (A + B + C) must equal closing cash minus opening cash on the balance sheet.
-
-If it doesn't reconcile:
-- Check for FX translation differences
-- Verify all non-cash items are properly adjusted
-- Look for reclassifications between periods
-
-## Step 4: Present Results
-
-Present the cash flow statement in the standard three-section format with:
-- Operating, investing, and financing activities with line items
-- Net change in cash
-- Opening and closing cash reconciliation
-- Free cash flow (Operating CF - Capex)
-- Commentary on cash generation quality (operating CF vs net income)
-
-## Output Format
-
-```markdown
-# Cash Flow Statement
-**Acme Corp OÜ** | 2026-01-01 to 2026-03-31 | Currency: EUR
-
-## A. Operating Activities
-
-| | Amount |
-|---|--------|
-| Net profit | 58,000.00 |
-| Depreciation and amortization | 12,000.00 |
-| Change in receivables | (13,000.00) |
-| Change in inventory | 7,000.00 |
-| Change in payables | 8,000.00 |
-| **Net cash from operating** | **72,000.00** |
-
-## B. Investing Activities
-
-| | Amount |
-|---|--------|
-| Purchase of PP&E | (15,000.00) |
-| Other investments | (3,000.00) |
-| **Net cash from investing** | **(18,000.00)** |
-
-## C. Financing Activities
-
-| | Amount |
-|---|--------|
-| Loan repayments | (25,000.00) |
-| **Net cash from financing** | **(25,000.00)** |
-
-## Summary
-
-| | Amount |
-|---|--------|
-| Net change in cash | 29,000.00 |
-| Opening cash | 96,000.00 |
-| **Closing cash** | **125,000.00** |
-| Free Cash Flow | 57,000.00 |
-
-Validation: Closing cash matches balance sheet ✓
-```
+Comment on operating cash flow against net income (from the same period's income statement) as analysis, not as a universal "healthy" rule.

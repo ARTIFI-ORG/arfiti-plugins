@@ -1,141 +1,25 @@
-# Aging Analysis — Receivables & Payables
+# Aging Analysis
 
-Reference guide for the `/aged-receivables` and `/aged-payables` commands.
+## What the server returns
 
-## Standard Aging Buckets
+`generate_report("ar_aging" | "ap_aging", {"legal_entity_id": ID, "as_of_date": ..., "report_contract": 1})`:
 
-| Bucket | Days Past Due | Severity |
-|--------|--------------|----------|
-| Current | Not yet due | Normal |
-| 1-30 days | 1 to 30 days past due | Monitor |
-| 31-60 days | 31 to 60 days past due | Action needed |
-| 61-90 days | 61 to 90 days past due | Escalate |
-| 90+ days | Over 90 days past due | Urgent |
+- `rows`: one row per party with `current`, `days_1_30`, `days_31_60`, `days_61_90`, `days_over_90` and `total`. The party with no id on its documents has `party_id: null`.
+- `totals`: the same buckets plus `overdue`, all four past-due buckets summed by the server.
+- `details.certified` and `details.control_tie_out`: whether the open documents agree with the control account. `details.documents`: the open documents with due dates and balances.
 
-## AR Aging: Collection Priority Framework
+Amounts are signed as booked against the control account. A party whose balance has the opposite sign to a non-zero total is a credit or unapplied amount; it stays visible in its bucket. When the total nets to zero or is unavailable, no sign tells credits apart: review the negative and positive balances as two groups. Values are in functional currency; the document currency is separate.
 
-### Priority 1 — Urgent (90+ days overdue)
+## Overdue
 
-**Action:** Immediate personal contact, escalation to management, consider collection agency or legal action.
+Overdue means more than 0 days past due: every amount in 1–30, 31–60, 61–90 and 90+. Current means not yet due. An amount 1–30 days past due is overdue, not "current".
 
-**Indicators:**
-- Outstanding > 90 days
-- Large balance (top 20% by amount)
-- No recent payment activity
-- No documented dispute
+## Days outstanding
 
-**Recommended steps:**
-1. Verify invoice was received and is not disputed
-2. Direct phone call to customer's AP contact
-3. Send formal demand letter with payment deadline
-4. Escalate internally — involve sales relationship owner
-5. If no response within 14 days, evaluate collection agency or write-off
+DSO = closing AR ÷ revenue × days in the revenue period. DPO = closing AP ÷ cost of sales × days in the period. Use an income statement whose period ends on the aging date, and its actual length. This is an approximation on the closing balance, not an average.
 
-### Priority 2 — Action Needed (61-90 days overdue)
+## Follow-up and payments: firm policy
 
-**Action:** Formal written reminder, phone follow-up.
+Which step follows which bucket (reminder, call, escalation), when to pay a supplier, and which thresholds matter are the firm's or client's policy, not product rules. The plugin's example wording lives in `scripts/ratio_policy.json` (`receivable_follow_up`) and is labelled as an example. Present suggestions; this plugin sends no reminders and schedules no payments.
 
-**Recommended steps:**
-1. Send second reminder with invoice copies attached
-2. Phone call to confirm receipt
-3. Request specific payment date commitment
-4. Flag in CRM / note customer file
-
-### Priority 3 — Monitor (31-60 days overdue)
-
-**Action:** Automated or soft reminder.
-
-**Recommended steps:**
-1. Send friendly payment reminder email
-2. Check if invoice is in customer's payment queue
-3. Verify no disputes pending
-
-### Priority 4 — Current (not yet due)
-
-**Action:** No immediate action. Monitor for approaching due dates.
-
-## AP Aging: Payment Scheduling Framework
-
-### Overdue Items
-
-**Action:** Pay immediately unless there is a documented dispute.
-
-**Considerations:**
-- Late payment may trigger late fees
-- Vendor relationship damage
-- Credit terms may be revoked
-- Supply disruption risk
-
-### Due Within 7 Days
-
-**Action:** Include in next payment run.
-
-### Due Within 30 Days
-
-**Action:** Schedule for standard payment cycle.
-
-**Optimization:**
-- Check for early payment discounts (e.g., 2/10 NET 30 — 2% discount if paid in 10 days)
-- Calculate annualized return of early payment: `Discount% / (1 - Discount%) × 365 / (Full Terms - Discount Days)`
-- Example: 2/10 NET 30 = 2/98 × 365/20 = **37.2% annualized return** — almost always worth taking
-
-### Not Yet Due (>30 days)
-
-**Action:** No immediate action. Monitor cash forecast.
-
-## Key Metrics
-
-### AR Metrics
-
-| Metric | Formula | Target |
-|--------|---------|--------|
-| DSO (Days Sales Outstanding) | (AR Balance / Annual Revenue) × 365 | < Payment terms average |
-| Overdue % | Overdue AR / Total AR × 100 | < 20% |
-| Concentration Risk | Top 5 customers AR / Total AR × 100 | < 40% |
-| Collection Effectiveness Index | (Beginning AR + Revenue - Ending AR) / (Beginning AR + Revenue) × 100 | > 80% |
-
-### AP Metrics
-
-| Metric | Formula | Target |
-|--------|---------|--------|
-| DPO (Days Payable Outstanding) | (AP Balance / Annual COGS) × 365 | Within payment terms |
-| Overdue % | Overdue AP / Total AP × 100 | < 5% |
-| Cash Coverage | Cash Balance / Total AP × 100 | > 100% |
-| Upcoming 7-day obligations | Sum of AP due within 7 days | Compare to available cash |
-
-## Presentation Format
-
-### AR Aging Table
-
-```
-AGED RECEIVABLES as of YYYY-MM-DD
-═══════════════════════════════════════════════════════════════════
-Customer          Current   1-30d    31-60d   61-90d    90+d     Total
-───────────────────────────────────────────────────────────────────
-Acme Corp          5,000    2,500     —        —         —       7,500
-Beta Inc           3,200      —      1,800     —         —       5,000
-Gamma Ltd            —        —        —      2,100    4,500     6,600
-...
-───────────────────────────────────────────────────────────────────
-TOTAL             45,200   12,800    8,300    4,200    6,500    77,000
-
-DSO: 38 days | Overdue: 41.3% | Top 5 concentration: 62%
-```
-
-### Collection Priority Summary
-
-```
-COLLECTION PRIORITIES
-  🔴 Urgent (90+ days):     3 customers, 6,500 total — immediate action
-  🟠 Action needed (61-90): 2 customers, 4,200 total — formal reminder
-  🟡 Monitor (31-60):       4 customers, 8,300 total — soft follow-up
-  🟢 Current:              15 customers, 58,000 total — no action needed
-```
-
-## Trend Analysis
-
-When comparative data is available, highlight:
-- **Deteriorating DSO** — collection slowing, investigate causes
-- **Growing 90+ bucket** — potential bad debts, review provisioning policy
-- **Single customer concentration** — diversification risk
-- **Seasonal patterns** — compare same period prior year, not just prior month
+If the aging is not certified, say so before any follow-up list: its figures may not agree with the ledger.

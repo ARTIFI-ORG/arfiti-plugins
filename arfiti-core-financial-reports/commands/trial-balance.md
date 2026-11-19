@@ -1,13 +1,11 @@
 ---
 name: trial-balance
-description: Generate a Trial Balance with debit/credit validation, unusual balance detection, and optional period comparison.
+description: Present the server's trial balance with its full-selection totals and reconciliation verdict, and point out balances that are unusual for their account type.
 ---
 
 # Trial Balance
 
-Generate a trial balance for a legal entity as of a specific date.
-
-**How it works:** This command fetches trial balance data via the MCP tool and presents it in a structured format with validation and anomaly detection.
+Presents the server's trial balance as of a date.
 
 ## Usage
 
@@ -15,75 +13,32 @@ Generate a trial balance for a legal entity as of a specific date.
 /arfiti-core-financial-reports:trial-balance
 ```
 
-## Step 1: Collect Data
+Requires Python 3.9+ (`python3 --version`) when a formatter runs.
 
-Ask for the legal entity and as-of date, then fetch:
+## Rules
+
+- Add `"report_contract": 1` to every `generate_report` call and save the result **unchanged** as JSON. Never retype amounts, re-classify accounts, sum rows into totals or round them.
+- A `null` amount is **Unavailable**, never zero. Show every evidence gap, warnings included.
+- If the result is `success: false`, show its message (for example `REPORT_SCOPE_FORBIDDEN`: the user has no access to that entity) and stop.
+- If the formatter exits with code 2, show its reason and fix the request; do not work around it.
+
+## Step 1: Fetch
 
 ```
-generate_report("trial_balance", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-DD"})
+generate_report("trial_balance", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-DD", "report_contract": 1})
 ```
 
-If comparative date requested:
-```
-generate_report("trial_balance", {"legal_entity_id": ID, "as_of_date": "PRIOR-YYYY-MM-DD"})
-```
+For a prior date, make a second call.
 
-## Step 2: Validate
+## Step 2: Build the table from the result
 
-1. **Total debits must equal total credits** — if they don't, STOP and investigate
-2. Flag unusual balances:
-   - Revenue accounts with debit balances
-   - Expense accounts with credit balances
-   - Accounts with balance sign inconsistent with their type
+- Header: entity, `dates.effective`, `currency.code`; quality, every gap, and partial delivery from `coverage`.
+- Rows: account number, name, `account_type`, and the server's `opening_signed`, `movement_debit`, `movement_credit`, `closing_debit`, `closing_credit`. Keep a `null` as Unavailable.
+- Totals: the server's `totals` (full selection), never a sum of the displayed rows.
+- Verdict: `details.reconciliation.status`, as returned.
 
-## Step 3: Present Results
+## Present
 
-Group accounts by type and present as a clean table:
+Show the table and the server's verdict. A `difference` or `unavailable` verdict is reported as such with the gaps. Don't present a balanced result built from missing amounts.
 
-```markdown
-# Trial Balance
-**Acme Corp OÜ** | As of 2026-03-31 | Currency: EUR
-
-## Assets
-
-| Account | Name | Debit | Credit |
-|---------|------|-------|--------|
-| 1000 | Cash - Operating | 125,000.00 | |
-| 1200 | Trade Receivables | 85,000.00 | |
-| 1500 | Inventory | 45,000.00 | |
-| 2200 | Property, Plant & Equipment | 320,000.00 | |
-| **Subtotal** | | **575,000.00** | |
-
-## Liabilities
-
-| Account | Name | Debit | Credit |
-|---------|------|-------|--------|
-| 3100 | Trade Payables | | 62,000.00 |
-| 3250 | Tax Payables | | 18,500.00 |
-| 3600 | Long-term Bank Loan | | 180,000.00 |
-| **Subtotal** | | | **260,500.00** |
-
-## Equity
-
-| Account | Name | Debit | Credit |
-|---------|------|-------|--------|
-| 5000 | Share Capital | | 25,000.00 |
-| 5300 | Retained Earnings | | 245,500.00 |
-| **Subtotal** | | | **270,500.00** |
-
-## Revenue & Expense
-...
-
-## Validation
-
-| Check | Result |
-|-------|--------|
-| Debits = Credits | **PASS** (660,500.00 = 660,500.00) |
-| Unusual balances | None detected |
-
-## Anomalies (if any)
-
-| Account | Name | Balance | Expected | Issue |
-|---------|------|---------|----------|-------|
-| 4100 | Service Revenue | 500.00 DR | Credit | Revenue with debit balance — check for reversal |
-```
+Point out balances unusual for their type (a debit closing balance on a revenue account, a credit on an expense account) as items to review, not as errors: refunds and contra accounts are legitimate.

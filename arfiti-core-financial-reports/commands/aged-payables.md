@@ -1,13 +1,11 @@
 ---
 name: aged-payables
-description: Generate an AP Aging report with payment scheduling, early payment discount analysis, and cash coverage assessment. Uses format_aging.py for deterministic output.
+description: Present the server's AP aging with certification, overdue (1+ days) vendors, amounts coming due, credits and optional days payables outstanding over the real period. Uses format_aging.py.
 ---
 
 # Aged Payables
 
-Generate an accounts payable aging report with payment scheduling recommendations.
-
-**How it works:** This command fetches AP aging data via the MCP tool, builds a compact JSON, and runs `scripts/format_aging.py --type ap` — a Python script that produces a consistently formatted markdown report with payment priorities, DPO calculation, discount opportunities, and cash coverage analysis.
+Presents the server's accounts payable aging as of a date. Buckets, totals, overdue and the control-account tie-out are the server's.
 
 ## Usage
 
@@ -15,106 +13,33 @@ Generate an accounts payable aging report with payment scheduling recommendation
 /arfiti-core-financial-reports:aged-payables
 ```
 
-## Prerequisites
+Requires Python 3.9+ (`python3 --version`) when a formatter runs.
 
-- Transactions must be posted for the period
-- Python 3.9+ available (`python3 --version`)
+## Rules
 
-## Step 1: Collect Data
+- Add `"report_contract": 1` to every `generate_report` call and save the result **unchanged** as JSON. Never retype amounts, re-classify accounts, sum rows into totals or round them.
+- A `null` amount is **Unavailable**, never zero. Show every evidence gap, warnings included.
+- If the result is `success: false`, show its message (for example `REPORT_SCOPE_FORBIDDEN`: the user has no access to that entity) and stop.
+- If the formatter exits with code 2, show its reason and fix the request; do not work around it.
 
-Ask for the legal entity and as-of date, then fetch:
+## Step 1: Fetch
 
 ```
-generate_report("ap_aging", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-DD"})
-
-# For DPO calculation
-generate_report("income_statement", {"legal_entity_id": ID, "start_date": "YYYY-01-01", "end_date": "YYYY-MM-DD"})
-
-# For cash coverage
-generate_report("balance_sheet", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-DD"})
+generate_report("ap_aging", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-DD", "report_contract": 1})
 ```
 
-## Step 2: Build Input JSON
+For days payables outstanding, also fetch an income statement whose period ends on the aging date (its cost of sales is the basis).
 
-Build the JSON from report data. See `scripts/input_schema_aging.json` for the full schema.
-
-```json
-{
-  "entity_name": "Company Name",
-  "as_of_date": "YYYY-MM-DD",
-  "currency": "EUR",
-  "annual_cogs": 1200000.00,
-  "cash_balance": 125000.00,
-  "due_within_7_days": 18500.00,
-  "due_within_14_days": 32000.00,
-  "due_within_30_days": 62000.00,
-  "parties": [
-    {
-      "name": "Vendor Name",
-      "current": 15000.00,
-      "days_1_30": 8000.00,
-      "days_31_60": 0.00,
-      "days_61_90": 0.00,
-      "days_90_plus": 0.00
-    }
-  ],
-  "early_payment_discounts": [
-    {
-      "name": "Vendor Name",
-      "discount_percent": 2.0,
-      "discount_days": 10,
-      "full_days": 30
-    }
-  ]
-}
-```
-
-Write to: `/tmp/ap_aging_{ENTITY_ID}_{DATE}.json`
-
-## Step 3: Run the Formatter
+## Step 2: Format
 
 ```bash
-python3 format_aging.py --input /tmp/ap_aging_{ENTITY_ID}_{DATE}.json --output /tmp/ap_aging_report.md --type ap
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/format_aging.py" --input /tmp/ap_aging_{ENTITY_ID}_{DATE}.json --output /tmp/ap_aging_report.md --entity-name "ENTITY NAME" [--income-statement /tmp/income_statement_{ENTITY_ID}.json]
 ```
 
-The script produces a markdown report with:
-- **Aging matrix** by vendor and bucket, sorted by largest balance
-- **Distribution table** with amounts and percentages per bucket
-- **Key metrics**: DPO, total outstanding, overdue percentage, upcoming obligations (7/14/30 days)
-- **Cash coverage**: whether current cash can cover outstanding payables
-- **Payment recommendations**:
-  - Overdue — pay immediately (CRITICAL / HIGH / MEDIUM priority)
-  - Due within terms — include in next payment batch
-- **Early payment discount analysis**: annualized return calculation and take/skip recommendation
+Example input: `scripts/examples/ap_aging.json`.
 
-## Step 4: Present Results
+## Present
 
-Read and present the generated markdown report. Add commentary about cash management strategy if relevant.
+Show the generated markdown. Amounts are the server's signed figures. A vendor whose balance has the opposite sign to a non-zero total is a credit or unapplied payment, listed for review. When the total nets to zero or is unavailable, the formatter lists the negative and positive balances separately instead of guessing which are credits.
 
-## Example Output
-
-```markdown
-# Aged Payables
-**Acme Corp OÜ** | As of 2026-03-31 | Currency: EUR
-
-## Key Metrics
-
-| Metric | Value |
-|--------|-------|
-| Days Payable Outstanding (DPO) | 27 days |
-| Cash Balance | 125,000.00 |
-| Cash Coverage | 141.6% — Sufficient |
-| Due within 7 days | 18,500.00 |
-
-## Payment Recommendations
-
-### Overdue — Pay Immediately (2 vendors)
-| Vendor | Overdue Amount | Total Balance | Priority |
-|---|---|---|---|
-| Gamma Tech OÜ | 12,300.00 | 12,300.00 | CRITICAL |
-
-### Early Payment Discount Opportunities
-| Vendor | Terms | Discount | Annualized Return | Recommendation |
-|---|---|---|---|---|
-| Alpha Industries | 2.0%/10 NET 30 | 2.0% | 37.2% | Take discount |
-```
+The overdue list and the amounts coming due in 7, 14 and 30 days come from the server's documents. Whether and when to pay is the business's decision (terms, disputes, cash); don't tell the user to "pay immediately", and don't schedule or make payments from this command.

@@ -1,13 +1,11 @@
 ---
 name: financial-summary
-description: Generate an executive financial summary combining BS, P&L, Cash Flow, and ratios. Uses format_financial_summary.py for deterministic output.
+description: Present a one-page summary from the server's income statement, balance sheet and cash flow for one period, with labelled ratios and period-length days outstanding. Uses format_financial_summary.py.
 ---
 
 # Financial Summary
 
-Generate a comprehensive executive summary combining all key financial data.
-
-**How it works:** This command fetches balance sheet, P&L, and cash flow data via MCP tools, builds a compact JSON, and runs `scripts/format_financial_summary.py` — a Python script that produces a single-page executive overview with ratios and key takeaways.
+Combines three server reports for one entity and period into a summary. All figures are the server's; ratios are labelled plugin analysis.
 
 ## Usage
 
@@ -15,106 +13,37 @@ Generate a comprehensive executive summary combining all key financial data.
 /arfiti-core-financial-reports:financial-summary
 ```
 
-## Prerequisites
+Requires Python 3.9+ (`python3 --version`) when a formatter runs.
 
-- All transactions for the period must be posted
-- Python 3.9+ available (`python3 --version`)
+## Rules
 
-## Step 1: Collect Data
+- Add `"report_contract": 1` to every `generate_report` call and save the result **unchanged** as JSON. Never retype amounts, re-classify accounts, sum rows into totals or round them.
+- A `null` amount is **Unavailable**, never zero. Show every evidence gap, warnings included.
+- If the result is `success: false`, show its message (for example `REPORT_SCOPE_FORBIDDEN`: the user has no access to that entity) and stop.
+- If the formatter exits with code 2, show its reason and fix the request; do not work around it.
 
-Ask for the legal entity and reporting period, then fetch all three reports:
+## Step 1: Fetch
 
 ```
-generate_report("balance_sheet", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-DD"})
-generate_report("income_statement", {"legal_entity_id": ID, "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD"})
-generate_report("cash_flow_statement", {"legal_entity_id": ID, "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD"})
+generate_report("income_statement", {"legal_entity_id": ID, "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "report_contract": 1})
+generate_report("balance_sheet", {"legal_entity_id": ID, "as_of_date": "END-DATE", "report_contract": 1})
+generate_report("cash_flow_statement", {"legal_entity_id": ID, "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "report_contract": 1})
 ```
 
-If comparative period requested, also fetch prior period data.
-
-## Step 2: Build Input JSON
-
-Combine data from all reports. See `scripts/input_schema_financial_summary.json` for the full schema.
+## Step 2: Build the input and format
 
 ```json
-{
-  "entity_name": "Company Name",
-  "period_start": "YYYY-MM-DD",
-  "period_end": "YYYY-MM-DD",
-  "currency": "EUR",
-  "pnl": {
-    "revenue": 500000.00,
-    "cogs": 220000.00,
-    "operating_expenses": 160000.00,
-    "depreciation": 12000.00,
-    "interest_expense": 5400.00,
-    "net_profit": 58000.00
-  },
-  "balance_sheet": {
-    "cash": 125000.00,
-    "receivables": 85000.00,
-    "inventory": 45000.00,
-    "current_assets": 275500.00,
-    "total_assets": 660500.00,
-    "payables": 62000.00,
-    "current_liabilities": 124500.00,
-    "total_liabilities": 329500.00,
-    "total_equity": 331000.00
-  },
-  "cash_flow": {
-    "operating": 72000.00,
-    "investing": -18000.00,
-    "financing": -25000.00,
-    "capex": -15000.00
-  }
-}
+{"income_statement": <result>, "balance_sheet": <result>, "cash_flow_statement": <result>}
 ```
-
-Write to: `/tmp/financial_summary_{ENTITY_ID}_{DATE}.json`
-
-## Step 3: Run the Formatter
 
 ```bash
-python3 format_financial_summary.py --input /tmp/financial_summary_{ENTITY_ID}_{DATE}.json --output /tmp/summary_report.md
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/format_financial_summary.py" --input /tmp/summary_{ENTITY_ID}_{END}.json --output /tmp/financial_summary.md --entity-name "ENTITY NAME"
 ```
 
-The script produces:
-- **P&L snapshot**: Revenue, gross profit, operating profit, EBITDA, net profit with margins
-- **Balance sheet snapshot**: Cash, assets, liabilities, equity
-- **Cash flow snapshot**: Operating, investing, financing, free cash flow
-- **Ratio dashboard**: Liquidity, profitability, leverage, efficiency ratios with assessments
-- **Key takeaways**: 3-5 bullet points highlighting the most important findings
+The formatter refuses reports in different currencies or for different entities. Example input: `scripts/examples/financial_summary.json`.
 
-## Step 4: Present Results
+## Present
 
-Read and present the generated markdown report.
+Show the generated markdown, then a short narrative based on the figures shown.
 
-## Example Output
-
-```markdown
-# Financial Summary
-**Acme Corp OÜ** | Period: 2026-01-01 to 2026-03-31 | Currency: EUR
-
-## Profit & Loss
-
-| | Amount | % of Revenue |
-|---|--------|-------------|
-| Revenue | 500,000.00 | 100.0% |
-| Gross Profit | 280,000.00 | 56.0% |
-| **Net Profit** | **58,000.00** | **11.6%** |
-
-## Financial Ratios
-
-| Category | Ratio | Value | Assessment |
-|----------|-------|-------|------------|
-| Liquidity | Current Ratio | 2.21 | Healthy |
-| Profitability | Net Margin | 11.6% | |
-| Leverage | Debt-to-Equity | 1.00 | Moderate |
-| Efficiency | DSO | 62 days | |
-
-## Key Takeaways
-
-- Net profit of 58,000.00 (11.6% margin)
-- Strong cash generation: operating CF (72,000.00) exceeds net profit
-- Revenue grew 23.5% vs prior period
-```
+Days sales and payables outstanding use the closing balance and the actual number of days in the period (a 30-day month is 30 days, not 365). They are an approximation, not an average balance. Ratio bands and the classification behind current, cash, receivables, payables and inventory come from `scripts/ratio_policy.json`, which is example policy: describe results against "the example band", not as universal judgements.

@@ -1,123 +1,25 @@
-# Balance Sheet Classification Guide
+# Balance Sheet Classification
 
-How to classify accounts into balance sheet sections using dynamic account properties. NEVER hardcode account numbers — use `account_type` and `account_category` to map accounts.
+The server classifies the balance sheet; this reference explains what it returns and what the plugin adds. Never classify accounts by number or name.
 
-## Account Discovery
+## What the server returns
 
-```
-query("account", filters={
-    "legal_entity_id": ID,
-    "is_active": true
-})
-```
+`generate_report("balance_sheet", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-DD", "report_contract": 1})`:
 
-## Classification by Account Properties
+- `rows`: one statement line per account, with `section` (`asset`, `liability`, `equity`), `account_type`, `account_subtype` and `display_amount` (presentation sign: assets, liabilities and equity positive in their sections). Two synthetic equity rows carry the unclosed results: `current_year_result` and `prior_years_unclosed` (`synthetic_kind`).
+- `totals`: `assets`, `liabilities`, `equity`, `current_year_result`, `prior_years_unclosed`, and `groups`: one total per section and subtype. All totals cover the full selection.
+- `details.reconciliation`: the server's assets = liabilities + equity verdict (`tied`, `difference`, `unavailable`).
+- `details.earnings_bridge`: fiscal year, its start date, performance, closing transfers and unclosed results for the current and prior years.
+- `details.comparison`: the comparison balance sheet when `comparison_mode` was requested.
 
-### ASSETS
+Account subtypes come from the system catalogue (`account_subtype` on each account, `query("account", filters={"account_subtype": ...})`). An account without a subtype is a data gap the server reports; ask the user to set the subtype rather than placing the account yourself.
 
-#### Current Assets
+## Current and non-current: plugin policy
 
-| Section | account_type | account_category | Description |
-|---------|-------------|-----------------|-------------|
-| Cash and cash equivalents | asset | cash | Bank accounts, petty cash, money market |
-| Short-term investments | asset | short_term_investment | Marketable securities, term deposits < 12 months |
-| Trade receivables | asset | receivable | Customer invoices outstanding |
-| Other receivables | asset | other_receivable | Employee advances, insurance claims, deposits |
-| Tax receivables | asset | tax_receivable | VAT refunds, prepaid income tax |
-| Prepayments | asset | prepayment | Prepaid rent, insurance, subscriptions |
-| Inventory | asset | inventory | Raw materials, WIP, finished goods |
+The catalogue has no current/non-current flag, and the split is a presentation choice. The plugin's ratios use the subtype lists in `scripts/ratio_policy.json` (`current_asset_subtypes`, `current_liability_subtypes`, `inventory_subtypes`, `cash_subtypes`). That file is example policy: a firm or client edits it. The formatter labels every ratio built on it.
 
-**Total Current Assets** = Sum of all `account_type = 'asset'` where category indicates current (cash, receivable, inventory, prepayment, short_term_investment, other_receivable, tax_receivable)
+## Checks
 
-#### Non-Current Assets
-
-| Section | account_type | account_category | Description |
-|---------|-------------|-----------------|-------------|
-| Long-term investments | asset | long_term_investment | Subsidiaries, associates, long-term securities |
-| Property, plant & equipment | asset | fixed_asset | Land, buildings, machinery, vehicles, furniture |
-| Intangible assets | asset | intangible_asset | Software, patents, trademarks, goodwill |
-| Right-of-use assets | asset | right_of_use_asset | Leased assets under IFRS 16 / ASC 842 |
-| Other non-current assets | asset | other_noncurrent_asset | Long-term deposits, deferred charges |
-
-**Total Non-Current Assets** = Sum of all `account_type = 'asset'` where category indicates non-current
-
-### LIABILITIES
-
-#### Current Liabilities
-
-| Section | account_type | account_category | Description |
-|---------|-------------|-----------------|-------------|
-| Trade payables | liability | payable | Vendor invoices outstanding |
-| Accrued expenses | liability | accrued_expense | Wages payable, accrued interest, utilities |
-| Tax payables | liability | tax_payable | VAT payable, income tax payable, payroll taxes |
-| Short-term loans | liability | short_term_loan | Bank overdrafts, current portion of long-term debt |
-| Deferred revenue | liability | deferred_revenue | Prepayments from customers, unearned revenue |
-| Other current liabilities | liability | other_current_liability | Customer deposits, warranty provisions |
-
-#### Non-Current Liabilities
-
-| Section | account_type | account_category | Description |
-|---------|-------------|-----------------|-------------|
-| Long-term loans | liability | long_term_loan | Bank loans, bonds payable, notes payable |
-| Lease liabilities | liability | lease_liability | Long-term lease obligations |
-| Provisions | liability | provision | Legal claims, restructuring, environmental |
-| Deferred tax liabilities | liability | deferred_tax | Temporary differences |
-| Other non-current liabilities | liability | other_noncurrent_liability | Pension obligations, long-term deposits |
-
-### EQUITY
-
-| Section | account_type | account_category | Description |
-|---------|-------------|-----------------|-------------|
-| Share capital / Issued capital | equity | share_capital | Par value of issued shares |
-| Share premium | equity | share_premium | Amount received above par value |
-| Treasury shares | equity | treasury_shares | Buyback shares (negative balance) |
-| Reserves | equity | reserve | Statutory reserves, revaluation reserves |
-| Retained earnings | equity | retained_earnings | Accumulated prior year profits/losses |
-| Current year profit/loss | equity | current_year_result | Calculated from income statement |
-
-## Presentation Format
-
-```
-ASSETS
-  Current Assets
-    Cash and cash equivalents          XXX,XXX.XX
-    Trade receivables                  XXX,XXX.XX
-    Prepayments                         XX,XXX.XX
-    Inventory                          XXX,XXX.XX
-  Total Current Assets                              X,XXX,XXX.XX
-
-  Non-Current Assets
-    Property, plant & equipment        XXX,XXX.XX
-    Intangible assets                   XX,XXX.XX
-  Total Non-Current Assets                            XXX,XXX.XX
-
-TOTAL ASSETS                                       X,XXX,XXX.XX
-
-LIABILITIES
-  Current Liabilities
-    Trade payables                     XXX,XXX.XX
-    Tax payables                        XX,XXX.XX
-    Short-term loans                   XXX,XXX.XX
-  Total Current Liabilities                           XXX,XXX.XX
-
-  Non-Current Liabilities
-    Long-term loans                    XXX,XXX.XX
-  Total Non-Current Liabilities                       XXX,XXX.XX
-
-TOTAL LIABILITIES                                    XXX,XXX.XX
-
-EQUITY
-    Share capital                      XXX,XXX.XX
-    Retained earnings                  XXX,XXX.XX
-    Current year profit/loss            XX,XXX.XX
-TOTAL EQUITY                                         XXX,XXX.XX
-
-TOTAL LIABILITIES AND EQUITY                       X,XXX,XXX.XX
-```
-
-## Validation Rules
-
-1. **Balance check**: Total Assets = Total Liabilities + Total Equity (mandatory)
-2. **Sign check**: Assets should have debit (positive) balances. Liabilities and equity should have credit balances. Flag any exceptions.
-3. **Completeness**: All active accounts should appear somewhere. Flag unclassified accounts.
-4. **Current year result**: Must match net profit/loss from the income statement for the same period.
+- Assets = liabilities + equity: use the server verdict. It is a pass only when the status is `tied` and quality is complete. For `difference` or `unavailable`, report it with the evidence gaps; don't recompute.
+- The current-year result covers the fiscal year to the as-of date, from `earnings_bridge.fiscal_year_start`. It equals a P&L only for that same window.
+- If quality is incomplete, the unavailable amounts are `null`: show "Unavailable" and the gap's message, and draw no conclusion from the remaining figures.

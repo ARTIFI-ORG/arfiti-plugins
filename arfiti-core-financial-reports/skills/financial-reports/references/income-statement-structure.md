@@ -1,136 +1,20 @@
-# Income Statement (Profit & Loss) Structure
+# Income Statement Structure
 
-How to classify revenue and expense accounts into a structured P&L. Works with any chart of accounts by using `account_type` and `account_category`.
+The server classifies the income statement by account subtype (`system.account_subtypes.income_statement_section`); this reference explains what it returns.
 
-## Two Common Formats
+## What the server returns
 
-### Format 1: By Nature of Expense (default)
+`generate_report("income_statement", {"legal_entity_id": ID, "start_date": ..., "end_date": ..., "report_contract": 1})`:
 
-Groups expenses by what they are (materials, labor, depreciation). Simpler, works for most companies.
+- `rows`: one line per account with `section` (`revenue`, `cogs`, `operating_expenses`, `other_income`, `finance_costs`, `income_tax`, or a section the server adds later), `balance_signed` (debit minus credit) and `display_amount` (income positive, cost positive).
+- `totals`: `revenue`, `cogs`, `gross_profit`, `operating_expenses`, `operating_profit`, `other_income`, `finance_costs`, `income_tax`, `net_income`, over the full selection.
+- `details.comparison`: the comparison period when `comparison_mode` (`prior_period` or `prior_year`) was requested.
+- `calculation.closing_entry_treatment`: closing transfers are excluded from performance.
 
-```
-Revenue                                          X,XXX,XXX.XX
-Other operating income                              XX,XXX.XX
-                                                ─────────────
-Total Income                                     X,XXX,XXX.XX
+## Presentation rules
 
-Raw materials and consumables                     (XXX,XXX.XX)
-Employee costs                                    (XXX,XXX.XX)
-  - Wages and salaries              (XXX,XXX.XX)
-  - Social security / benefits       (XX,XXX.XX)
-Depreciation and amortization                      (XX,XXX.XX)
-Other operating expenses                          (XXX,XXX.XX)
-                                                ─────────────
-Operating Profit (Loss)                             XXX,XXX.XX
-
-Financial income                                      X,XXX.XX
-Financial expenses                                  (XX,XXX.XX)
-                                                ─────────────
-Profit (Loss) Before Tax                            XXX,XXX.XX
-
-Income tax expense                                  (XX,XXX.XX)
-                                                ─────────────
-Net Profit (Loss)                                   XXX,XXX.XX
-```
-
-### Format 2: By Function of Expense
-
-Groups expenses by purpose (COGS, selling, admin). Requires cost center tracking.
-
-```
-Revenue                                          X,XXX,XXX.XX
-Cost of goods sold                                (XXX,XXX.XX)
-                                                ─────────────
-Gross Profit                                       XXX,XXX.XX
-
-Selling and distribution expenses                 (XXX,XXX.XX)
-General and administrative expenses               (XXX,XXX.XX)
-Other operating income / (expenses)                  XX,XXX.XX
-                                                ─────────────
-Operating Profit (Loss)                             XXX,XXX.XX
-
-Financial income                                      X,XXX.XX
-Financial expenses                                  (XX,XXX.XX)
-                                                ─────────────
-Profit (Loss) Before Tax                            XXX,XXX.XX
-
-Income tax expense                                  (XX,XXX.XX)
-                                                ─────────────
-Net Profit (Loss)                                   XXX,XXX.XX
-```
-
-## Account Classification
-
-| P&L Section | account_type | account_category | Notes |
-|-------------|-------------|-----------------|-------|
-| Revenue / Sales | revenue | sales | Primary business revenue |
-| Other operating income | revenue | other_income | Gains on asset disposal, grants, misc |
-| Cost of goods sold | expense | cogs | Direct materials, direct labor, manufacturing overhead |
-| Raw materials | expense | materials | Purchases of raw materials and consumables |
-| Employee costs | expense | payroll | Wages, salaries, social security, benefits, pensions |
-| Depreciation | expense | depreciation | Depreciation of PP&E, amortization of intangibles |
-| Other operating expenses | expense | operating_expense | Rent, utilities, insurance, professional fees, travel |
-| Selling expenses | expense | selling_expense | Marketing, commissions, shipping, advertising |
-| Administrative expenses | expense | admin_expense | Office costs, legal, audit, management fees |
-| Financial income | revenue | financial_income | Interest income, FX gains, investment income |
-| Financial expenses | expense | financial_expense | Interest expense, FX losses, bank charges |
-| Income tax | expense | tax_expense | Corporate income tax, deferred tax |
-
-## Format Selection Logic
-
-Choose format based on available data:
-1. If the company tracks expenses by function (COGS, selling, admin categories exist) → **Format 2**
-2. If expenses are tracked by nature only → **Format 1**
-3. Ask the user which format they prefer if both are possible
-
-To detect:
-```
-query("account", filters={
-    "legal_entity_id": ID,
-    "account_type": "expense",
-    "account_category": "cogs"
-})
-```
-If COGS accounts exist, Format 2 is available.
-
-## Key Margins to Calculate
-
-| Metric | Formula | Interpretation |
-|--------|---------|----------------|
-| Gross Margin % | (Revenue - COGS) / Revenue × 100 | Product/service profitability |
-| Operating Margin % | Operating Profit / Revenue × 100 | Core business efficiency |
-| Net Margin % | Net Profit / Revenue × 100 | Bottom line profitability |
-| EBITDA | Operating Profit + Depreciation | Cash-generating ability |
-
-## Comparative Analysis
-
-When presenting comparisons:
-- Show absolute change and percentage change
-- Flag items with >15% variance
-- Use arrows or indicators: positive changes in revenue/profit, negative changes in expenses
-
-```
-| Line Item          | Current Period | Prior Period |  Change  |   %   |
-|--------------------|---------------|-------------|----------|-------|
-| Revenue            |  1,200,000.00 | 1,000,000.00| 200,000 | +20.0%|
-| Operating expenses |   (800,000.00)| (750,000.00)| (50,000)| +6.7% |
-| Net profit         |    280,000.00 |   175,000.00| 105,000 | +60.0%|
-```
-
-
-## Shared report contract (migration 630)
-
-Use the complete `report_v1` selection and its explicit sections. Keep expense credits
-negative in cost sections. `other_income` is below operating profit; do not fold it
-into revenue or operating profit. Map `finance_costs` to formatter `financial_expenses`
-and pass income-positive/cost-positive `display_amount`. Never replace null with zero,
-format a truncated selection as a full statement, or invent a currency. Formatters
-reject missing currency and unknown amounts. Their legacy Markdown number display
-uses two decimal places; use the exact envelope for currency-precision-sensitive exports.
-
-
-Formatter input: `other_income` retains its historical EE meaning of other operating
-income by default. For the shared SQL `other_income` (non-operating) section, pass
-`other_income_section: "non_operating"`. Operating gains in SQL are classified within
-`revenue` by default. Never move an operating gain below operating profit solely
-because the formatter's input field is called other income.
+- Keep the server's sections and order. `other_income` sits below operating profit. Operating gains are inside revenue when the subtype says so; don't move lines between sections.
+- A credit on a cost account (a refund, rebate or contra amount) is a negative cost. It stays negative and increases profit; never show it as a positive cost or a dash.
+- Use the server totals. Don't recompute gross, operating or net profit.
+- Margins (gross, operating, net, each divided by revenue) are plugin analysis. They are unavailable when revenue is zero or an amount is null.
+- A nature-of-expense or function-of-expense layout, or a country's statutory format, is policy for the firm. Present it from the server's subtypes in a separate, labelled view if asked; the server statement stays the source.

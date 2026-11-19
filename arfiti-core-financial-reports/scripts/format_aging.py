@@ -1,293 +1,177 @@
 #!/usr/bin/env python3
-"""Format AR or AP Aging report from JSON data into consistent markdown output.
+"""Present AR or AP aging from the server report (report_contract 1).
 
 Usage:
-    python3 format_aging.py --input data.json --output report.md --type ar
-    python3 format_aging.py --input data.json --output report.md --type ap
+    python3 format_aging.py --input ar_aging.json --output report.md [--entity-name NAME]
+                            [--income-statement income_statement.json]
 
-Input: JSON with aging data by party (customer or vendor).
-Output: Formatted markdown aging report with priorities and metrics.
+Input: the result of
+    generate_report("ar_aging" | "ap_aging", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-DD",
+                                              "report_contract": 1})
+saved unchanged. Buckets, totals, overdue, certification and the control-account
+tie-out are the server's; amounts keep their sign, so credits and unapplied
+amounts stay visible. Overdue means more than 0 days past due, as the server
+counts it. With --income-statement (a report_contract 1 income statement whose
+period ends on the aging date) the plugin adds days outstanding over that
+period's actual length. Follow-up wording is example policy from
+ratio_policy.json; nothing here contacts anyone or pays anything.
 """
+from datetime import date, timedelta
+from decimal import Decimal
 
-import argparse
-import json
-import sys
-from decimal import Decimal, ROUND_HALF_UP
-from pathlib import Path
-from report_evidence import incomplete_report
+from report_v1 import (UNAVAILABLE, ReportInputError, dec, esc, evidence, footer, header, load, load_policy,
+                       money, period_days, policy_note, require_unfiltered, run_cli, same_basis)
 
-
-def d(val) -> Decimal:
-    if val is None:
-        raise ValueError("REPORT_INCOMPLETE: missing amount")
-    return Decimal(str(val)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+BUCKETS = (("current", "Current"), ("days_1_30", "1–30"), ("days_31_60", "31–60"),
+           ("days_61_90", "61–90"), ("days_over_90", "90+"))
+PAST_DUE = ("days_1_30", "days_31_60", "days_61_90", "days_over_90")
 
 
-def fmt(val: Decimal) -> str:
-    sign = "-" if val < 0 else ""
-    abs_val = abs(val)
-    integer_part = int(abs_val)
-    decimal_part = abs_val - integer_part
-    return f"{sign}{integer_part:,}{f'{decimal_part:.2f}'[1:]}"
+def overdue(row):
+    """Sum of the past-due buckets, or None when any of them is unavailable."""
+    amounts = [dec(row.get(key)) for key in PAST_DUE]
+    return None if any(a is None for a in amounts) else sum(amounts, Decimal(0))
 
 
-def pct(part: Decimal, total: Decimal) -> str:
-    if total == 0:
-        return "0.0%"
-    return f"{(part / total * 100).quantize(Decimal('0.1'))}%"
+def build_report(data, entity_name=None, income_statement=None, **_):
+    env = load(data, ("ar_aging", "ap_aging"))
+    is_ar = env["report_type"] == "ar_aging"
+    party = "Customer" if is_ar else "Vendor"
+    details = env.get("details", {})
+    totals = env["totals"]
 
+    out = header("Accounts Receivable Aging" if is_ar else "Accounts Payable Aging", env, entity_name)
+    out += evidence(env)
 
-def validate(data: dict) -> list:
-    errors = []
-    if "entity_name" not in data:
-        errors.append("Missing 'entity_name'")
-    if "as_of_date" not in data:
-        errors.append("Missing 'as_of_date'")
-    if "parties" not in data:
-        errors.append("Missing 'parties' array")
-    return errors
+    tie = details.get("control_tie_out") or {}
+    certified = details.get("certified") is True
+    out += ["## Certification", "",
+            f"- Certified against the control account: {'yes' if certified else '**no**'}",
+            f"- Control tie-out: {esc(tie.get('status') or UNAVAILABLE)}; control balance "
+            f"{money(tie.get('control_balance'), env)}, difference {money(tie.get('difference'), env)}",
+            "- Amounts are the server's signed figures in functional currency; "
+            "a party whose total has the opposite sign to a non-zero overall total is a credit or unapplied amount.", ""]
 
-
-def build_report(data: dict, aging_type: str) -> str:
-    is_ar = aging_type == "ar"
-    currency = data.get("currency")
-    if not currency: raise ValueError("REPORT_CURRENCY_MISSING")
-    partial = incomplete_report(data)
-    if partial is not None: return partial
-    party_label = "Customer" if is_ar else "Vendor"
-    title = "Aged Receivables" if is_ar else "Aged Payables"
-    annual_revenue = d(data.get("annual_revenue", 0))
-    annual_cogs = d(data.get("annual_cogs", 0))
-    cash_balance = d(data.get("cash_balance", 0))
-
-    parties = data.get("parties", [])
-
-    # Calculate totals per bucket
-    buckets = ["current", "days_1_30", "days_31_60", "days_61_90", "days_90_plus"]
-    bucket_labels = ["Current", "1-30 days", "31-60 days", "61-90 days", "90+ days"]
-
-    grand_totals = {b: Decimal("0.00") for b in buckets}
-    party_totals = []
-
-    for party in parties:
-        row_total = Decimal("0.00")
-        row = {"name": party.get("name", "Unknown")}
-        for b in buckets:
-            val = d(party.get(b, 0))
-            row[b] = val
-            row_total += val
-            grand_totals[b] += val
-        row["total"] = row_total
-        party_totals.append(row)
-
-    # Sort by total descending
-    party_totals.sort(key=lambda x: x["total"], reverse=True)
-
-    grand_total = sum(grand_totals.values())
-    total_overdue = grand_totals["days_1_30"] + grand_totals["days_31_60"] + grand_totals["days_61_90"] + grand_totals["days_90_plus"]
-
-    out = []
-    out.append(f"# {title}")
-    out.append(f"**{data['entity_name']}** | As of {data['as_of_date']} | Currency: {currency}")
+    out += ["## Aging by party", "",
+            f"| {party} | " + " | ".join(t for _, t in BUCKETS) + " | Total |",
+            "|---|" + "---:|" * (len(BUCKETS) + 1)]
+    for row in env["rows"]:
+        name = row.get("party_name") or f"No {party.lower()} on the document"
+        out.append(f"| {esc(name)} | " + " | ".join(money(row.get(k), env) for k, _ in BUCKETS)
+                   + f" | {money(row.get('total'), env)} |")
+    out.append("| **Total** | " + " | ".join(f"**{money(totals.get(k), env)}**" for k, _ in BUCKETS)
+               + f" | **{money(totals.get('total'), env)}** |")
     out.append("")
 
-    # --- AGING MATRIX ---
-    out.append("## Aging Summary")
-    out.append("")
-    out.append(f"| {party_label} | Current | 1-30 days | 31-60 days | 61-90 days | 90+ days | **Total** |")
-    out.append("|---|---------|-----------|------------|------------|----------|-----------|")
+    total_overdue = dec(totals["overdue"]) if "overdue" in totals else overdue(totals)
+    total = dec(totals.get("total"))
+    share = None if total_overdue is None or not total else (total_overdue / total * 100).quantize(Decimal("0.1"))
+    out += ["## Key figures", "", "| Figure | Value |", "|---|---:|",
+            f"| Total outstanding | {money(totals.get('total'), env)} |",
+            f"| Overdue (1+ days past due) | {money(None if total_overdue is None else str(total_overdue), env)} |",
+            f"| Overdue share of total | {UNAVAILABLE if share is None else f'{share}%'} |",
+            f"| 90+ days | {money(totals.get('days_over_90'), env)} |"]
 
-    for row in party_totals:
-        cols = [fmt(row[b]) if row[b] > 0 else "—" for b in buckets]
-        out.append(f"| {row['name']} | {cols[0]} | {cols[1]} | {cols[2]} | {cols[3]} | {cols[4]} | **{fmt(row['total'])}** |")
-
-    # Totals row
-    total_cols = [fmt(grand_totals[b]) for b in buckets]
-    out.append(f"| **TOTAL** | **{total_cols[0]}** | **{total_cols[1]}** | **{total_cols[2]}** | **{total_cols[3]}** | **{total_cols[4]}** | **{fmt(grand_total)}** |")
-    out.append("")
-
-    # --- BUCKET DISTRIBUTION ---
-    out.append("## Distribution")
-    out.append("")
-    out.append("| Bucket | Amount | % of Total |")
-    out.append("|--------|--------|-----------|")
-    for b, label in zip(buckets, bucket_labels):
-        out.append(f"| {label} | {fmt(grand_totals[b])} | {pct(grand_totals[b], grand_total)} |")
-    out.append(f"| **Total** | **{fmt(grand_total)}** | **100.0%** |")
-    out.append(f"| *Overdue (>0 days)* | *{fmt(total_overdue)}* | *{pct(total_overdue, grand_total)}* |")
-    out.append("")
-
-    # --- KEY METRICS ---
-    out.append("## Key Metrics")
-    out.append("")
-    out.append("| Metric | Value |")
-    out.append("|--------|-------|")
-
-    if is_ar:
-        # DSO
-        if annual_revenue > 0:
-            dso = (grand_total / annual_revenue * 365).quantize(Decimal("1"))
-            out.append(f"| Days Sales Outstanding (DSO) | {dso} days |")
-        out.append(f"| Total Outstanding | {fmt(grand_total)} |")
-        out.append(f"| Overdue Amount | {fmt(total_overdue)} ({pct(total_overdue, grand_total)}) |")
-
-        # Concentration
-        if len(party_totals) >= 5:
-            top5 = sum(p["total"] for p in party_totals[:5])
-            out.append(f"| Top 5 Concentration | {fmt(top5)} ({pct(top5, grand_total)}) |")
-        elif len(party_totals) > 0:
-            top = party_totals[0]
-            out.append(f"| Largest Balance | {top['name']}: {fmt(top['total'])} ({pct(top['total'], grand_total)}) |")
-    else:
-        # DPO
-        if annual_cogs > 0:
-            dpo = (grand_total / annual_cogs * 365).quantize(Decimal("1"))
-            out.append(f"| Days Payable Outstanding (DPO) | {dpo} days |")
-        out.append(f"| Total Outstanding | {fmt(grand_total)} |")
-        out.append(f"| Overdue Amount | {fmt(total_overdue)} ({pct(total_overdue, grand_total)}) |")
-
-        # Cash coverage
-        if cash_balance > 0:
-            coverage = pct(cash_balance, grand_total)
-            status = "Sufficient" if cash_balance >= grand_total else "Insufficient"
-            out.append(f"| Cash Balance | {fmt(cash_balance)} |")
-            out.append(f"| Cash Coverage | {coverage} — {status} |")
-
-        # Upcoming 7/14/30 days
-        due_7 = d(data.get("due_within_7_days", 0))
-        due_14 = d(data.get("due_within_14_days", 0))
-        due_30 = d(data.get("due_within_30_days", 0))
-        if due_7 > 0 or due_14 > 0 or due_30 > 0:
-            out.append(f"| Due within 7 days | {fmt(due_7)} |")
-            out.append(f"| Due within 14 days | {fmt(due_14)} |")
-            out.append(f"| Due within 30 days | {fmt(due_30)} |")
-
+    if income_statement is not None:
+        pnl = load(income_statement, "income_statement", "income statement")
+        same_basis({"aging": env, "income statement": pnl})
+        require_unfiltered({"aging": env, "income statement": pnl})
+        aging_date = env["dates"].get("effective", {}).get("as_of")
+        if pnl["dates"].get("effective", {}).get("to") != aging_date:
+            raise ReportInputError(f"REPORT_PERIOD_MISMATCH: the income statement must end on the aging date "
+                                   f"{aging_date}, not {pnl['dates'].get('effective', {}).get('to')}")
+        days = period_days(pnl)
+        basis = dec(pnl["totals"].get("revenue" if is_ar else "cogs"))
+        value = None
+        if days and basis and total is not None and env["quality"]["status"] == "complete" \
+                and pnl["quality"]["status"] == "complete":
+            # The balance's size, whichever sign the control account carries.
+            value = (abs(total) / basis * days).quantize(Decimal("1"))
+        eff = pnl["dates"].get("effective", {})
+        out.append(f"| {'Days sales outstanding' if is_ar else 'Days payables outstanding'} | "
+                   f"{UNAVAILABLE if value is None else f'{value} days'} |")
+        out += ["", f"*Plugin analysis: closing balance ÷ {'revenue' if is_ar else 'cost of sales'} for "
+                f"{eff.get('from') or '?'} to {eff.get('to') or '?'} × {days or '?'} days in that period. "
+                "An approximation on the closing balance, not an average.*", ""]
+        out += evidence(pnl, "Income statement used for days outstanding")
     out.append("")
 
-    # --- PRIORITY / RECOMMENDATIONS ---
-    if is_ar:
-        out.append("## Collection Priorities")
+    as_of = env["dates"].get("effective", {}).get("as_of")
+    documents = details.get("documents") or []
+    if not is_ar and as_of and documents:
+        today = date.fromisoformat(as_of)
+        cov = env["coverage"]
+        partial = cov.get("truncated") or cov.get("has_more") or env["quality"]["status"] != "complete"
+        out += ["## Coming due (open documents, cumulative from the aging date)", ""]
+        if partial:
+            out += ["Not shown: the aging is incomplete or only partly delivered, so the open documents "
+                    "may not all be present.", ""]
+        out += ["| Window | Balance due |", "|---|---:|"]
+        for window in (7, 14, 30):
+            amounts, missing = Decimal(0), False
+            for doc in documents:
+                due = doc.get("due_date")
+                if due and today < date.fromisoformat(due) <= today + timedelta(days=window):
+                    amount = dec(doc.get("balance_due"))
+                    missing = missing or amount is None
+                    amounts += amount or 0
+            out.append(f"| Within {window} days | {UNAVAILABLE if missing or partial else money(str(amounts), env)} |")
         out.append("")
 
-        urgent = [p for p in party_totals if p["days_90_plus"] > 0]
-        action = [p for p in party_totals if p["days_61_90"] > 0 and p not in urgent]
-        monitor = [p for p in party_totals if p["days_31_60"] > 0 and p not in urgent and p not in action]
-
-        if urgent:
-            out.append(f"### Urgent — 90+ Days ({len(urgent)} {party_label.lower()}s)")
-            out.append("Immediate follow-up required. Consider escalation or collection agency.")
-            out.append("")
-            out.append(f"| {party_label} | 90+ Amount | Total Balance | Action |")
-            out.append("|---|---|---|---|")
-            for p in urgent:
-                out.append(f"| {p['name']} | {fmt(p['days_90_plus'])} | {fmt(p['total'])} | Phone call + formal demand letter |")
-            out.append("")
-
-        if action:
-            out.append(f"### Action Needed — 61-90 Days ({len(action)} {party_label.lower()}s)")
-            out.append("Send formal payment reminder with invoice copies.")
-            out.append("")
-            out.append(f"| {party_label} | 61-90 Amount | Total Balance | Action |")
-            out.append("|---|---|---|---|")
-            for p in action:
-                out.append(f"| {p['name']} | {fmt(p['days_61_90'])} | {fmt(p['total'])} | Written reminder + phone follow-up |")
-            out.append("")
-
-        if monitor:
-            out.append(f"### Monitor — 31-60 Days ({len(monitor)} {party_label.lower()}s)")
-            out.append("Soft follow-up. Verify invoices are in payment queue.")
-            out.append("")
-            out.append(f"| {party_label} | 31-60 Amount | Total Balance | Action |")
-            out.append("|---|---|---|---|")
-            for p in monitor:
-                out.append(f"| {p['name']} | {fmt(p['days_31_60'])} | {fmt(p['total'])} | Email reminder |")
-            out.append("")
-
-        current_only = [p for p in party_totals if p not in urgent and p not in action and p not in monitor]
-        if current_only:
-            out.append(f"### Current — No Action ({len(current_only)} {party_label.lower()}s)")
-            out.append(f"All balances within terms. Total: {fmt(sum(p['total'] for p in current_only))}")
-            out.append("")
-
+    policy = load_policy()
+    out += ["## Follow-up" if is_ar else "## Overdue vendors", "", policy_note(policy), ""]
+    if not certified:
+        out += ["The aging is not certified, so follow-up lists are indicative only.", ""]
+    # A credit is a party balance with the opposite sign to the report total, so
+    # this holds whichever sign the control account's booked balance carries.
+    # When the total nets to zero or is unavailable no sign can be trusted, so the
+    # negative and positive balances are listed as two groups instead.
+    credits = [r for r in env["rows"]
+               if total and dec(r.get("total")) is not None and dec(r.get("total")) * total < 0]
+    mixed = []
+    if not total:
+        negative = [r for r in env["rows"] if (dec(r.get("total")) or 0) < 0]
+        positive = [r for r in env["rows"] if (dec(r.get("total")) or 0) > 0]
+        if negative and positive:
+            mixed = [("negative", negative), ("positive", positive)]
+    if is_ar:
+        steps = policy.get("receivable_follow_up", {})
+        out += [f"| {party} | Oldest past-due bucket | Amount | Example follow-up |", "|---|---|---:|---|"]
+        for row in env["rows"]:
+            if any(dec(row.get(key)) is None for key in PAST_DUE):
+                out.append(f"| {esc(row.get('party_name') or 'No customer on the document')} | "
+                           f"{UNAVAILABLE} | {UNAVAILABLE} | Review: a past-due amount is unavailable |")
+                continue
+            for key in reversed(PAST_DUE):
+                amount = dec(row.get(key))
+                if amount > 0:
+                    out.append(f"| {esc(row.get('party_name') or 'No customer on the document')} | "
+                               f"{dict(BUCKETS)[key]} | {money(row.get(key), env)} | {esc(steps.get(key, ''))} |")
+                    break
     else:
-        out.append("## Payment Recommendations")
-        out.append("")
-
-        overdue = [p for p in party_totals if p["days_1_30"] + p["days_31_60"] + p["days_61_90"] + p["days_90_plus"] > 0]
-        current_due = [p for p in party_totals if p not in overdue and p["current"] > 0]
-
-        if overdue:
-            out.append(f"### Overdue — Pay Immediately ({len(overdue)} vendors)")
-            out.append("Avoid late fees and relationship damage.")
-            out.append("")
-            out.append(f"| {party_label} | Overdue Amount | Total Balance | Priority |")
-            out.append("|---|---|---|---|")
-            for p in overdue:
-                overdue_amt = p["days_1_30"] + p["days_31_60"] + p["days_61_90"] + p["days_90_plus"]
-                priority = "CRITICAL" if p["days_90_plus"] > 0 else ("HIGH" if p["days_61_90"] > 0 else "MEDIUM")
-                out.append(f"| {p['name']} | {fmt(overdue_amt)} | {fmt(p['total'])} | {priority} |")
-            out.append("")
-
-        if current_due:
-            out.append(f"### Due Within Terms ({len(current_due)} vendors)")
-            out.append("Schedule in regular payment run.")
-            out.append("")
-            out.append(f"| {party_label} | Amount | Action |")
-            out.append("|---|---|---|")
-            for p in current_due:
-                out.append(f"| {p['name']} | {fmt(p['current'])} | Include in next payment batch |")
-            out.append("")
-
-        # Early payment discount analysis
-        discounts = data.get("early_payment_discounts", [])
-        if discounts:
-            out.append("### Early Payment Discount Opportunities")
-            out.append("")
-            out.append(f"| {party_label} | Terms | Discount | Annualized Return | Recommendation |")
-            out.append("|---|---|---|---|---|")
-            for disc in discounts:
-                disc_pct = d(disc.get("discount_percent", 0))
-                full_days = int(disc.get("full_days", 30))
-                disc_days = int(disc.get("discount_days", 10))
-                if disc_pct > 0 and full_days > disc_days:
-                    annualized = (disc_pct / (100 - disc_pct) * 365 / (full_days - disc_days) * 100).quantize(Decimal("0.1"))
-                    rec = "Take discount" if annualized > Decimal("10") else "Pay at terms"
-                    out.append(f"| {disc.get('name', '?')} | {disc_pct}%/{disc_days} NET {full_days} | {disc_pct}% | {annualized}% | {rec} |")
-            out.append("")
-
-    # Footer
-    out.append("---")
-    out.append("*Generated by arfiti-core-financial-reports plugin*")
-
-    return "\n".join(out)
+        out += [f"| {party} | Overdue (1+ days) | Total |", "|---|---:|---:|"]
+        for row in env["rows"]:
+            amount = overdue(row)
+            if amount is None or amount != 0:
+                out.append(f"| {esc(row.get('party_name') or 'No vendor on the document')} | "
+                           f"{money(None if amount is None else str(amount), env)} | {money(row.get('total'), env)} |")
+        out += ["", "Whether and when to pay is the business's decision (terms, disputes, cash); "
+                "this list does not schedule payments."]
+    if credits:
+        out += ["", f"Credit balances to review ({len(credits)}): "
+                + ", ".join(f"{esc(r.get('party_name') or 'unnamed')} {money(r.get('total'), env)}" for r in credits)]
+    if mixed:
+        out += ["", "The total nets to zero or is unavailable, so credits cannot be told from amounts due by sign. "
+                "Review both groups:"]
+        for label, rows in mixed:
+            out.append(f"- Parties with {label} balances ({len(rows)}): "
+                       + ", ".join(f"{esc(r.get('party_name') or 'unnamed')} {money(r.get('total'), env)}" for r in rows))
+    out.append("")
+    return "\n".join(out + footer())
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Format Aging Report")
-    parser.add_argument("--input", required=True, help="Input JSON file")
-    parser.add_argument("--output", required=True, help="Output markdown file")
-    parser.add_argument("--type", required=True, choices=["ar", "ap"], help="Report type: ar or ap")
-    args = parser.parse_args()
-
-    with open(args.input, "r") as f:
-        data = json.load(f)
-
-    errors = validate(data)
-    if errors:
-        print(f"Validation errors: {', '.join(errors)}", file=sys.stderr)
-        sys.exit(1)
-
-    report = build_report(data, args.type)
-
-    Path(args.output).parent.mkdir(parents=True, exist_ok=True)
-    with open(args.output, "w") as f:
-        f.write(report)
-
-    title = "AR Aging" if args.type == "ar" else "AP Aging"
-    print(f"{title} written to {args.output}")
-    print(f"Entity: {data['entity_name']} | Date: {data['as_of_date']}")
-    if incomplete_report(data) is None:
-        print(f"Parties: {len(data.get('parties', []))} | Total: {fmt(sum(d(p.get('current', 0)) + d(p.get('days_1_30', 0)) + d(p.get('days_31_60', 0)) + d(p.get('days_61_90', 0)) + d(p.get('days_90_plus', 0)) for p in data.get('parties', [])))}")
+    run_cli("Format AR or AP aging from report_contract 1", build_report)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # Arfiti Financial Reports
 
-A financial reporting suite for Arfiti: Balance Sheet, Profit and Loss, Cash Flow, Trial Balance, AR and AP Aging, Dimension Analysis and an executive Financial Summary. It works with any chart of accounts by discovering account properties from the data instead of assuming account numbers, and formats the reports with deterministic scripts so the numbers are never re-typed by the model.
+A financial reporting suite for Arfiti: Balance Sheet, Profit and Loss, Cash Flow, Trial Balance, AR and AP Aging, P&L by dimension and an executive Financial Summary. The server reports classify, total and reconcile the figures; this plugin requests their exact contract (`report_contract: 1`) and presents the results unchanged, with deterministic scripts, so no amount is retyped, re-rounded or rebuilt by the model.
 
 ## Requirements
 
@@ -11,22 +11,23 @@ A financial reporting suite for Arfiti: Balance Sheet, Profit and Loss, Cash Flo
 
 | Command | What it does |
 | --- | --- |
-| `/balance-sheet` | Balance Sheet with classification validation, comparative periods and liquidity ratios. |
-| `/profit-and-loss` | Profit and Loss with margin analysis and period-over-period comparison. |
-| `/cash-flow` | Cash Flow Statement by the indirect method, reconciled to the balance sheet. |
-| `/trial-balance` | Trial Balance with debit/credit validation and unusual balance detection. |
-| `/aged-receivables` | AR aging with collection priorities, DSO and concentration risk. |
-| `/aged-payables` | AP aging with payment scheduling and early payment discount analysis. |
-| `/dimension-analysis` | P&L by department, project or cost centre with profitability ranking. |
-| `/financial-summary` | Executive summary combining balance sheet, P&L, cash flow and ratios. |
+| `/balance-sheet` | Server balance sheet with its reconciliation verdict, earnings bridge, optional comparison and labelled liquidity ratios. |
+| `/profit-and-loss` | Server income statement with subtype sections, optional comparison and labelled margins. |
+| `/cash-flow` | Server cash flow statement with its opening-to-closing cash bridge and verdict. |
+| `/trial-balance` | Server trial balance with full-selection totals and verdict; unusual balances flagged for review. |
+| `/aged-receivables` | AR aging with certification, overdue (1+ days), credits, period-length DSO and example follow-up. |
+| `/aged-payables` | AP aging with certification, overdue vendors, amounts coming due and period-length DPO. |
+| `/dimension-analysis` | P&L by department, project or cost centre from one server income statement per value. |
+| `/financial-summary` | Summary of the server income statement, balance sheet and cash flow with labelled ratios. |
 
 ## What it runs and sends
 
-This plugin contains skills, commands and six helper scripts under `scripts/`. All are Python 3, standard library only, and none opens a network connection or starts another process.
+This plugin contains skills, commands and helper scripts under `scripts/`. All are Python 3, standard library only, and none opens a network connection or starts another process.
 
-- `format_aging.py`, `format_balance_sheet.py`, `format_dimension_analysis.py`, `format_financial_summary.py` and `format_income_statement.py` each read the JSON report file you pass with `--input`, validate it, and write a formatted markdown report to the path you pass with `--output` (creating its parent folder if needed). `format_aging.py` also takes `--type ar|ap`.
-- `report_evidence.py` is a helper imported by those five scripts. It reads nothing from disk and writes nothing. It renders unavailable amounts as "Unavailable" instead of inventing totals.
-- The `input_schema_*.json` files describe the input shape and are never executed.
+- `format_aging.py`, `format_balance_sheet.py`, `format_dimension_analysis.py`, `format_financial_summary.py` and `format_income_statement.py` each read the JSON file you pass with `--input`: a `generate_report` result requested with `report_contract: 1`, saved unchanged. They refuse anything else (exit code 2) and write a markdown report to the path you pass with `--output`. `format_aging.py` also takes `--income-statement` for days outstanding.
+- `report_v1.py` is a helper imported by those scripts. It reads `ratio_policy.json` and nothing else. It shows unavailable amounts as "Unavailable", every evidence gap and partial delivery, and the server's own verdicts.
+- `ratio_policy.json` is example presentation policy (which subtypes count as current, cash, receivables, payables and inventory; example ratio bands; example follow-up wording). Edit it for your firm or client; it does not change the server reports.
+- `examples/` holds sample inputs; they are never executed.
 
 Report data is read from your Arfiti organisation through the connector's read tools.
 

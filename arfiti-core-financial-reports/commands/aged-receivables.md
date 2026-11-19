@@ -1,13 +1,11 @@
 ---
 name: aged-receivables
-description: Generate an AR Aging report with collection priority recommendations, DSO calculation, and concentration risk analysis. Uses format_aging.py for deterministic output.
+description: Present the server's AR aging with certification, overdue (1+ days) figures, credits, optional days sales outstanding over the real period, and labelled example follow-up. Uses format_aging.py.
 ---
 
 # Aged Receivables
 
-Generate an accounts receivable aging report with actionable collection recommendations.
-
-**How it works:** This command fetches AR aging data via the MCP tool, builds a compact JSON, and runs `scripts/format_aging.py --type ar` — a Python script that produces a consistently formatted markdown report with collection priorities, DSO calculation, and concentration analysis.
+Presents the server's accounts receivable aging as of a date. Buckets, totals, overdue and the control-account tie-out are the server's.
 
 ## Usage
 
@@ -15,97 +13,39 @@ Generate an accounts receivable aging report with actionable collection recommen
 /arfiti-core-financial-reports:aged-receivables
 ```
 
-## Prerequisites
+Requires Python 3.9+ (`python3 --version`) when a formatter runs.
 
-- Transactions must be posted for the period
-- Python 3.9+ available (`python3 --version`)
+## Rules
 
-## Step 1: Collect Data
+- Add `"report_contract": 1` to every `generate_report` call and save the result **unchanged** as JSON. Never retype amounts, re-classify accounts, sum rows into totals or round them.
+- A `null` amount is **Unavailable**, never zero. Show every evidence gap, warnings included.
+- If the result is `success: false`, show its message (for example `REPORT_SCOPE_FORBIDDEN`: the user has no access to that entity) and stop.
+- If the formatter exits with code 2, show its reason and fix the request; do not work around it.
 
-Ask for the legal entity and as-of date, then fetch:
-
-```
-generate_report("ar_aging", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-DD"})
-```
-
-Also fetch annual revenue for DSO calculation:
+## Step 1: Fetch
 
 ```
-generate_report("income_statement", {"legal_entity_id": ID, "start_date": "YYYY-01-01", "end_date": "YYYY-MM-DD"})
+generate_report("ar_aging", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-DD", "report_contract": 1})
 ```
 
-## Step 2: Build Input JSON
+For days sales outstanding, also fetch an income statement whose period ends on the aging date (for example the last 90 days or the year to date):
 
-Build the JSON from the report data. See `scripts/input_schema_aging.json` for the full schema.
-
-```json
-{
-  "entity_name": "Company Name",
-  "as_of_date": "YYYY-MM-DD",
-  "currency": "EUR",
-  "annual_revenue": 2000000.00,
-  "parties": [
-    {
-      "name": "Customer Name",
-      "current": 15000.00,
-      "days_1_30": 8000.00,
-      "days_31_60": 0.00,
-      "days_61_90": 0.00,
-      "days_90_plus": 0.00
-    }
-  ]
-}
+```
+generate_report("income_statement", {"legal_entity_id": ID, "start_date": "YYYY-MM-DD", "end_date": "AGING-DATE", "report_contract": 1})
 ```
 
-Write to a temporary file: `/tmp/ar_aging_{ENTITY_ID}_{DATE}.json`
-
-## Step 3: Run the Formatter
+## Step 2: Format
 
 ```bash
-python3 format_aging.py --input /tmp/ar_aging_{ENTITY_ID}_{DATE}.json --output /tmp/ar_aging_report.md --type ar
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/format_aging.py" --input /tmp/ar_aging_{ENTITY_ID}_{DATE}.json --output /tmp/ar_aging_report.md --entity-name "ENTITY NAME" [--income-statement /tmp/income_statement_{ENTITY_ID}.json]
 ```
 
-The script produces a markdown report with:
-- **Aging matrix** by customer and bucket, sorted by largest balance
-- **Distribution table** showing amounts and percentages per bucket
-- **Key metrics**: DSO, total outstanding, overdue percentage, top 5 concentration
-- **Collection priorities** categorized as:
-  - Urgent (90+ days) — phone call + formal demand letter
-  - Action needed (61-90 days) — written reminder + follow-up
-  - Monitor (31-60 days) — email reminder
-  - Current — no action needed
+Example input: `scripts/examples/ar_aging.json`.
 
-## Step 4: Present Results
+## Present
 
-Read and present the generated markdown report to the user. Add any additional commentary about trends or specific customers if relevant.
+Show the generated markdown. Overdue means 1 or more days past due, as the server counts it. Credits (a negative balance) stay visible and are listed for review.
 
-## Example Output
+If the aging is not certified, say so first: its totals do not agree with the control account or some payment applications are incomplete.
 
-```markdown
-# Aged Receivables
-**Acme Corp OÜ** | As of 2026-03-31 | Currency: EUR
-
-## Aging Summary
-
-| Customer | Current | 1-30 days | 31-60 days | 61-90 days | 90+ days | **Total** |
-|---|---------|-----------|------------|------------|----------|-----------|
-| Alpha Industries | 15,000.00 | 8,000.00 | — | — | — | **23,000.00** |
-| Delta Corp | 22,000.00 | — | — | — | — | **22,000.00** |
-| Gamma Tech OÜ | — | — | — | 4,500.00 | 7,800.00 | **12,300.00** |
-| **TOTAL** | **50,500.00** | **13,500.00** | **12,000.00** | **4,500.00** | **7,800.00** | **88,300.00** |
-
-## Key Metrics
-
-| Metric | Value |
-|--------|-------|
-| Days Sales Outstanding (DSO) | 16 days |
-| Total Outstanding | 88,300.00 |
-| Overdue Amount | 37,800.00 (42.8%) |
-
-## Collection Priorities
-
-### Urgent — 90+ Days (1 customer)
-| Customer | 90+ Amount | Total Balance | Action |
-|---|---|---|---|
-| Gamma Tech OÜ | 7,800.00 | 12,300.00 | Phone call + formal demand letter |
-```
+The follow-up column is example policy from `scripts/ratio_policy.json`, which the firm edits. Present it as suggestions; this plugin sends no reminders.

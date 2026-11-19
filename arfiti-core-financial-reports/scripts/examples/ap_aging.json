@@ -1,0 +1,125 @@
+{
+  "success": true,
+  "report_v1": {
+    "rows": [
+      {
+        "total": "-100.00",
+        "row_id": "unassigned",
+        "current": "0.00",
+        "party_id": null,
+        "days_1_30": "-100.00",
+        "days_31_60": "0.00",
+        "days_61_90": "0.00",
+        "party_name": "Vendor",
+        "days_over_90": "0.00"
+      }
+    ],
+    "dates": {
+      "timezone": "Europe/Tallinn",
+      "effective": {
+        "to": null,
+        "from": null,
+        "as_of": "2026-09-30"
+      },
+      "requested": {
+        "to": null,
+        "from": null,
+        "as_of": "2026-09-30"
+      },
+      "business_date": "2026-10-02",
+      "timezone_source": "entity",
+      "adjustment_reason": null
+    },
+    "scope": {
+      "filters": {},
+      "entity_ids": [
+        1
+      ],
+      "account_ids": null,
+      "organization_id": 1
+    },
+    "totals": {
+      "total": "-100.00",
+      "current": "0.00",
+      "overdue": "-100.00",
+      "days_1_30": "-100.00",
+      "days_31_60": "0.00",
+      "days_61_90": "0.00",
+      "days_over_90": "0.00"
+    },
+    "details": {
+      "certified": false,
+      "documents": [
+        {
+          "due_date": "2026-09-20",
+          "party_id": null,
+          "party_name": "Vendor",
+          "amount_paid": "0.00",
+          "balance_due": "-100.00",
+          "days_overdue": 10,
+          "total_amount": "-100.00",
+          "transaction_id": "2",
+          "reference_number": "BILL",
+          "transaction_date": "2026-09-15",
+          "transaction_type": "AP_INVOICE",
+          "document_currency": "EUR",
+          "document_balance_due": "100"
+        }
+      ],
+      "control_tie_out": {
+        "status": "difference",
+        "tolerance": "0.01",
+        "difference": "-100.00",
+        "control_balance": "0.00"
+      },
+      "history_available_from": "2020-01-01",
+      "application_history_exceptions": [],
+      "application_history_exception_count": 0
+    },
+    "quality": {
+      "status": "incomplete",
+      "evidence_gaps": [
+        {
+          "code": "SUBLEDGER_EVIDENCE_INCOMPLETE",
+          "count": 1,
+          "message": "The open documents do not agree with the control account, or some payment applications are incomplete, so this aging is not certified. The listed documents need review.",
+          "severity": "blocking",
+          "sample_refs": [],
+          "affected_fields": [
+            "rows",
+            "totals",
+            "details.certified"
+          ]
+        }
+      ]
+    },
+    "coverage": {
+      "has_more": false,
+      "row_unit": "party",
+      "truncated": false,
+      "line_count": 1,
+      "next_cursor": null,
+      "totals_scope": "full_selection",
+      "returned_count": 1,
+      "source_line_count": 1
+    },
+    "currency": {
+      "code": "EUR",
+      "basis": "functional",
+      "rounding": "half_away_from_zero",
+      "decimal_places": 2
+    },
+    "snapshot": {
+      "token": "fixture-snapshot",
+      "expires_at": "2026-10-02T00:15:00Z",
+      "generated_at": "2026-10-02T00:00:00Z"
+    },
+    "calculation": {
+      "ledger_policy_version": "ledger-v1",
+      "closing_entry_treatment": "included",
+      "presentation_policy_version": "core-v1"
+    },
+    "report_type": "ap_aging",
+    "contract_version": 1
+  }
+}

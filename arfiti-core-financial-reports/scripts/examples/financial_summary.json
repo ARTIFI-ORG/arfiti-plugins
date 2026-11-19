@@ -1,0 +1,395 @@
+{
+  "income_statement": {
+    "success": true,
+    "report_v1": {
+      "rows": [
+        {
+          "row_id": "30",
+          "section": "revenue",
+          "account_id": "30",
+          "account_name": "Revenue",
+          "account_type": "revenue",
+          "account_number": "300",
+          "balance_signed": "-200.00",
+          "display_amount": "200.00",
+          "synthetic_kind": null,
+          "account_subtype": "operating_revenue"
+        },
+        {
+          "row_id": "40",
+          "section": "operating_expenses",
+          "account_id": "40",
+          "account_name": "Costs",
+          "account_type": "expense",
+          "account_number": "400",
+          "balance_signed": "-25.00",
+          "display_amount": "-25.00",
+          "synthetic_kind": null,
+          "account_subtype": "operating_expense"
+        }
+      ],
+      "dates": {
+        "timezone": "Europe/Tallinn",
+        "effective": {
+          "to": "2026-09-30",
+          "from": "2026-09-01",
+          "as_of": null
+        },
+        "requested": {
+          "to": "2026-09-30",
+          "from": "2026-09-01",
+          "as_of": null
+        },
+        "business_date": "2026-10-02",
+        "timezone_source": "entity",
+        "adjustment_reason": null
+      },
+      "scope": {
+        "filters": {},
+        "entity_ids": [
+          1
+        ],
+        "account_ids": null,
+        "organization_id": 1
+      },
+      "totals": {
+        "cogs": "0.00",
+        "revenue": "200.00",
+        "income_tax": "0.00",
+        "net_income": "225.00",
+        "gross_profit": "200.00",
+        "other_income": "0.00",
+        "finance_costs": "0.00",
+        "operating_profit": "225.00",
+        "operating_expenses": "-25.00"
+      },
+      "details": {
+        "classification_policy": {
+          "version": "initial-629",
+          "entity_overrides": {}
+        }
+      },
+      "quality": {
+        "status": "complete",
+        "evidence_gaps": []
+      },
+      "coverage": {
+        "has_more": false,
+        "row_unit": "statement_line",
+        "truncated": false,
+        "line_count": 2,
+        "next_cursor": null,
+        "totals_scope": "full_selection",
+        "returned_count": 2,
+        "source_line_count": 6
+      },
+      "currency": {
+        "code": "EUR",
+        "basis": "functional",
+        "rounding": "half_away_from_zero",
+        "decimal_places": 2
+      },
+      "snapshot": {
+        "token": "fixture-snapshot",
+        "expires_at": "2026-10-02T00:15:00Z",
+        "generated_at": "2026-10-02T00:00:00Z"
+      },
+      "calculation": {
+        "ledger_policy_version": "ledger-v1",
+        "closing_entry_treatment": "excluded_from_performance",
+        "presentation_policy_version": "core-v1"
+      },
+      "report_type": "income_statement",
+      "contract_version": 1
+    }
+  },
+  "balance_sheet": {
+    "success": true,
+    "report_v1": {
+      "rows": [
+        {
+          "row_id": "10",
+          "section": "asset",
+          "account_id": "10",
+          "account_name": "Bank",
+          "account_type": "asset",
+          "account_number": "100",
+          "balance_signed": "1825.00",
+          "display_amount": "1825.00",
+          "synthetic_kind": null,
+          "account_subtype": "cash"
+        },
+        {
+          "row_id": "20",
+          "section": "liability",
+          "account_id": "20",
+          "account_name": "Loan",
+          "account_type": "liability",
+          "account_number": "200",
+          "balance_signed": "-1500.00",
+          "display_amount": "1500.00",
+          "synthetic_kind": null,
+          "account_subtype": "long_term_debt"
+        },
+        {
+          "row_id": "current_year_result",
+          "section": "equity",
+          "account_id": null,
+          "account_name": "Current year result (not closed)",
+          "account_type": "equity",
+          "account_number": null,
+          "display_amount": "225.00",
+          "synthetic_kind": "current_year_result",
+          "account_subtype": null
+        },
+        {
+          "row_id": "prior_years_unclosed",
+          "section": "equity",
+          "account_id": null,
+          "account_name": "Prior years result (not closed)",
+          "account_type": "equity",
+          "account_number": null,
+          "display_amount": "100.00",
+          "synthetic_kind": "prior_years_unclosed",
+          "account_subtype": null
+        }
+      ],
+      "dates": {
+        "timezone": "Europe/Tallinn",
+        "effective": {
+          "to": null,
+          "from": null,
+          "as_of": "2026-09-30"
+        },
+        "requested": {
+          "to": null,
+          "from": null,
+          "as_of": "2026-09-30"
+        },
+        "business_date": "2026-10-02",
+        "timezone_source": "entity",
+        "adjustment_reason": null
+      },
+      "scope": {
+        "filters": {},
+        "entity_ids": [
+          1
+        ],
+        "account_ids": null,
+        "organization_id": 1
+      },
+      "totals": {
+        "assets": "1825.00",
+        "equity": "325.00",
+        "groups": [
+          {
+            "total": "1825.00",
+            "section": "asset",
+            "subtype": "cash"
+          },
+          {
+            "total": "1500.00",
+            "section": "liability",
+            "subtype": "long_term_debt"
+          }
+        ],
+        "liabilities": "1500.00",
+        "current_year_result": "225.00",
+        "prior_years_unclosed": "100.00"
+      },
+      "details": {
+        "reconciliation": {
+          "status": "tied",
+          "tolerance": "0.00",
+          "difference": "0.00"
+        },
+        "earnings_bridge": {
+          "fiscal_year": 2026,
+          "prior_unclosed": "100.00",
+          "current_unclosed": "225.00",
+          "fiscal_year_start": "2026-04-01",
+          "prior_performance": "100.00",
+          "current_performance": "225.00",
+          "prior_closing_transfers": "0.00",
+          "closing_allocation_basis": "explicit_reporting_closing_fiscal_year",
+          "current_closing_transfers": "0.00"
+        },
+        "classification_policy": {
+          "version": "initial-629",
+          "entity_overrides": {}
+        }
+      },
+      "quality": {
+        "status": "complete",
+        "evidence_gaps": []
+      },
+      "coverage": {
+        "has_more": false,
+        "row_unit": "statement_line",
+        "truncated": false,
+        "line_count": 4,
+        "next_cursor": null,
+        "totals_scope": "full_selection",
+        "returned_count": 4,
+        "source_line_count": 10
+      },
+      "currency": {
+        "code": "EUR",
+        "basis": "functional",
+        "rounding": "half_away_from_zero",
+        "decimal_places": 2
+      },
+      "snapshot": {
+        "token": "fixture-snapshot",
+        "expires_at": "2026-10-02T00:15:00Z",
+        "generated_at": "2026-10-02T00:00:00Z"
+      },
+      "calculation": {
+        "ledger_policy_version": "ledger-v1",
+        "closing_entry_treatment": "bridge",
+        "presentation_policy_version": "core-v1"
+      },
+      "report_type": "balance_sheet",
+      "contract_version": 1
+    }
+  },
+  "cash_flow_statement": {
+    "success": true,
+    "report_v1": {
+      "rows": [
+        {
+          "amount": "225.00",
+          "row_id": "operating:net_income",
+          "section": "operating",
+          "row_kind": "line",
+          "direction": null,
+          "account_id": null,
+          "account_name": null,
+          "evidence_refs": [],
+          "movement_kind": "net_income",
+          "parent_row_id": null,
+          "account_number": null,
+          "cash_flow_line": null,
+          "movement_label": "Net income"
+        },
+        {
+          "amount": "500.00",
+          "row_id": "financing:borrowings:inflow",
+          "section": "financing",
+          "row_kind": "line",
+          "direction": "inflow",
+          "account_id": null,
+          "account_name": null,
+          "evidence_refs": [],
+          "movement_kind": "cash_flow",
+          "parent_row_id": null,
+          "account_number": null,
+          "cash_flow_line": "borrowings",
+          "movement_label": "Proceeds from borrowings"
+        },
+        {
+          "amount": "500.00",
+          "row_id": "financing:borrowings:inflow:20",
+          "section": "financing",
+          "row_kind": "account",
+          "direction": "inflow",
+          "account_id": "20",
+          "account_name": "Loan",
+          "evidence_refs": [
+            {
+              "id": "2",
+              "kind": "transaction"
+            }
+          ],
+          "movement_kind": "cash_flow",
+          "parent_row_id": "financing:borrowings:inflow",
+          "account_number": "200",
+          "cash_flow_line": "borrowings",
+          "movement_label": "Loan",
+          "evidence_ref_count": 1
+        }
+      ],
+      "dates": {
+        "timezone": "Europe/Tallinn",
+        "effective": {
+          "to": "2026-09-30",
+          "from": "2026-09-01",
+          "as_of": null
+        },
+        "requested": {
+          "to": "2026-09-30",
+          "from": "2026-09-01",
+          "as_of": null
+        },
+        "business_date": "2026-10-02",
+        "timezone_source": "entity",
+        "adjustment_reason": null
+      },
+      "scope": {
+        "filters": {},
+        "entity_ids": [
+          1
+        ],
+        "account_ids": null,
+        "organization_id": 1
+      },
+      "totals": {
+        "financing": "500.00",
+        "investing": "0.00",
+        "operating": "225.00",
+        "closing_cash": "1825.00",
+        "opening_cash": "1100.00",
+        "net_cash_flow": "725.00",
+        "fx_effect_on_cash": "0.00",
+        "other_cash_balance_adjustments": "0.00"
+      },
+      "details": {
+        "bridge": {
+          "status": "reconciled"
+        },
+        "method": "indirect",
+        "cash_scope": "Cash accounts, including restricted cash.",
+        "drill_note": "An account\u2019s activity lists every movement on it, not only its cash.",
+        "reconciliation": {
+          "status": "tied",
+          "tolerance": "0.00",
+          "difference": "0.00"
+        },
+        "non_cash_movements": [],
+        "unresolved_movements": []
+      },
+      "quality": {
+        "status": "complete",
+        "evidence_gaps": []
+      },
+      "coverage": {
+        "has_more": false,
+        "row_unit": "statement_line",
+        "truncated": false,
+        "line_count": 3,
+        "next_cursor": null,
+        "totals_scope": "full_selection",
+        "returned_count": 3,
+        "source_line_count": 10
+      },
+      "currency": {
+        "code": "EUR",
+        "basis": "functional",
+        "rounding": "half_away_from_zero",
+        "decimal_places": 2
+      },
+      "snapshot": {
+        "token": "fixture-snapshot",
+        "expires_at": "2026-10-02T00:15:00Z",
+        "generated_at": "2026-10-02T00:00:00Z"
+      },
+      "calculation": {
+        "ledger_policy_version": "ledger-v1",
+        "closing_entry_treatment": "included",
+        "presentation_policy_version": "core-v1"
+      },
+      "report_type": "cash_flow_statement",
+      "contract_version": 1
+    }
+  }
+}

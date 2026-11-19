@@ -1,0 +1,278 @@
+{
+  "success": true,
+  "report_v1": {
+    "rows": [
+      {
+        "row_id": "10",
+        "section": "asset",
+        "account_id": "10",
+        "account_name": "Bank",
+        "account_type": "asset",
+        "account_number": "100",
+        "balance_signed": "1825.00",
+        "display_amount": "1825.00",
+        "synthetic_kind": null,
+        "account_subtype": "cash"
+      },
+      {
+        "row_id": "20",
+        "section": "liability",
+        "account_id": "20",
+        "account_name": "Loan",
+        "account_type": "liability",
+        "account_number": "200",
+        "balance_signed": "-1500.00",
+        "display_amount": "1500.00",
+        "synthetic_kind": null,
+        "account_subtype": "long_term_debt"
+      },
+      {
+        "row_id": "current_year_result",
+        "section": "equity",
+        "account_id": null,
+        "account_name": "Current year result (not closed)",
+        "account_type": "equity",
+        "account_number": null,
+        "display_amount": "225.00",
+        "synthetic_kind": "current_year_result",
+        "account_subtype": null
+      },
+      {
+        "row_id": "prior_years_unclosed",
+        "section": "equity",
+        "account_id": null,
+        "account_name": "Prior years result (not closed)",
+        "account_type": "equity",
+        "account_number": null,
+        "display_amount": "100.00",
+        "synthetic_kind": "prior_years_unclosed",
+        "account_subtype": null
+      }
+    ],
+    "dates": {
+      "timezone": "Europe/Tallinn",
+      "effective": {
+        "to": null,
+        "from": null,
+        "as_of": "2026-09-30"
+      },
+      "requested": {
+        "to": null,
+        "from": null,
+        "as_of": "2026-09-30"
+      },
+      "business_date": "2026-10-02",
+      "timezone_source": "entity",
+      "adjustment_reason": null
+    },
+    "scope": {
+      "filters": {
+        "comparison_mode": "prior_period",
+        "comparison_period_from": "2026-07-01"
+      },
+      "entity_ids": [
+        1
+      ],
+      "account_ids": null,
+      "organization_id": 1
+    },
+    "totals": {
+      "assets": "1825.00",
+      "equity": "325.00",
+      "groups": [
+        {
+          "total": "1825.00",
+          "section": "asset",
+          "subtype": "cash"
+        },
+        {
+          "total": "1500.00",
+          "section": "liability",
+          "subtype": "long_term_debt"
+        }
+      ],
+      "liabilities": "1500.00",
+      "current_year_result": "225.00",
+      "prior_years_unclosed": "100.00"
+    },
+    "details": {
+      "comparison": {
+        "rows": [
+          {
+            "row_id": "10",
+            "section": "asset",
+            "account_id": "10",
+            "account_name": "Bank",
+            "account_type": "asset",
+            "account_number": "100",
+            "balance_signed": "100.00",
+            "display_amount": "100.00",
+            "synthetic_kind": null,
+            "account_subtype": "cash"
+          },
+          {
+            "row_id": "current_year_result",
+            "section": "equity",
+            "account_id": null,
+            "account_name": "Current year result (not closed)",
+            "account_type": "equity",
+            "account_number": null,
+            "display_amount": "0.00",
+            "synthetic_kind": "current_year_result",
+            "account_subtype": null
+          },
+          {
+            "row_id": "prior_years_unclosed",
+            "section": "equity",
+            "account_id": null,
+            "account_name": "Prior years result (not closed)",
+            "account_type": "equity",
+            "account_number": null,
+            "display_amount": "100.00",
+            "synthetic_kind": "prior_years_unclosed",
+            "account_subtype": null
+          }
+        ],
+        "dates": {
+          "timezone": "Europe/Tallinn",
+          "effective": {
+            "to": null,
+            "from": null,
+            "as_of": "2026-06-30"
+          },
+          "requested": {
+            "to": null,
+            "from": null,
+            "as_of": "2026-06-30"
+          },
+          "business_date": "2026-10-02",
+          "timezone_source": "entity",
+          "adjustment_reason": null
+        },
+        "scope": {
+          "filters": {},
+          "entity_ids": [
+            1
+          ],
+          "account_ids": null,
+          "organization_id": 1
+        },
+        "totals": {
+          "assets": "100.00",
+          "equity": "100.00",
+          "groups": [
+            {
+              "total": "100.00",
+              "section": "asset",
+              "subtype": "cash"
+            }
+          ],
+          "liabilities": "0.00",
+          "current_year_result": "0.00",
+          "prior_years_unclosed": "100.00"
+        },
+        "details": {
+          "reconciliation": {
+            "status": "tied",
+            "tolerance": "0.00",
+            "difference": "0.00"
+          },
+          "earnings_bridge": {
+            "fiscal_year": 2026,
+            "prior_unclosed": "100.00",
+            "current_unclosed": "0.00",
+            "fiscal_year_start": "2026-04-01",
+            "prior_performance": "100.00",
+            "current_performance": "0.00",
+            "prior_closing_transfers": "0.00",
+            "closing_allocation_basis": "explicit_reporting_closing_fiscal_year",
+            "current_closing_transfers": "0.00"
+          },
+          "classification_policy": {
+            "version": "initial-629",
+            "entity_overrides": {}
+          }
+        },
+        "quality": {
+          "status": "complete",
+          "evidence_gaps": []
+        },
+        "coverage": {
+          "has_more": false,
+          "row_unit": "statement_line",
+          "truncated": false,
+          "line_count": 3,
+          "next_cursor": null,
+          "totals_scope": "full_selection",
+          "returned_count": 3,
+          "source_line_count": 2
+        },
+        "currency": {
+          "code": "EUR",
+          "basis": "functional",
+          "rounding": "half_away_from_zero",
+          "decimal_places": 2
+        },
+        "calculation": {
+          "ledger_policy_version": "ledger-v1",
+          "closing_entry_treatment": "bridge",
+          "presentation_policy_version": "core-v1"
+        },
+        "report_type": "balance_sheet",
+        "contract_version": 1
+      },
+      "reconciliation": {
+        "status": "tied",
+        "tolerance": "0.00",
+        "difference": "0.00"
+      },
+      "earnings_bridge": {
+        "fiscal_year": 2026,
+        "prior_unclosed": "100.00",
+        "current_unclosed": "225.00",
+        "fiscal_year_start": "2026-04-01",
+        "prior_performance": "100.00",
+        "current_performance": "225.00",
+        "prior_closing_transfers": "0.00",
+        "closing_allocation_basis": "explicit_reporting_closing_fiscal_year",
+        "current_closing_transfers": "0.00"
+      },
+      "classification_policy": {
+        "version": "initial-629",
+        "entity_overrides": {}
+      }
+    },
+    "quality": {
+      "status": "complete",
+      "evidence_gaps": []
+    },
+    "coverage": {
+      "has_more": false,
+      "row_unit": "statement_line",
+      "truncated": false,
+      "line_count": 4,
+      "next_cursor": null,
+      "totals_scope": "full_selection",
+      "returned_count": 4,
+      "source_line_count": 10
+    },
+    "currency": {
+      "code": "EUR",
+      "basis": "functional",
+      "rounding": "half_away_from_zero",
+      "decimal_places": 2
+    },
+    "snapshot": {
+      "token": "fixture-snapshot",
+      "expires_at": "2026-10-02T00:15:00Z",
+      "generated_at": "2026-10-02T00:00:00Z"
+    },
+    "calculation": {
+      "ledger_policy_version": "ledger-v1",
+      "closing_entry_treatment": "bridge",
+      "presentation_policy_version": "core-v1"
+    },
+    "report_type": "balance_sheet",
+    "contract_version": 1
+  }
+}

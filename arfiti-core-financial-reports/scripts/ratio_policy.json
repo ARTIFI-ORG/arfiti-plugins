@@ -1,0 +1,33 @@
+{
+  "_scope": "Example presentation policy shipped with this plugin, not an accounting rule or a recommendation. It decides which account subtypes the plugin treats as current, cash, receivables, payables and inventory for its ratios, the example bands it compares ratios with, and the example follow-up wording for aged receivables. Edit this file (or a copy for one client) to match the firm's classification and practice; the server reports are unaffected.",
+
+  "current_asset_subtypes": [
+    "cash", "bank", "cash_equivalent", "accounts_receivable", "accounts_receivable_related_party",
+    "allowance_doubtful_debts", "contract_asset", "bank_clearing", "employee_advance",
+    "inventory_finished_goods", "inventory_raw_materials", "inventory_wip", "inventory_obsolescence_reserve",
+    "other_current_asset", "prepaid_expense", "tax_receivable", "vat_recoverable"
+  ],
+  "current_liability_subtypes": [
+    "accounts_payable", "accounts_payable_related_party", "accrued_expense", "accrued_payroll",
+    "capex_payable", "contract_liability", "customer_deposit", "dividend_payable", "lease_liability_current",
+    "other_current_liability", "payroll_withholding", "provision_warranty_current", "sales_tax_payable",
+    "short_term_debt", "tax_payable_income", "vat_payable", "withholding_tax_payable"
+  ],
+  "cash_subtypes": ["cash", "bank", "cash_equivalent"],
+  "receivable_subtypes": ["accounts_receivable", "accounts_receivable_related_party", "contract_asset"],
+  "payable_subtypes": ["accounts_payable", "accounts_payable_related_party"],
+  "inventory_subtypes": ["inventory_finished_goods", "inventory_raw_materials", "inventory_wip", "inventory_obsolescence_reserve"],
+
+  "bands": {
+    "current_ratio": {"low": "1.0", "high": "3.0"},
+    "quick_ratio": {"low": "0.8", "high": null},
+    "debt_to_equity": {"low": null, "high": "2.0"}
+  },
+
+  "receivable_follow_up": {
+    "days_over_90": "Example: escalate per the firm's credit policy",
+    "days_61_90": "Example: written reminder with invoice copies",
+    "days_31_60": "Example: reminder",
+    "days_1_30": "Example: check the invoice is in the customer's payment queue"
+  }
+}

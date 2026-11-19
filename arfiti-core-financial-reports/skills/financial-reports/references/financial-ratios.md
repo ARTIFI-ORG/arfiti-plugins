@@ -1,84 +1,22 @@
-# Financial Ratios Reference
+# Financial Ratios
 
-Key ratios for the `/financial-summary` command. All ratios are calculated from balance sheet and income statement data.
+Ratios are plugin analysis on top of the server reports. Every input is a server figure; the classification behind "current", "cash", "receivables", "payables" and "inventory", and the example bands, live in `scripts/ratio_policy.json`. That file is example policy, edited per firm or client.
 
-## Liquidity Ratios
+| Area | Ratio | Formula | Inputs |
+|---|---|---|---|
+| Profitability | Gross margin | gross profit ÷ revenue | income statement totals |
+| Profitability | Operating margin | operating profit ÷ revenue | income statement totals |
+| Profitability | Net margin | net income ÷ revenue | income statement totals |
+| Liquidity | Current ratio | current assets ÷ current liabilities | balance sheet subtype groups (policy lists) |
+| Liquidity | Quick ratio | (current assets − inventory) ÷ current liabilities | balance sheet subtype groups (policy lists) |
+| Leverage | Liabilities to equity | total liabilities ÷ total equity | balance sheet totals |
+| Efficiency | DSO | receivables ÷ revenue × days in the period | balance sheet groups, income statement |
+| Efficiency | DPO | payables ÷ cost of sales × days in the period | balance sheet groups, income statement |
+| Efficiency | Inventory days | inventory ÷ cost of sales × days in the period | balance sheet groups, income statement |
 
-Measure the company's ability to meet short-term obligations.
+## Rules
 
-| Ratio | Formula | Good Range | Interpretation |
-|-------|---------|-----------|----------------|
-| Current Ratio | Current Assets / Current Liabilities | 1.5 - 3.0 | >1 means can cover short-term debts. <1 is a warning sign. >3 may indicate idle assets. |
-| Quick Ratio | (Current Assets - Inventory) / Current Liabilities | 1.0 - 2.0 | More conservative — excludes inventory which may not be quickly liquidated. |
-| Cash Ratio | Cash / Current Liabilities | 0.2 - 0.5 | Most conservative — only liquid cash. Very low = potential cash crunch. |
-
-## Profitability Ratios
-
-Measure how efficiently the company generates profit.
-
-| Ratio | Formula | Notes |
-|-------|---------|-------|
-| Gross Margin % | (Revenue - COGS) / Revenue × 100 | Product/service profitability. Industry-specific benchmarks. |
-| Operating Margin % | Operating Profit / Revenue × 100 | Core business profitability after all operating costs. |
-| Net Margin % | Net Profit / Revenue × 100 | Bottom line profitability after all costs including tax. |
-| EBITDA Margin % | (Operating Profit + Depreciation) / Revenue × 100 | Cash-generating ability independent of asset base. |
-| Return on Equity (ROE) | Net Profit / Average Total Equity × 100 | Return generated on shareholder investment. |
-| Return on Assets (ROA) | Net Profit / Average Total Assets × 100 | How efficiently assets generate profit. |
-
-## Leverage Ratios
-
-Measure the company's debt position and financial risk.
-
-| Ratio | Formula | Good Range | Interpretation |
-|-------|---------|-----------|----------------|
-| Debt-to-Equity | Total Liabilities / Total Equity | 0.5 - 2.0 | Higher = more leveraged. Industry-dependent. |
-| Debt-to-Assets | Total Liabilities / Total Assets | 0.3 - 0.6 | What proportion of assets is financed by debt. |
-| Interest Coverage | Operating Profit / Interest Expense | >3.0 | Ability to pay interest. <1.5 is risky. |
-| Equity Ratio | Total Equity / Total Assets | 0.4 - 0.7 | Owner-financed proportion of assets. |
-
-## Efficiency Ratios
-
-Measure how effectively the company uses its resources.
-
-| Ratio | Formula | Notes |
-|-------|---------|-------|
-| Days Sales Outstanding (DSO) | (Trade Receivables / Revenue) × 365 | Average days to collect payment. Lower is better. |
-| Days Payable Outstanding (DPO) | (Trade Payables / COGS) × 365 | Average days to pay vendors. Higher preserves cash but watch relationships. |
-| Inventory Days | (Inventory / COGS) × 365 | Days of inventory on hand. Lower = efficient (but watch stockouts). |
-| Cash Conversion Cycle | DSO + Inventory Days - DPO | Days between paying suppliers and collecting from customers. Lower is better. |
-| Asset Turnover | Revenue / Average Total Assets | How efficiently assets generate revenue. |
-
-## Presentation Format
-
-```
-FINANCIAL RATIOS SUMMARY
-═══════════════════════════════════════════════════
-                              Current    Prior     Change
-LIQUIDITY
-  Current Ratio               2.15       1.89      +0.26
-  Quick Ratio                 1.42       1.21      +0.21
-
-PROFITABILITY
-  Gross Margin %              45.2%      42.8%     +2.4pp
-  Operating Margin %          18.5%      15.2%     +3.3pp
-  Net Margin %                14.1%      11.8%     +2.3pp
-  ROE                         22.3%      18.7%     +3.6pp
-
-LEVERAGE
-  Debt-to-Equity              0.85       0.92      -0.07
-  Interest Coverage           8.2x       6.5x      +1.7x
-
-EFFICIENCY
-  DSO                         38 days    42 days   -4 days
-  DPO                         31 days    28 days   +3 days
-  Cash Conversion Cycle       22 days    29 days   -7 days
-═══════════════════════════════════════════════════
-```
-
-## Interpretation Guidelines
-
-When analyzing ratios:
-1. **Trend matters more than absolute value** — is the ratio improving or deteriorating?
-2. **Industry context** — a 2% net margin is excellent for grocery, poor for SaaS
-3. **Interrelationships** — high growth may temporarily hurt margins; high DSO with rising revenue may be acceptable
-4. **Avoid standalone conclusions** — always consider multiple ratios together
+- Days in the period is the actual length of the income statement period (a 30-day month is 30), never a fixed 365. The figures use closing balances: an approximation, not an average.
+- A ratio is unavailable when an input is null, the report is incomplete or the denominator is zero. Never substitute zero.
+- Describe a ratio against "the example band" from the policy file. Don't call it "healthy" or "weak": the right range depends on the industry, the business model and the firm's own policy.
+- Compare ratios over time and with each other rather than drawing a conclusion from one value.

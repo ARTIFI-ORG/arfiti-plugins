@@ -1,96 +1,27 @@
-# Cash Flow Statement — Indirect Method
+# Cash Flow Statement
 
-## Structure
+The server builds the cash flow statement; this plugin presents it. Don't rebuild it from balance sheet differences.
 
-The cash flow statement explains the change in cash between two dates by categorizing all cash movements into three activities.
+## What the server returns
 
-### A. Cash Flows from Operating Activities
+`generate_report("cash_flow_statement", {"legal_entity_id": ID, "start_date": ..., "end_date": ..., "report_contract": 1[, "method": "direct"]})`:
 
-Start with net profit and adjust for non-cash items and working capital changes.
+- `details.method`: `indirect` (default) or `direct`. Both read the same per-entry section amounts, so the section totals agree.
+- `rows`: lines by `section` (`operating`, `investing`, `financing`) with `movement_label`, `amount`, `row_kind` (`line` or `account`), `parent_row_id`, `cash_flow_line` and up to 20 `evidence_refs`. On the indirect basis operating starts from net income and adds the named components (depreciation and amortisation, gains and losses on disposal, working capital changes, other non-cash items, reviewed placements).
+- `totals`: `opening_cash`, `operating`, `investing`, `financing`, `fx_effect_on_cash`, `other_cash_balance_adjustments`, `net_cash_flow`, `closing_cash`.
+- `details.reconciliation` and `details.bridge`: whether opening + flows + FX + other adjustments = closing is proved (`tied`), disproved (`difference`) or not provable (`unavailable`).
+- `details.unresolved_movements`: entries the server withheld (for example an account without a subtype, or a data defect), with blocking gaps.
 
-| Adjustment | Source | Direction |
-|-----------|--------|-----------|
-| **Net profit / (loss)** | Income statement | Starting point |
-| + Depreciation and amortization | Fixed asset register / GL | Add back (non-cash expense) |
-| + Impairment losses | GL detail | Add back (non-cash) |
-| +/- Gain/loss on disposal of assets | GL detail | Remove (investing activity) |
-| +/- Unrealized FX gains/losses | GL detail | Remove (non-cash) |
-| +/- Changes in provisions | Balance sheet comparison | Non-cash |
-| **Working capital changes:** | | |
-| - (Increase) / + Decrease in receivables | BS comparison | Cash tied up / released |
-| - (Increase) / + Decrease in inventory | BS comparison | Cash tied up / released |
-| + Increase / - (Decrease) in payables | BS comparison | Cash received / paid |
-| + Increase / - (Decrease) in deferred revenue | BS comparison | Cash received / returned |
-| +/- Change in other operating assets/liabilities | BS comparison | Net movement |
-| **= Net cash from operating activities** | | |
+Classification is by each account's subtype (`cash_flow_class`, `cash_flow_line`); there are no transaction-type rules.
 
-### B. Cash Flows from Investing Activities
+## Presentation
 
-| Item | Source | Direction |
-|------|--------|-----------|
-| - Purchase of PP&E | Fixed asset acquisitions | Cash outflow |
-| + Proceeds from sale of PP&E | Asset disposal records | Cash inflow |
-| - Purchase of intangible assets | Asset acquisitions | Cash outflow |
-| - Purchase of investments | GL detail | Cash outflow |
-| + Proceeds from sale of investments | GL detail | Cash inflow |
-| + Interest received | GL detail | Cash inflow (if classified here) |
-| + Dividends received | GL detail | Cash inflow |
-| **= Net cash from investing activities** | | |
+1. Operating, investing and financing sections with the server's line labels and amounts.
+2. The bridge: opening cash, the three sections, FX effect, other balance adjustments, closing cash, with the server's verdict.
+3. Unresolved and non-cash movements, if any, with the gap messages.
 
-### C. Cash Flows from Financing Activities
+A cash flow under a dimension selection covers whole transactions and publishes no opening or closing cash or bridge; say so if the user asked for one.
 
-| Item | Source | Direction |
-|------|--------|-----------|
-| + Proceeds from issuing shares | Equity accounts | Cash inflow |
-| - Treasury share purchases | Equity accounts | Cash outflow |
-| + Proceeds from loans / borrowings | Loan accounts | Cash inflow |
-| - Repayment of loans / borrowings | Loan accounts | Cash outflow |
-| - Lease payments (principal portion) | Lease liability accounts | Cash outflow |
-| - Dividends paid | Equity / GL detail | Cash outflow |
-| - Interest paid | GL detail | Cash outflow (if classified here) |
-| **= Net cash from financing activities** | | |
+## Analysis
 
-### Summary
-
-```
-Net cash from operating activities       XXX,XXX.XX
-Net cash from investing activities       (XX,XXX.XX)
-Net cash from financing activities       (XX,XXX.XX)
-                                        ───────────
-Net increase / (decrease) in cash        XXX,XXX.XX
-Cash at beginning of period              XXX,XXX.XX
-FX effect on cash (if multi-currency)      X,XXX.XX
-                                        ───────────
-Cash at end of period                    XXX,XXX.XX
-```
-
-## Data Collection
-
-```
-# Current period balance sheet
-generate_report("balance_sheet", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-DD"})
-
-# Prior period balance sheet (for working capital changes)
-generate_report("balance_sheet", {"legal_entity_id": ID, "as_of_date": "PRIOR-YYYY-MM-DD"})
-
-# Income statement (for net profit starting point)
-generate_report("income_statement", {"legal_entity_id": ID, "start_date": "...", "end_date": "..."})
-
-# Cash flow report (if available as a built-in report)
-generate_report("cash_flow_statement", {"legal_entity_id": ID, "start_date": "...", "end_date": "..."})
-```
-
-## Validation
-
-1. **Cash reconciliation** (mandatory): Net change in cash = Closing cash balance - Opening cash balance on the balance sheet
-2. **Operating cash vs net income**: If significantly different, explain the main non-cash adjustments
-3. **Free cash flow**: Operating cash flow - Capital expenditures. Positive = company generates cash after maintaining assets
-
-## Analysis Points
-
-- **Operating CF > Net Income**: Healthy — company converts profits to cash
-- **Operating CF < Net Income**: Investigate — may indicate aggressive revenue recognition, growing receivables, or declining collections
-- **Negative investing CF**: Normal for growing companies (buying assets)
-- **Positive investing CF**: May indicate asset sales / downsizing — investigate
-- **Negative financing CF**: Paying down debt or returning capital — generally healthy
-- **Positive financing CF**: Taking on debt or raising equity — check why
+Operating cash flow against net income, large investing outflows and financing movements are worth commenting on. Present them as observations about the figures, not universal rules ("healthy", "concerning").
