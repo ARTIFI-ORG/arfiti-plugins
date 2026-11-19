@@ -17,10 +17,10 @@ Finalize my ERP migration and prepare for go-live:
    - Opening balance total
    - Gap period transactions posted
    - Total transactions in system
-5. Ask the user to confirm migration is complete
+5. Ask the user to confirm the migration is complete, and report configuration and accounting acceptance separately (see the skill's "Migration complete is not ready"): a completed migration does not mean the company is ready
 6. Update migration state to completed
 7. Advise on next steps:
-   - Set up bank feeds for automatic reconciliation
+   - Connect bank feeds (optional connectors) for automatic reconciliation
    - Configure agent email addresses for bill processing
    - Set up recurring contracts if applicable
    - Schedule first payroll run if needed

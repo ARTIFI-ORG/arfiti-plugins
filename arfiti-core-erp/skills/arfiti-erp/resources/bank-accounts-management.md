@@ -1208,8 +1208,8 @@ Three object types from before the 2026-02 banking simplification have no workfl
 | Retired | What the gateway answers | Use instead |
 |---|---|---|
 | `bank_account_change_request` (`create`, `approve`, `reject`, `cancel`, `apply`) | Refused as retired: nothing was executed, and the reason names the replacement | The account's own `update`: `bank_account`, `vendor_bank_account` or `employee_bank_account`. The update goes through the organisation's workflow, so a sensitive change waits for the approval its definition requires; there is no separate request to create, approve, apply or cancel |
-| `bank_account_verification` (`create`, `update`, `complete`) | Fails with a database error: it runs without a definition, and its table no longer exists | The account's own `verify` operation (see Verifying a Company / Vendor / Employee Bank Account above) |
-| `bank_account_integration` (`create`, `update`, `delete`, `sync`) | Fails with a database error: it runs without a definition, and its table no longer exists | The connector framework: link an account to a connector through `bank_accounts.metadata.connector_id` and configure credentials in the admin dashboard (see Connector Framework Guide) |
+| `bank_account_verification` (`create`, `update`, `complete`) | Refused as retired: nothing was executed, and the reason names the replacement | The account's own `verify` operation (see Verifying a Company / Vendor / Employee Bank Account above) |
+| `bank_account_integration` (`create`, `update`, `delete`, `sync`) | Refused as retired: nothing was executed, and the reason names the replacement | The connector framework: link an account to a connector through `bank_accounts.metadata.connector_id` and configure credentials in the admin dashboard (see Connector Framework Guide) |
 
 To stop a pending bank account change, reject the pending workflow of that `update`: the change is written only when that workflow is approved and executed.
 

@@ -126,7 +126,7 @@ If pending tasks remain, run waves: `manage_onboarding(action="run_wave")` — r
 
 1. Ask which banks the company uses and get details (bank name, IBAN/account number, currency)
 2. From the CoA, identify bank/cash accounts to link
-3. Create each: `submit('bank_account', 'create', {"legal_entity_id": ENTITY_ID, "bank_name": "...", "account_number": "IBAN", "currency": "...", "gl_account_id": ACCOUNT_ID})`
+3. Create each: `submit(object_type="bank_account", operation="create", data=json.dumps({"legal_entity_id": ENTITY_ID, "bank_account_code": "CASH-EUR-001", "account_name": "Main operating account", "gl_account_number": "<the bank GL account's number>", "currency": "EUR", "bank_name": "...", "iban": "..."}))`. `bank_account_code`, `account_name`, `gl_account_number` and `currency` are required; read the tool's schema (`get_submissions(action="schema", object_type="bank_account", operation="create")`) rather than guessing fields.
 
 **CP1 checkpoint**: Verify accounts exist for all 5 types. Posting profiles configured. Bank accounts created.
 
@@ -218,22 +218,22 @@ manage_connectors(action="sync_accounting_data", connector_id=CONNECTOR_ID,
 
 **BEFORE uploading the opening balance**, analyze it to detect what additional data is needed. See **references/advisory-intelligence.md** for the full rule set.
 
-Scan each account line and group findings into three tiers:
+Scan each account line and group findings into three tiers. Classify each line by its `account_type` / `account_subtype` (from the mapped account, `query("account", ...)`), using the line's name as a hint only; never by account-number ranges, which differ between charts and countries.
 
 **Tier 1 — Required for Migration** (without these, key features break):
-- **Accounts Receivable** (1200-range or "receivable"/"debtor" in name): "I see EUR [X] in accounts receivable. For aging reports and collections tracking, I need the list of unpaid customer invoices. For each: customer name, invoice number, amount, date, due date."
-- **Accounts Payable** (2100-range or "payable"/"creditor" in name): "I see EUR [X] in accounts payable. For payment scheduling and vendor aging, I need the list of unpaid vendor bills. For each: vendor name, bill number, amount, date, due date."
-- **Fixed Assets** (1500-1599 cost + 1600-1699 accumulated depreciation): "I see EUR [X] in fixed assets with EUR [Y] accumulated depreciation. For the asset register and automatic depreciation, I need each asset: name, acquisition date, cost, depreciation to date, useful life."
+- **Accounts Receivable** (subtype `accounts_receivable`, or "receivable"/"debtor" in name): "I see EUR [X] in accounts receivable. For aging reports and collections tracking, I need the list of unpaid customer invoices. For each: customer name, invoice number, amount, date, due date."
+- **Accounts Payable** (subtype `accounts_payable`, or "payable"/"creditor" in name): "I see EUR [X] in accounts payable. For payment scheduling and vendor aging, I need the list of unpaid vendor bills. For each: vendor name, bill number, amount, date, due date."
+- **Fixed Assets** (subtypes `fixed_asset_cost` + `accumulated_depreciation`): "I see EUR [X] in fixed assets with EUR [Y] accumulated depreciation. For the asset register and automatic depreciation, I need each asset: name, acquisition date, cost, depreciation to date, useful life."
 
 **Tier 2 — Recommended** (improves accuracy and automation):
-- **Long-term Loans** (2500-range or "loan"/"borrowing"): "I see loan balances. Do you have the loan agreements? I can set up repayment schedules and interest accrual."
-- **Prepaid Expenses** (1300-range or "prepaid"/"prepayment"): "I see prepaid expenses. What are these for? (Insurance, rent, licenses?) This helps with proper amortization."
-- **Tax Liabilities** (2200-range or "tax payable"): "I see outstanding tax liabilities. What taxes are these? This affects your first filing period."
+- **Long-term Loans** (subtype `long_term_debt`, or "loan"/"borrowing"): "I see loan balances. Do you have the loan agreements? I can set up repayment schedules and interest accrual."
+- **Prepaid Expenses** (subtype `prepaid_expense`, or "prepaid"/"prepayment"): "I see prepaid expenses. What are these for? (Insurance, rent, licenses?) This helps with proper amortization."
+- **Tax Liabilities** (subtypes `vat_payable` / `payroll_withholding`, or "tax payable"): "I see outstanding tax liabilities. What taxes are these? This affects your first filing period."
 
 **Tier 3 — Suggested** (operational improvements):
-- **Investment Accounts** (1700-range or "investment"/"financial asset"): "I see investment accounts. Do you have documentation for proper classification?"
-- **Payroll Liabilities** (2400-range or "salary payable"/"wages"): "I see unpaid payroll. Are there outstanding salary obligations?"
-- **Multiple Bank Accounts**: "I see multiple bank accounts. Would you like to set up bank feeds for automatic reconciliation?"
+- **Investment Accounts** (subtype `investment_long_term`, or "investment"/"financial asset"): "I see investment accounts. Do you have documentation for proper classification?"
+- **Payroll Liabilities** (subtypes `accrued_payroll` / `payroll_withholding`, or "salary payable"/"wages"): "I see unpaid payroll. Are there outstanding salary obligations?"
+- **Multiple Bank Accounts**: "I see multiple bank accounts. Would you like to connect bank feeds for automatic reconciliation?" (bank feeds are connectors: `get_connectors` / `manage_connectors`; they are optional)
 - **Revenue Patterns**: "Based on your revenue accounts, do you have recurring contracts or subscriptions?"
 
 Present findings conversationally: "Based on your balance sheet, I have a few questions before we proceed..." Group by tier. For Tier 1, explain the tradeoff clearly: "Without individual invoices, the total is still correct but aging reports won't show individual receivables."
@@ -253,7 +253,7 @@ manage_imports(
         ...
     ],
     fiscal_period_name="YYYY-MM",
-    balancing_account_number="3300",
+    balancing_account_number="<equity account the client chose>",
     open_ar_items=[
         {"customer_name": "Customer A", "reference_number": "INV-001", "amount": 10000, "invoice_date": "2024-06-15", "due_date": "2024-07-15"},
         ...
@@ -276,11 +276,11 @@ manage_imports(
     legal_entity_id=ENTITY_ID,
     balances=[...],
     fiscal_period_name="YYYY-MM",
-    balancing_account_number="3300"
+    balancing_account_number="<equity account the client chose>"
 )
 ```
 
-Explain the clearing account: "Account 3300 (Retained Earnings) absorbs any small rounding differences to keep the books balanced. The clearing account pattern ensures that AR and AP balances come from individual transactions, so aging works correctly."
+Explain the balancing account: "The equity account you chose absorbs the difference that keeps the opening entry balanced. AR and AP balances come from the individual invoices and bills, so aging works correctly." `balancing_account_number` has no default. Ask the client (or their accountant) which equity account absorbs the opening-balance difference; offer the accounts whose `account_subtype` is `retained_earnings` (or an opening-balance equity account they use) from `query("account", filters={"legal_entity_id": ENTITY_ID, "account_type": "equity"})`, and record their choice. Never assume an account number.
 
 ### Step 8: Verify Opening Balance
 
@@ -292,7 +292,7 @@ Explain the clearing account: "Account 3300 (Retained Earnings) absorbs any smal
 3. Flag discrepancies — common issues:
    - Retained earnings may differ (includes prior year net income — expected)
    - Rounding differences of a few cents (handled by balancing account)
-   - Accounts not mapped correctly (fix and re-import)
+   - Accounts not mapped correctly: find what the first import already saved (`get_imports(action="status", import_id=...)`, `query("transaction", ...)` for the opening entry) and correct those records or reverse the entry before importing again; never import the same lines twice
 
 **CP3a checkpoint**: Trial balance at cutoff date balances (debits = credits).
 **CP3b checkpoint**: Trial balance matches source balance sheet within rounding tolerance.
@@ -487,7 +487,7 @@ AP Aging:         [X] open bills, total [AMOUNT]
 ### Step 13: Close Migration
 
 If all checks pass:
-1. Ask user to confirm: "Does everything look correct? Ready to go live?"
+1. Ask user to confirm: "Does the migrated data look correct?" Then list the configuration and accounting-acceptance items that are still open; going live is the client's decision once those are done
 2. Update migration state:
    ```
    manage_agents(action="store_memory", agent_type="implementation_consultant",
@@ -497,28 +497,38 @@ If all checks pass:
    ```
 3. Present next steps:
    - "Your migration is complete! Here's what to do next:"
-   - Set up bank feeds (Wise, LHV, Swedbank) for automatic reconciliation
+   - Connect bank feeds, if they want them (connectors: `get_connectors`)
    - Configure agent email addresses to forward bills for automated processing
    - Set up recurring contracts for subscription billing
    - Plan first payroll run (if employees were imported)
    - Schedule first month-end close
    - Consider setting up budget tracking
 
-**CP5e checkpoint**: User confirms migration is complete.
+**CP5e checkpoint**: User confirms the migration (data moved and reconciled) is complete. This is not a statement that the company is ready to run on Arfiti: configuration and accounting acceptance are separate (see "Migration complete is not ready" below).
 
 ---
+
+## Migration complete is not ready
+
+Keep three states apart and report each honestly (done, pending, failed, deferred or not applicable, with the reason):
+
+1. **Migration**: data moved and reconciled (CP1–CP5).
+2. **Configuration**: the settings this client uses are set and read back: tax codes and registrations, payment terms (onboarding seeds `DUE_ON_RECEIPT` and `NET_10/15/30/60/90`; create any other the client uses), transaction-type settings (`query("transaction_type_setting", ...)`), approvals and user access, and any optional module they chose (budgets, projects, expenses, pricing, agents, bank-feed connectors). Optional modules are only checked when the client uses them.
+3. **Accounting acceptance**: the client's accountant confirms the opening position, the first period's postings and the reports they rely on.
+
+A saved setting is not proof that it works downstream; say what was verified and what was not.
 
 ## Error Handling
 
 | Error | Cause | Resolution |
 |-------|-------|------------|
-| "Account not found" | CoA mapping missed an account | Create the missing account, re-import the affected records |
+| "Account not found" | CoA mapping missed an account | Create the missing account, then resubmit only the records that failed (check what the import already saved first) |
 | "Vendor/Customer not found" | Master data not imported before transactions | Import master data first (Phase 2), then retry |
-| "Period is closed" | Trying to post to a closed period | Reopen the period, post, then re-close |
-| "Debits don't equal credits" | Unbalanced opening balance or journal entry | Check account mapping, fix amounts, re-import |
+| "Period is closed" | Trying to post to a closed period | Stop and ask the client's accountant: reopening a closed period is their decision, with its own approval. Do not reopen, post and re-close on your own |
+| "Debits don't equal credits" | Unbalanced opening balance or journal entry | Check account mapping and amounts; nothing was posted for a refused entry, so correct it and submit once |
 | "Duplicate transaction" | Same record imported twice | Check existing records, use `on_duplicate="skip"` |
 | "Import timeout" | Large batch exceeded timeout | Use async import (>50 records) and poll with `get_imports(action="status", import_id=...)` |
-| Opening balance mismatch | Account mapping error | Review mapping table, correct and re-import affected lines |
+| Opening balance mismatch | Account mapping error | Review the mapping; correct the posted opening entry (or reverse it) rather than importing the lines again |
 | Bank balance variance | Missing or extra transactions | Compare transaction list vs bank statement, find the gap |
 
 ## Output Format

@@ -154,7 +154,7 @@ The `id` must be one of this customer's addresses (`get_entity("customer", id=X)
 
 Customer-specific pricing tiers for volume discounts or negotiated rates.
 
-> **Optional during customer create:** The `customer_item_pricing` array is optional (min_required: 0). You can create a customer without any item pricing and add it later via `customer.update`.
+> **Optional during customer create:** The `customer_item_pricing` array is optional (min_required: 0). To add, change or remove a price later use the `customer_item_pricing` workflow (`create` with `legal_entity_id`, `customer_id`, `item_id`, `price` and optional `discount_percent`, `effective_from`/`effective_to` as `YYYY-MM-DD`, `notes`; `update` and `delete` by its `id`). `customer.update` does not change prices. Overlapping periods for the same customer and item are refused. (Before AR-1381 every `customer_item_pricing` submission failed.)
 
 **Required (per pricing record):**
 - `item_id` (bigint, FK) - Which item/product

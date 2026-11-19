@@ -355,7 +355,7 @@ Per-diem rates are configured per legal entity, by country/region/city with effe
 - `city` (optional): City for most specific rates
 - `daily_rate`: Full-day per-diem amount
 - `first_last_day_rate`: Reduced rate for travel days (defaults to 75% of daily_rate)
-- `breakfast_deduction`, `lunch_deduction`, `dinner_deduction`: Amounts deducted when meals are provided
+- `breakfast_deduction`, `lunch_deduction`, `dinner_deduction`: Amounts deducted when meals are provided. Required on create: they are the organisation's own policy, so send each one, `0` when none applies
 - `tier_threshold_days` (optional): Day threshold for reduced rate (e.g., 20 days)
 - `tier_daily_rate` (optional): Reduced daily rate after threshold (both must be set together)
 - `effective_from` / `effective_to`: Date range for the rate

@@ -27,23 +27,23 @@ The user needs one of these:
 For each line in the source document:
 1. Match to an account in the imported CoA by account number or name
 2. Determine if it's a debit or credit balance:
-   - Assets (1000-1999): normally debit
-   - Liabilities (2000-2999): normally credit
-   - Equity (3000-3999): normally credit
-   - Revenue (4000-4999): NOT included in opening balance
-   - Expenses (5000-9999): NOT included in opening balance
+   - `account_type` asset: normally debit
+   - `account_type` liability: normally credit
+   - `account_type` equity: normally credit
+   - `account_type` revenue, expense, cogs: NOT included in a balance-sheet opening balance
+   (use the mapped account's type, never its number range)
 3. Flag any unmatched lines for user clarification
 
 ## The Clearing Account Pattern
 
-Opening balances use a clearing account (typically 3300 — Retained Earnings) to ensure the entry balances:
+Opening balances use a balancing equity account the client chooses (often retained earnings; ask, never assume a number) to ensure the entry balances:
 
 ```
 Debit:  1000 Cash           10,000
 Debit:  1200 Receivables    25,000
 Credit: 2100 Payables              15,000
 Credit: 2500 Loans                  8,000
-Credit: 3300 Ret. Earnings         12,000  ← balancing entry
+Credit: <equity>  Ret. Earnings   12,000  ← balancing entry (client's chosen account)
 ```
 
 **Why clearing account matters for subledger:**
@@ -77,7 +77,7 @@ manage_imports(
         ...
     ],
     fiscal_period_name="2026-01",
-    balancing_account_number="3300"
+    balancing_account_number="<equity account the client chose>"
 )
 ```
 
@@ -88,7 +88,7 @@ manage_imports(
     legal_entity_id=ENTITY_ID,
     balances=[...],
     fiscal_period_name="2026-01",
-    balancing_account_number="3300",
+    balancing_account_number="<equity account the client chose>",
     open_ar_items=[
         {
             "customer_name": "Acme Corp",

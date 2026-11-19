@@ -77,7 +77,7 @@
       "name": "arfiti-core-implementation-consultant",
       "source": "./arfiti-core-implementation-consultant",
       "description": "ERP implementation consultant. Guides customers through migration: chart of accounts, opening balances with open transactions, master data import, gap period transaction processing, and go-live verification.",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "category": "accounting",
       "keywords": [
         "migration",
@@ -122,7 +122,7 @@
       "name": "arfiti-core-erp",
       "source": "./arfiti-core-erp",
       "description": "Core operating skill for the Arfiti ERP: post, query, report and run workflows through the Arfiti MCP connector, with a domain guide for each area of the ledger.",
-      "version": "2.0.101",
+      "version": "2.0.102",
       "category": "accounting",
       "keywords": [
         "erp",

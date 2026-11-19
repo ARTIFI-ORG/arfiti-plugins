@@ -42,7 +42,7 @@ Import in this order to satisfy dependencies:
 | Name required | vendor_name / customer_name must not be empty | Reject record |
 | Email format | If email provided, must be valid email format | Warn if invalid |
 | Country code | If provided, must be 2-letter ISO 3166-1 (US, EE, GB, DE, etc.) | Reject if invalid |
-| Payment terms | If payment_terms_code provided, must exist in system | Default to NET30 if invalid |
+| Payment terms | If payment_terms_code provided, must exist in system (`query("payment_term", ...)`) | Ask the client: map it to an existing term or create the exact term they use (`payment_term.create`). Never substitute NET30 or another default |
 | Duplicate names | Flag exact name matches for review | May be intentional (branches) |
 | Phone format | If phone provided, normalize format | Clean but don't reject |
 
@@ -64,7 +64,7 @@ Import in this order to satisfy dependencies:
 |------|-------|--------|
 | Only balance sheet accounts | Revenue and expense accounts should NOT be in opening balance | Warn and exclude |
 | Total balance | Sum of debits must equal sum of credits (before balancing account) | Show imbalance amount |
-| Balancing account exists | Account 3300 (or specified balancing account) must exist | Create if missing |
+| Balancing account chosen | The client names the equity account that absorbs the difference; it must exist and be an equity account | Ask; if it does not exist, create it only with the client's agreement. Never assume a number |
 | Account mapping complete | Every line must map to an existing account | Flag unmapped lines |
 | Fiscal period exists | The target fiscal period must exist and be open | Create period if needed |
 | No prior opening balance | Check if opening balance already posted for this period | Warn if duplicate |
