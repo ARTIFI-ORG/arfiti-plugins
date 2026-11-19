@@ -95,7 +95,7 @@ All rules (register, types, required fields, transactions, filters, import, merg
 | `id` | integer | PK | System-generated ID | `123` |
 | `master_project_id` | integer | Yes | FK to master_projects | `45` |
 | `legal_entity_id` | integer | Yes | Legal entity ID | `13` |
-| `status` | varchar(50) | No | Entity-specific status | `"active"`, `"on_hold"` |
+| `status` | varchar(50) | No | Entity's own status; empty means it inherits the project's | `"active"`, `"on_hold"` |
 | `project_manager_employee_id` | integer | No | Project manager (entity employee) | `67` |
 | `priority` | varchar(20) | No | Project priority | `"high"`, `"medium"`, `"low"` |
 | `budget_amount` | numeric(15,2) | No | Entity budget allocation | `30000.00` |
@@ -237,7 +237,7 @@ submit(object_type="project", operation="update", data=JSON.stringify({
 
 #### Delete Project
 
-Soft-delete project (sets status to archived/deleted).
+Archive the project for every entity: sets its status to `archived` and clears each entity's own status (history keeps the previous one). `hard_delete: true` removes a project with no allocations or time entries.
 
 ```javascript
 submit(object_type="project", operation="delete", data=JSON.stringify({
@@ -314,7 +314,7 @@ submit(object_type="project", operation="assign_to_entity", data=JSON.stringify(
 
 #### Close Project
 
-Close/complete project with final status.
+Close/complete project with final status, for every entity (see the status rule below).
 
 ```javascript
 submit(object_type="project", operation="close", data=JSON.stringify({
@@ -323,6 +323,8 @@ submit(object_type="project", operation="close", data=JSON.stringify({
     final_status: "completed"
 }))
 ```
+
+**Organisation-wide and entity statuses.** Each entity assignment shows its own status if it has one, otherwise the project's. Archive (`project.delete`), `project.close` and `project.update` without `legal_entity_id` change the status for every entity: they set the project's status and clear each entity's own status in one transaction, and history keeps each entity's previous status. To change one entity only (for example on hold in one entity, active in another), use `project.update` with that `legal_entity_id`. A new or newly assigned entity inherits the project's status. A user limited to some entities can make an organisation-wide change only when the project is assigned to none outside them; otherwise the request is refused (`entity_access_denied`, `error_stage: organisation_wide`) and they change their own entity with `legal_entity_id`. (Before AR-1381 create copied `planning` into every entity, so an archived or closed project kept reading `planning`; migration 913 cleared those copies.)
 
 **Final Status Options:**
 - `completed` - Successfully finished
