@@ -178,8 +178,8 @@ Stop at the first check that settles the line.
    (the confirmation would then be refused as a second posting of the same
    payment). The cases in check 5 that say "ask" are for lines with no batch
    behind them. Then:
-   `submit("payment_batch", "confirm_line", {"legal_entity_id": X,
-   "statement_line_id": L, "batch_line_id": BL})` (optional `confirmed_amount`,
+   `submit(object_type="payment_batch", operation="confirm_line", data=JSON.stringify({"legal_entity_id": X,
+   "statement_line_id": L, "batch_line_id": BL}))` (optional `confirmed_amount`,
    `confirmed_date`). It posts the payment applied to its invoice and links the
    line; post nothing else. SEPA batch lines confirm like any other.
    A refusal that names the payment method means the server or
@@ -307,7 +307,7 @@ Vendor payment / customer receipt, posted unapplied
 (applying it to invoices is the reconciliation session's job):
 
 ```
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
   "transaction_type_code": "AP_PAYMENT",          // AR_PAYMENT with customer_id
   "legal_entity_id": X, "vendor_id": V,
   "payment_date": "<line date>", "transaction_date": "<line date>",
@@ -316,7 +316,7 @@ submit("transaction", "post", {
   "reference_number": "<line reference>", "description": "<line description>",
   "lines": [{"amount": <absolute amount>, "description": "Payment"}],
   "source_bank_statement_line_id": L
-}, idempotency_key="bank-X-L-post")
+}), idempotency_key="bank-X-L-post")
 ```
 
 **Required dimensions.** The organisation's posting set-up may require
@@ -350,7 +350,7 @@ you picked because it was first in the list or looked like a default.
 Bank entries (fee, interest, transfer and the other types):
 
 ```
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
   "transaction_type_code": "BANK_FEE",
   "legal_entity_id": X, "transaction_date": "<line date>",
   "currency_code": "<line currency, else the account's>",
@@ -361,7 +361,7 @@ submit("transaction", "post", {
     {"account_number": "<bank gl_account_number>", "debit": 0, "credit": <amount>, "description": "..."}
   ],
   "source_bank_statement_line_id": L
-}, idempotency_key="bank-X-L-post")
+}), idempotency_key="bank-X-L-post")
 ```
 
 Debit and credit sides follow the money: a fee or withdrawal credits the bank
@@ -371,8 +371,8 @@ records do not state (never fall back to USD).
 Then match:
 
 ```
-submit("bank_statement_line", "match", {"legal_entity_id": X,
-  "statement_line_id": L, "gl_transaction_id": T, "notes": "<why, one line>"},
+submit(object_type="bank_statement_line", operation="match", data=JSON.stringify({"legal_entity_id": X,
+  "statement_line_id": L, "gl_transaction_id": T, "notes": "<why, one line>"}),
   idempotency_key="bank-X-L-match")
 ```
 
@@ -401,7 +401,7 @@ the master-data agent before posting, so the purchase builds the vendor's
 history. Post:
 
 ```
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
   "transaction_type_code": "CARD_EXPENSE", "legal_entity_id": X,
   "transaction_date": "<card date>", "currency_code": "<card currency>",
   "reference_number": "CARD-<card transaction id>",
@@ -412,12 +412,12 @@ submit("transaction", "post", {
     {"account_number": "<expense account>", "debit": <amount>, "credit": 0, "description": "<merchant>"},
     {"account_number": "<clearing account>", "debit": 0, "credit": <amount>, "description": "Card clearing"}
   ]
-}, idempotency_key="bank-X-card-C-post")
+}), idempotency_key="bank-X-card-C-post")
 ```
 
 (a refund reverses the sides), then
-`submit("card_statement_line", "match", {"legal_entity_id": X,
-"card_transaction_id": C, "gl_transaction_id": T, "match_notes": "..."})`.
+`submit(object_type="card_statement_line", operation="match", data=JSON.stringify({"legal_entity_id": X,
+"card_transaction_id": C, "gl_transaction_id": T, "match_notes": "..."}))`.
 Tag a configured non-deductible card tax code when the card programme names one.
 
 **The card posting's account is provisional.** When a bill or receipt for the
@@ -480,9 +480,9 @@ Exclude only a line that is the same movement as another statement line, or
 a covered transfer leg (step 3, own accounts):
 
 ```
-submit("bank_statement_line", "exclude", {"legal_entity_id": X,
+submit(object_type="bank_statement_line", operation="exclude", data=JSON.stringify({"legal_entity_id": X,
   "statement_line_id": L,
-  "reason": "<duplicate of line L2 / second leg of journal T owned by line L2>"},
+  "reason": "<duplicate of line L2 / second leg of journal T owned by line L2>"}),
   idempotency_key="bank-X-L-exclude")
 ```
 
@@ -560,9 +560,9 @@ else (`GUIDE_WORKFLOW_MANAGEMENT.md`, "Failed execution"):
   the organisation's approval lane holds it. Record the workflow id; do
   nothing that depends on it in this session. Then say that you wait for
   it, once per workflow ("A decision comes back to this session"):
-  `submit("managed_agent_run", "wait", {"session_id": "<managed_session_id>",
+  `submit(object_type="managed_agent_run", operation="wait", data=JSON.stringify({"session_id": "<managed_session_id>",
   "workflow_id": "<workflow_id>", "waiting_for": "<one line: what continues
-  once this is decided>"})`.
+  once this is decided>"}))`.
 - **Replay** (`idempotent_replay: true`): the first answer to this key again;
   nothing new was written. Treat it as that first answer.
 - **Definite refusal** (`refused: true`, `status: "refused"`,
@@ -612,7 +612,7 @@ task, not in the session: the session ends and a later session continues
 from the answer.
 
 ```
-submit("agent_request", "create", {
+submit(object_type="agent_request", operation="create", data=JSON.stringify({
   "request_type": "verification", "legal_entity_id": X,
   "request_data": {
     "action": "agent_review",
@@ -626,7 +626,7 @@ submit("agent_request", "create", {
     "refusal": {"operation": "<object.operation>", "reason": "<message or failure_reason>", "workflow_id": "<id>"},  // system_refusal only
     "run_reference": {"runtime": "managed_agents", "session_id": "<managed_session_id from the kickoff>"}
   }
-}, idempotency_key="bank-X-L-task-<kind>-<subject id>")
+}), idempotency_key="bank-X-L-task-<kind>-<subject id>")
 ```
 
 - `question`: a decision the records cannot settle. Give the options you see
@@ -656,8 +656,8 @@ answer, and never a reason to hold the item or to ask again. If the kickoff has 
 **A decision comes back to this session.** A write that waits for approval
 (yours, or one a helper made for you and reported as `awaiting_approval` with
 its `workflow_id`) stalls the work unless you declare it:
-`submit("managed_agent_run", "wait", {"session_id": "<managed_session_id>",
-"workflow_id": "<workflow_id>", "waiting_for": "<one line>"})`. Declare each
+`submit(object_type="managed_agent_run", operation="wait", data=JSON.stringify({"session_id": "<managed_session_id>",
+"workflow_id": "<workflow_id>", "waiting_for": "<one line>"}))`. Declare each
 workflow once, then end your turn; do not poll. `waiting_for` is one line a
 later session can act on: the document or record that waits and what happens
 next. When the workflow is decided, a message arrives here, or a fresh session
@@ -685,8 +685,8 @@ first message) starts with them, after step 0: `get_entity("agent_request",
 (or `resolution_id`) and `response_data.notes`. The answer is not tied to a
 version of the records, so read the subject's current rows again before
 acting. Act on it through the normal steps of this skill, then link the
-outcome: `submit("agent_request", "update", {"request_id": <id>,
-"result_type": "<record type>", "result_id": "<id>"},
+outcome: `submit(object_type="agent_request", operation="update", data=JSON.stringify({"request_id": <id>,
+"result_type": "<record type>", "result_id": "<id>"}),
 idempotency_key="bank-X-L-task-<id>-result")`. Not completed: leave it and
 report it as still waiting.
 

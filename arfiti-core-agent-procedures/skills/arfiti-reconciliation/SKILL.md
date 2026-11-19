@@ -87,7 +87,7 @@ Bank statement lines are not in scope (the bank agent's work).
 8. **Never convert at a rate you chose.** Cross-currency amounts come from the
    records (step 5d). Say which record gave each amount.
 9. **Scope.** One legal entity per session; every call carries its
-   `legal_entity_id`. Do not use `submit("reconciliation", "auto_match", ...)`:
+   `legal_entity_id`. Do not use `submit(object_type="reconciliation", operation="auto_match", ...)`:
    it runs a server matcher, not this procedure.
 
 ## Inputs (first message)
@@ -421,7 +421,7 @@ object_type="card_purchase", operation="manage")` once each.
 `applications` list):
 
 ```
-submit("reconciliation", "match", {
+submit(object_type="reconciliation", operation="match", data=JSON.stringify({
   "legal_entity_id": X,
   "scope": "ap" | "ar",
   "source_transaction_id": <payment id>,
@@ -429,7 +429,7 @@ submit("reconciliation", "match", {
                     "source_applied_amount": <payment currency, only when currencies differ>}],
   "application_effective_date": "YYYY-MM-DD",   // only for simple cash applications (step 1)
   "notes": "<evidence in one line>"
-}, idempotency_key="recon-<legal_entity_id>-<payment id>-<invoice ids joined by _>")
+}), idempotency_key="recon-<legal_entity_id>-<payment id>-<invoice ids joined by _>")
 ```
 
 Several payments to one invoice: one call per payment, each with its own
@@ -452,8 +452,8 @@ this session:
   same match once more with `"open_run": true` (and `run_reference`) in place
   of `reconciliation_run_id`, under the same idempotency key plus `-r`.
 - After your last match in a scope, close the run:
-  `submit("reconciliation", "finalize", {"legal_entity_id": X, "scope": "ap" | "ar",
-  "reconciliation_run_id": <your run>})`.
+  `submit(object_type="reconciliation", operation="finalize", data=JSON.stringify({"legal_entity_id": X, "scope": "ap" | "ar",
+  "reconciliation_run_id": <your run>}))`.
 - Card purchase matches (`purchase_id`) take none of these fields; they keep
   their own run.
 - No `managed_session_id` in the kickoff: use `open_run` and
@@ -466,11 +466,11 @@ Purchase"):
 1. **Link the bill to the purchase** (records your decision and evidence; no
    ledger write):
    ```
-   submit("card_purchase", "manage", {
+   submit(object_type="card_purchase", operation="manage", data=JSON.stringify({
      "legal_entity_id": X, "purchase_id": <purchase id>, "expected_version": <version>,
      "action": "link_existing_bill", "bill_transaction_id": <bill id>,
      "reason": "<the evidence in one or two sentences>"
-   }, idempotency_key="recon-<legal_entity_id>-link-<purchase id>-<bill id>")
+   }), idempotency_key="recon-<legal_entity_id>-link-<purchase id>-<bill id>")
    ```
    Do this for every purchase you apply, also when the gateway might accept
    the match without it: the link is what lets you settle when the
@@ -488,13 +488,13 @@ Purchase"):
      purchase in the same currency (a hold and its capture), settling one
      bill:
      ```
-     submit("reconciliation", "match", {
+     submit(object_type="reconciliation", operation="match", data=JSON.stringify({
        "legal_entity_id": X, "scope": "ap",
        "source_transaction_id": <the CARD_EXPENSE id of a purchase leg>,
        "purchase_id": <purchase id>, "purchase_version": <version>,
        "applications": [{"target_transaction_id": <bill id>, "applied_amount": <bill currency>}],
        "notes": "<evidence>"
-     }, idempotency_key="recon-<legal_entity_id>-purchase-<purchase id>-<bill id>")
+     }), idempotency_key="recon-<legal_entity_id>-purchase-<purchase id>-<bill id>")
      ```
      The gateway sizes each leg itself and applies them in one transaction.
      One bill per call; no write-off in this call. Several legs in a
@@ -522,8 +522,8 @@ offset").
 **Card scope**: a feed line with `recon_status = "pending_recon"` whose
 `CARD_EXPENSE` the evidence identifies (same card, amount, date and merchant,
 or its `posted_transaction_id`):
-`submit("card_statement_line", "match", {"card_transaction_id": C,
-"gl_transaction_id": G, "legal_entity_id": X})`.
+`submit(object_type="card_statement_line", operation="match", data=JSON.stringify({"card_transaction_id": C,
+"gl_transaction_id": G, "legal_entity_id": X}))`.
 
 **Documentation decisions are a person's.** `card_purchase.manage` actions
 `accept_evidence`, `waive`, `not_required` and `request_evidence` decide
@@ -609,9 +609,9 @@ else (`GUIDE_WORKFLOW_MANAGEMENT.md`, "Failed execution"):
   the organisation's approval lane holds it. Record the workflow id; do
   nothing that depends on it in this session. Then say that you wait for
   it, once per workflow ("A decision comes back to this session"):
-  `submit("managed_agent_run", "wait", {"session_id": "<managed_session_id>",
+  `submit(object_type="managed_agent_run", operation="wait", data=JSON.stringify({"session_id": "<managed_session_id>",
   "workflow_id": "<workflow_id>", "waiting_for": "<one line: what continues
-  once this is decided>"})`.
+  once this is decided>"}))`.
 - **Replay** (`idempotent_replay: true`): the first answer to this key again;
   nothing new was written. Treat it as that first answer.
 - **Definite refusal** (`refused: true`, `status: "refused"`,
@@ -672,7 +672,7 @@ task, not in the session: the session ends and a later session continues
 from the answer.
 
 ```
-submit("agent_request", "create", {
+submit(object_type="agent_request", operation="create", data=JSON.stringify({
   "request_type": "verification", "legal_entity_id": X,
   "request_data": {
     "action": "agent_review",
@@ -686,7 +686,7 @@ submit("agent_request", "create", {
     "refusal": {"operation": "<object.operation>", "reason": "<message or failure_reason>", "workflow_id": "<id>"},  // system_refusal only
     "run_reference": {"runtime": "managed_agents", "session_id": "<managed_session_id from the kickoff>"}
   }
-}, idempotency_key="recon-X-task-<kind>-<subject id>")
+}), idempotency_key="recon-X-task-<kind>-<subject id>")
 ```
 
 - `question`: a decision the records cannot settle. Give the options you see
@@ -716,8 +716,8 @@ answer, and never a reason to hold the item or to ask again. If the kickoff has 
 **A decision comes back to this session.** A write that waits for approval
 (yours, or one a helper made for you and reported as `awaiting_approval` with
 its `workflow_id`) stalls the work unless you declare it:
-`submit("managed_agent_run", "wait", {"session_id": "<managed_session_id>",
-"workflow_id": "<workflow_id>", "waiting_for": "<one line>"})`. Declare each
+`submit(object_type="managed_agent_run", operation="wait", data=JSON.stringify({"session_id": "<managed_session_id>",
+"workflow_id": "<workflow_id>", "waiting_for": "<one line>"}))`. Declare each
 workflow once, then end your turn; do not poll. `waiting_for` is one line a
 later session can act on: the document or record that waits and what happens
 next. When the workflow is decided, a message arrives here, or a fresh session
@@ -745,8 +745,8 @@ first message) starts with them, after step 0: `get_entity("agent_request",
 (or `resolution_id`) and `response_data.notes`. The answer is not tied to a
 version of the records, so read the subject's current rows again before
 acting. Act on it through the normal steps of this skill, then link the
-outcome: `submit("agent_request", "update", {"request_id": <id>,
-"result_type": "<record type>", "result_id": "<id>"},
+outcome: `submit(object_type="agent_request", operation="update", data=JSON.stringify({"request_id": <id>,
+"result_type": "<record type>", "result_id": "<id>"}),
 idempotency_key="recon-X-task-<id>-result")`. Not completed: leave it and
 report it as still waiting.
 

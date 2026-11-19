@@ -115,10 +115,10 @@ the card's last digits. One charge clearly matches: the company paid; do not
 claim it. File the receipt on the charge:
 
 ```
-submit("card_transaction", "attach_receipt",
-  {"card_transaction_id": C, "legal_entity_id": X,
+submit(object_type="card_transaction", operation="attach_receipt",
+  data=JSON.stringify({"card_transaction_id": C, "legal_entity_id": X,
    "file_name": "<filename>", "source_url": "<storage_url>",
-   "content_type": "<content_type>"},
+   "content_type": "<content_type>"}),
   idempotency_key="<prefix>-card-<C>")
 ```
 
@@ -243,24 +243,24 @@ Before writing:
 real.
 
 ```
-submit("expense_report", "create",
-  {"legal_entity_id": X, "employee_id": E,
+submit(object_type="expense_report", operation="create",
+  data=JSON.stringify({"legal_entity_id": X, "employee_id": E,
    "title": "<trip or month, e.g. Tartu client visit, October 2026>",
    "report_date": "<today or the claim's last date>",
    "notes": "<what the claim covers, and who prepared it>",
-   "lines": [ ... ]},
+   "lines": [ ... ]}),
   idempotency_key="<prefix>-create")
 ```
 
 Leave `currency` out (it is the entity's).
 
-**Add to a draft:** `submit("expense_report", "add_line",
-{"expense_report_id": R, "line": {...}}, idempotency_key="<prefix>-line-<n>")`.
+**Add to a draft:** `submit(object_type="expense_report", operation="add_line",
+data=JSON.stringify({"expense_report_id": R, "line": {...}}), idempotency_key="<prefix>-line-<n>")`.
 
-**Attach a receipt to a line:** `submit("expense_report", "attach_receipt",
-{"expense_report_id": R, "line_number": N, "receipt_url": "<storage_url>",
+**Attach a receipt to a line:** `submit(object_type="expense_report", operation="attach_receipt",
+data=JSON.stringify({"expense_report_id": R, "line_number": N, "receipt_url": "<storage_url>",
 "extracted_amount": <total>, "extracted_date": "YYYY-MM-DD",
-"extracted_merchant": "<merchant>", "extracted_currency": "<code>"},
+"extracted_merchant": "<merchant>", "extracted_currency": "<code>"}),
 idempotency_key="<prefix>-receipt-<N>")`. The line's `receipt_status` becomes
 `verified` or `mismatch`; the band it uses (amount within 5 %, date within
 3 days) is fixed in the server's code, not the company's policy, so say so
@@ -278,7 +278,7 @@ answer with no changed row is a failure, not a success.
 ## Step 7: submit, only when its owner says so
 
 ```
-submit("expense_report", "submit", {"expense_report_id": R},
+submit(object_type="expense_report", operation="submit", data=JSON.stringify({"expense_report_id": R}),
   idempotency_key="<prefix>-submit")
 ```
 

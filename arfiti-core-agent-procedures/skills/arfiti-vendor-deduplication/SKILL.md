@@ -1,12 +1,12 @@
 ---
 name: arfiti-vendor-deduplication
-description: Sweep one organisation's vendors for duplicates through the Arfiti MCP tools, decide which pairs are certainly the same party from hard evidence (tax or registration number, bank account, history), and propose each merge through submit("vendor", "merge"), which the organisation's workflow holds for approval; never merge on a name alone. Use for a scheduled or requested duplicate sweep.
+description: Sweep one organisation's vendors for duplicates through the Arfiti MCP tools, decide which pairs are certainly the same party from hard evidence (tax or registration number, bank account, history), and propose each merge through submit(object_type="vendor", operation="merge"), which the organisation's workflow holds for approval; never merge on a name alone. Use for a scheduled or requested duplicate sweep.
 ---
 
 # Find and merge duplicate vendors
 
-Uses the public merge operation, never `vendor.update`: `submit("vendor", "merge", {"winning_vendor_id",
-"losing_vendor_id", "merge_reason", "custom_fields_resolution"})`
+Uses the public merge operation, never `vendor.update`: `submit(object_type="vendor", operation="merge", data=JSON.stringify({"winning_vendor_id",
+"losing_vendor_id", "merge_reason", "custom_fields_resolution"}))`
 The merge moves
 every reference to the losing vendor (documents, bank accounts, entity links,
 agent memory) onto the winner in one transaction and deactivates the loser,
@@ -97,8 +97,8 @@ Name-only groups are reported as candidates with what is missing to decide.
 once, then per certain pair:
 
 ```
-submit("vendor", "merge", {"winning_vendor_id": W, "losing_vendor_id": L,
-  "merge_reason": "<evidence in one line: same VAT EE..., same IBAN ...>"},
+submit(object_type="vendor", operation="merge", data=JSON.stringify({"winning_vendor_id": W, "losing_vendor_id": L,
+  "merge_reason": "<evidence in one line: same VAT EE..., same IBAN ...>"}),
   validate_only=true)
 ```
 

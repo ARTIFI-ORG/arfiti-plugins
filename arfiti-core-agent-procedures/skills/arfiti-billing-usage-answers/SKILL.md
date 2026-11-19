@@ -1,6 +1,6 @@
 ---
 name: arfiti-billing-usage-answers
-description: Turn a person's answer to a "provide usage data" task into recorded contract usage and a billing run for exactly those contracts, through the Arfiti MCP tools - read the task and the answer, map each figure to a metered contract line, record it with submit("contract_usage", "record"), then submit("billing_run", "execute") for those contracts. Never invents a quantity. Use when a usage-data task has been answered.
+description: Turn a person's answer to a "provide usage data" task into recorded contract usage and a billing run for exactly those contracts, through the Arfiti MCP tools - read the task and the answer, map each figure to a metered contract line, record it with submit(object_type="contract_usage", operation="record"), then submit(object_type="billing_run", operation="execute") for those contracts. Never invents a quantity. Use when a usage-data task has been answered.
 ---
 
 # Record usage from an answered task and bill it
@@ -63,10 +63,10 @@ measure; a different unit is a question, not a conversion you choose.
 operation="record")` once, then per line:
 
 ```
-submit("contract_usage", "record", {"contract_line_id": L, "quantity": Q,
+submit(object_type="contract_usage", operation="record", data=JSON.stringify({"contract_line_id": L, "quantity": Q,
   "usage_date": "<last day of the period>", "usage_period_start": "...",
   "usage_period_end": "...", "legal_entity_id": X, "unit_of_measure": "...",
-  "source": "usage_task", "external_reference_id": "<request id>"},
+  "source": "usage_task", "external_reference_id": "<request id>"}),
   validate_only=true)
 ```
 
@@ -75,8 +75,8 @@ then for real. Read back the usage record.
 ## Step 4: bill those contracts
 
 ```
-submit("billing_run", "execute", {"legal_entity_id": X,
-  "billing_date": "<from the task>", "contract_ids": [<the task's contracts>]},
+submit(object_type="billing_run", operation="execute", data=JSON.stringify({"legal_entity_id": X,
+  "billing_date": "<from the task>", "contract_ids": [<the task's contracts>]}),
   validate_only=true)
 ```
 

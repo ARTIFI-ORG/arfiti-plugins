@@ -207,7 +207,7 @@ task, not in the session: the session ends and a later session continues
 from the answer.
 
 ```
-submit("agent_request", "create", {
+submit(object_type="agent_request", operation="create", data=JSON.stringify({
   "request_type": "verification", "legal_entity_id": X,
   "assigned_to_user_id": <the employee's user_id, when the task is the employee's>,
   "request_data": {
@@ -222,7 +222,7 @@ submit("agent_request", "create", {
     "refusal": {"operation": "<object.operation>", "reason": "<message or failure_reason>", "workflow_id": "<id>"},  // system_refusal only
     "run_reference": {"runtime": "managed_agents", "session_id": "<managed_session_id from the kickoff>"}
   }
-}, idempotency_key="<prefix>task-<kind>-<subject id>")
+}), idempotency_key="<prefix>task-<kind>-<subject id>")
 ```
 
 **Who gets it.** A task for the employee carries their linked `user_id` as
@@ -259,8 +259,8 @@ answer, and never a reason to hold the item or to ask again. If the kickoff has 
 **A decision comes back to this session.** A write that waits for approval
 (yours, or one a helper made for you and reported as `awaiting_approval` with
 its `workflow_id`) stalls the work unless you declare it:
-`submit("managed_agent_run", "wait", {"session_id": "<managed_session_id>",
-"workflow_id": "<workflow_id>", "waiting_for": "<one line>"})`. Declare each
+`submit(object_type="managed_agent_run", operation="wait", data=JSON.stringify({"session_id": "<managed_session_id>",
+"workflow_id": "<workflow_id>", "waiting_for": "<one line>"}))`. Declare each
 workflow once, then end your turn; do not poll. `waiting_for` is one line a
 later session can act on: the document or record that waits and what happens
 next. When the workflow is decided, a message arrives here, or a fresh session
@@ -288,8 +288,8 @@ first message) starts with them, after step 0: `get_entity("agent_request",
 (or `resolution_id`) and `response_data.notes`. The answer is not tied to a
 version of the records, so read the subject's current rows again before
 acting. Act on it through the normal steps of this skill, then link the
-outcome: `submit("agent_request", "update", {"request_id": <id>,
-"result_type": "<record type>", "result_id": "<id>"},
+outcome: `submit(object_type="agent_request", operation="update", data=JSON.stringify({"request_id": <id>,
+"result_type": "<record type>", "result_id": "<id>"}),
 idempotency_key="<prefix>task-<id>-result")`. Not completed: leave it and
 report it as still waiting.
 

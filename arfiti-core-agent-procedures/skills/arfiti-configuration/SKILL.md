@@ -55,7 +55,7 @@ Tools: `query`, `get_entity`, `get_guidance`, `get_organization` (read:
    Report what is waiting and, from `get_submissions(action="history",
    workflow_id=...)`, for whom; do not retry or work around it. Return the
    `workflow_id`: the agent that asked declares the wait for it
-   (`submit("managed_agent_run", "wait", ...)`), and the platform tells that
+   (`submit(object_type="managed_agent_run", operation="wait", ...)`), and the platform tells that
    agent when it is decided. When a later message says it was approved, read
    the record back and continue with the next step.
 6. **Scope.** Every call carries the legal entity; never touch another

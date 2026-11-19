@@ -92,7 +92,7 @@
       "name": "arfiti-core-agent-procedures",
       "source": "./arfiti-core-agent-procedures",
       "description": "The procedures Arfiti's own agents follow: bills, bank and card lines, payment reconciliation, vendors and customers, configuration, expense claims, period close and billing usage, for your own Claude or Cowork through the Arfiti MCP server.",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "category": "accounting",
       "keywords": [
         "bills",
@@ -122,7 +122,7 @@
       "name": "arfiti-core-erp",
       "source": "./arfiti-core-erp",
       "description": "Core operating skill for the Arfiti ERP: post, query, report and run workflows through the Arfiti MCP connector, with a domain guide for each area of the ledger.",
-      "version": "2.0.96",
+      "version": "2.0.97",
       "category": "accounting",
       "keywords": [
         "erp",

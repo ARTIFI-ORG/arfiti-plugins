@@ -140,11 +140,11 @@ session asks the same question again. So after acting on the answer:
    this one case), and submit the whole text:
 
    ```
-   submit("policy", "save", {
+   submit(object_type="policy", operation="save", data=JSON.stringify({
      "namespace": "agent.rules", "section": "<your agent type>",
      "content": {"text": "<existing rules, unchanged>\n<the new sentence>"},
      "reason": "From the answer to task <request_id>: \"<their words>\""
-   }, idempotency_key="<your prefix>-rule-<request_id>")
+   }), idempotency_key="<your prefix>-rule-<request_id>")
    ```
 
    An agent's rule change is saved as a proposal and waits for a person to

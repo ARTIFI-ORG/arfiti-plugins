@@ -1,7 +1,7 @@
 {
   "name": "arfiti-core-agent-procedures",
   "description": "Arfiti agent procedures: bills, bank lines, reconciliation, vendor and configuration work, expense claims, period close and billing usage, through the Arfiti MCP server.",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "license": "MIT",
   "author": {
     "name": "Arfiti"

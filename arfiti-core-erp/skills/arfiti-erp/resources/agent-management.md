@@ -339,7 +339,7 @@ current revocations still apply. Model budgets use `config.model_call_policy`.
 # LLM agents — prompt, config, tools, triggers, model tier, concurrency:
 get_submissions(action="schema", object_type="agent_definition", operation="update")  # field contract
 submit(object_type="agent_definition", operation="update", data=json.dumps({"definition_id": N, "system_prompt": "..."}))
-submit(object_type="agent_definition", operation="enable", data=json.dumps({"definition_id": N, "is_enabled": false}))
+submit(object_type="agent_definition", operation="enable", data=json.dumps({"definition_id": N, "is_enabled": False}))
 
 # Pipeline agents — patch this org's stages (canonical pipeline stays shared):
 manage_agents(action="update_pipeline_patch", agent_type="...",
@@ -357,7 +357,7 @@ manage_agents(action="dry_run_pipeline", agent_type="...",
 ```python
 submit(object_type="scheduled_job", operation="create", data='{...}')                       # cron for an agent
 submit(object_type="scheduled_job", operation="update", data=json.dumps({"job_id": N, "cron_expression": "0 9 * * *"}))
-submit(object_type="scheduled_job", operation="enable", data=json.dumps({"job_id": N, "is_enabled": false}))
+submit(object_type="scheduled_job", operation="enable", data=json.dumps({"job_id": N, "is_enabled": False}))
 submit(object_type="scheduled_job", operation="delete", data=json.dumps({"job_id": N}))
 ```
 

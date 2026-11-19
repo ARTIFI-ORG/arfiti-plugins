@@ -388,10 +388,10 @@ gross, send `is_tax_inclusive: true` on those lines.
    Send `unit_price` only when quantity times unit price equals the amount.
    Do not send `metadata.bill_candidate` or `reviewed_total`: those switch the
    executor into the reviewed-draft path, which these tools do not use.
-3. `submit("transaction", "post", payload, validate_only=true)`. Fix what the
+3. `submit(object_type="transaction", operation="post", data=payload, validate_only=true)`. Fix what the
    errors name from the document and the records; if an error needs a fact you
    do not have, ask. Never "fix" by changing a value the document states.
-4. `submit("transaction", "post", payload, idempotency_key="bill-<event>-post")`.
+4. `submit(object_type="transaction", operation="post", data=payload, idempotency_key="bill-<event>-post")`.
    - Executed: the result carries the transaction id. Go on.
    - Pending approval (`status: "pending"`, a `workflow_id`, no transaction id):
      that is the organisation's approval lane working, not a failure. Declare
@@ -405,14 +405,14 @@ gross, send `is_tax_inclusive: true` on those lines.
 6. Attach every source document you used:
 
 ```
-submit("attachment", "create", {
+submit(object_type="attachment", operation="create", data=JSON.stringify({
   "entity_type": "AP_INVOICE", "entity_id": <transaction id>,
   "legal_entity_id": X, "file_name": "<filename>",
   "storage_url": "<storage_url>", "content_type": "<content_type>",
   "storage_provider": "r2", "storage_key": "<storage_key>",
   "attachment_type": "INVOICE",
   "extracted_text": "<first 5000 characters of the read_attachment text, copied exactly>"
-}, idempotency_key="bill-<event>-attach-<n>")
+}), idempotency_key="bill-<event>-attach-<n>")
 ```
 
    `storage_provider` and `storage_key` come from the first message's
@@ -466,9 +466,9 @@ else (`GUIDE_WORKFLOW_MANAGEMENT.md`, "Failed execution"):
   the organisation's approval lane holds it. Record the workflow id; do
   nothing that depends on it in this session. Then say that you wait for
   it, once per workflow ("A decision comes back to this session"):
-  `submit("managed_agent_run", "wait", {"session_id": "<managed_session_id>",
+  `submit(object_type="managed_agent_run", operation="wait", data=JSON.stringify({"session_id": "<managed_session_id>",
   "workflow_id": "<workflow_id>", "waiting_for": "<one line: what continues
-  once this is decided>"})`.
+  once this is decided>"}))`.
 - **Replay** (`idempotent_replay: true`): the first answer to this key again;
   nothing new was written. Treat it as that first answer.
 - **Definite refusal** (`refused: true`, `status: "refused"`,
@@ -518,7 +518,7 @@ task, not in the session: the session ends and a later session continues
 from the answer.
 
 ```
-submit("agent_request", "create", {
+submit(object_type="agent_request", operation="create", data=JSON.stringify({
   "request_type": "verification", "legal_entity_id": X,
   "request_data": {
     "action": "agent_review",
@@ -532,7 +532,7 @@ submit("agent_request", "create", {
     "refusal": {"operation": "<object.operation>", "reason": "<message or failure_reason>", "workflow_id": "<id>"},  // system_refusal only
     "run_reference": {"runtime": "managed_agents", "session_id": "<managed_session_id from the kickoff>"}
   }
-}, idempotency_key="bill-<event>-task-<kind>-<subject id>")
+}), idempotency_key="bill-<event>-task-<kind>-<subject id>")
 ```
 
 - `question`: a decision the records cannot settle. Give the options you see
@@ -562,8 +562,8 @@ answer, and never a reason to hold the item or to ask again. If the kickoff has 
 **A decision comes back to this session.** A write that waits for approval
 (yours, or one a helper made for you and reported as `awaiting_approval` with
 its `workflow_id`) stalls the work unless you declare it:
-`submit("managed_agent_run", "wait", {"session_id": "<managed_session_id>",
-"workflow_id": "<workflow_id>", "waiting_for": "<one line>"})`. Declare each
+`submit(object_type="managed_agent_run", operation="wait", data=JSON.stringify({"session_id": "<managed_session_id>",
+"workflow_id": "<workflow_id>", "waiting_for": "<one line>"}))`. Declare each
 workflow once, then end your turn; do not poll. `waiting_for` is one line a
 later session can act on: the document or record that waits and what happens
 next. When the workflow is decided, a message arrives here, or a fresh session
@@ -591,8 +591,8 @@ first message) starts with them, after step 0: `get_entity("agent_request",
 (or `resolution_id`) and `response_data.notes`. The answer is not tied to a
 version of the records, so read the subject's current rows again before
 acting. Act on it through the normal steps of this skill, then link the
-outcome: `submit("agent_request", "update", {"request_id": <id>,
-"result_type": "<record type>", "result_id": "<id>"},
+outcome: `submit(object_type="agent_request", operation="update", data=JSON.stringify({"request_id": <id>,
+"result_type": "<record type>", "result_id": "<id>"}),
 idempotency_key="bill-<event>-task-<id>-result")`. Not completed: leave it and
 report it as still waiting.
 

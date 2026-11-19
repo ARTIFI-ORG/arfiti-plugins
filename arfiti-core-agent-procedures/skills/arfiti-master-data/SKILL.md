@@ -233,7 +233,7 @@ create a vendor; the register check is about identity.
    such a field, return `failed` with `reason: required field <name> not in
    the brief or records` and list the fields under `forced_fields`, so the
    caller asks a person or the organisation relaxes its workflow.
-5. `submit("vendor", "create", payload, validate_only=true)`, fix what it
+5. `submit(object_type="vendor", operation="create", data=payload, validate_only=true)`, fix what it
    names from the brief and the records (only from them), then submit for
    real with the idempotency key.
 6. Read the result:
@@ -247,7 +247,7 @@ create a vendor; the register check is about identity.
      `reason_code`, the text and the `workflow_id`. After `posting_unknown`,
      read the vendor list back first: a vendor that now exists was created.
 
-Customers: `submit("customer", "create", ...)` with `customer_name`,
+Customers: `submit(object_type="customer", operation="create", ...)` with `customer_name`,
 `legal_entity_id` and `currency`, always sent explicitly: the currency the
 brief's document is in, else the entity's functional currency (omitted, the
 validator stores `USD`). `customer_type` (`retail, wholesale, distributor,
@@ -271,9 +271,9 @@ the account (for an IBAN account in a SEPA currency, `sepa`).
   "payment_method": "<from schema>"}]`.
 - Existing vendor without this account: compare with the accounts on
   `get_entity("vendor", id)`. If the vendor has no bank account at all, add it:
-  `submit("vendor", "update", {"vendor_id": V, "vendor_bank_accounts":
+  `submit(object_type="vendor", operation="update", data=JSON.stringify({"vendor_id": V, "vendor_bank_accounts":
   [{"_action": "add", "legal_entity_id": X, "iban": "...", "swift_code": "...",
-  "account_holder_name": "...", "currency_code": "<ISO>", "payment_method": "<from schema>"}]})`.
+  "account_holder_name": "...", "currency_code": "<ISO>", "payment_method": "<from schema>"}]}))`.
   `legal_entity_id` inside each added account is required (accounts are
   entity-scoped).
 - Existing vendor whose account differs from the one on the document: do not
