@@ -174,13 +174,17 @@ Use the `fixed_asset.create` workflow to add new asset records.
 
 **Fields:** `get_submissions(action="schema", object_type="fixed_asset", operation="create")` returns the complete field list.
 
+`name` and `in_service_date` are required. `asset_name` is accepted as another spelling of
+`name` (two different values are refused). `in_service_date` is the date depreciation starts; it is
+never defaulted to the acquisition date, so ask for it when the user has not given it.
+
 ### Basic Asset
 
 ```json
 {
   "legal_entity_id": 13,
   "category_code": "COMPUTER",
-  "asset_name": "Dell Latitude 5420 Laptop",
+  "name": "Dell Latitude 5420 Laptop",
   "acquisition_date": "2025-01-15",
   "in_service_date": "2025-01-15",
   "original_cost": 1500.00,
@@ -206,7 +210,7 @@ Tag assets with department/location and assign to employee:
 {
   "legal_entity_id": 13,
   "category_code": "COMPUTER",
-  "asset_name": "Dell Latitude 5420 Laptop",
+  "name": "Dell Latitude 5420 Laptop",
   "acquisition_date": "2025-01-15",
   "in_service_date": "2025-01-15",
   "original_cost": 1500.00,
