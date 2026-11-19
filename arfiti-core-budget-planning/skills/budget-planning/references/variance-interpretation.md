@@ -129,8 +129,7 @@ When a material variance is found, investigate in layers:
 ```python
 # Use query() or generate_report
 generate_report("variance_summary", {
-    "budget_version_id": <id>,
-    "legal_entity_id": <entity_id>
+    "budget_version_id": <id>   # the version fixes the entity; legal_entity_id is not a parameter here
 })
 ```
 

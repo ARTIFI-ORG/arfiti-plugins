@@ -444,6 +444,28 @@ All reports return a consistent structure:
 }
 ```
 
+A parameter the report does not declare is refused before anything runs, never
+dropped (AR-1378: `trial_balance` used to answer `date_from`/`date_to` with
+today's balances):
+
+```json
+{
+    "success": false,
+    "error": "Unsupported parameters for trial_balance: date_from, date_to",
+    "code": "REPORT_UNSUPPORTED_PARAMETER",
+    "unsupported_params": ["date_from", "date_to"],
+    "required_params": ["legal_entity_id"],
+    "optional_params": ["as_of_date", "report_contract", "dimension_filter", "start_date", "end_date", "limit", "cursor"]
+}
+```
+
+Use the listed names (`generate_report("list")` shows them for every report).
+With `report_contract: 1` the report engine checks the parameters per report
+and refuses an unsupported one with `code: REPORT_UNSUPPORTED_FILTER`. For a
+trial balance, `as_of_date` alone gives balances at that date; `start_date`
+with `end_date` gives the period's movements; `end_date` without `start_date`
+is refused (`REPORT_INVALID_DATES`).
+
 ---
 
 ## Discovering Reports

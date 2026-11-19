@@ -287,10 +287,12 @@ budget_lines = query("budget_line", filters={
 Determine which months have passed. For each completed month, fetch actual GL amounts:
 
 ```python
+# start_date + end_date give the period's debit/credit movements; as_of_date alone
+# gives balances at that date. Check the returned dates match what you asked for.
 actuals = generate_report("trial_balance", {
     "legal_entity_id": <entity_id>,
-    "date_from": "2026-01-01",
-    "date_to": "2026-06-30"  # Through end of last completed month
+    "start_date": "2026-01-01",
+    "end_date": "2026-06-30"  # Through end of last completed month
 })
 ```
 
