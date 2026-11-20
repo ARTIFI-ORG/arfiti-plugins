@@ -316,7 +316,7 @@ If validation fails, re-check: did `payroll_run.process_payment` post correctly?
 ```python
 authority = query("tax_authority", filters={"country_code": "EE", "code": "EMTA-PAYROLL"})
 
-submit("tax_return", "create", json.dumps({
+submit(object_type="tax_return", operation="create", data=json.dumps({
     "legal_entity_id": run["legal_entity_id"],
     "return_type": "TSD",
     "tax_authority_id": authority["results"][0]["id"],
@@ -389,7 +389,7 @@ period_str = f"{year}-{month:02d}"
 due = <10th of the month AFTER the declared period>   # July TSD → due 10 August
 settlement_bill_ids = []
 for vendor_id, accounts in lines_by_vendor.items():
-    result = submit("transaction", "post", json.dumps({
+    result = submit(object_type="transaction", operation="post", data=json.dumps({
         "transaction_type_code": "AP_INVOICE",
         "legal_entity_id": run["legal_entity_id"],
         "vendor_id": vendor_id,
@@ -415,7 +415,7 @@ for vendor_id, accounts in lines_by_vendor.items():
 # post a second bill for the same period.
 
 # 5. Link return ↔ bill both ways:
-submit("tax_return", "update", json.dumps({
+submit(object_type="tax_return", operation="update", data=json.dumps({
     "return_id": <id from Step 7>,
     "return_data": {**return_data, "settlement_bill_ids": settlement_bill_ids},
 }))
@@ -440,7 +440,7 @@ After successful generation, show:
 4. Deadline: **10th of the following month** (same day as tax payment)
 5. After upload, ask user for the e-MTA confirmation number, then call:
    ```python
-   submit("tax_return", "file", json.dumps({
+   submit(object_type="tax_return", operation="file", data=json.dumps({
        "return_id": <id from Step 7>,
        "confirmation_number": "<from portal>",
        "filing_date": "<YYYY-MM-DD>"

@@ -7,7 +7,7 @@
 ### Mode 1: Standalone (No Source Document)
 
 ```python
-result = submit("allocation_run", "create", {
+result = submit(object_type="allocation_run", operation="create", data=json.dumps({
     "legal_entity_id": 12,                    # Required: entity ID
     "run_date": "2026-03-16",                # Required: allocation date
     "period_name": "2026-03",                # Optional: fiscal period
@@ -15,7 +15,7 @@ result = submit("allocation_run", "create", {
     "allocation_type": "cost_allocation",    # Optional: cost_allocation (default), revenue_allocation, intercompany_charge
     "source_plugin": "arfiti-core-cost-allocation",  # Optional: identifies this plugin
     "metadata": {}                           # Optional: any additional data
-})
+}))
 
 # Returns:
 # {
@@ -29,7 +29,7 @@ result = submit("allocation_run", "create", {
 ### Mode 2: Document-Linked (From Source Transaction)
 
 ```python
-result = submit("allocation_run", "create", {
+result = submit(object_type="allocation_run", operation="create", data=json.dumps({
     "legal_entity_id": 12,
     "run_date": "2026-03-16",
     "period_name": "2026-03",
@@ -37,7 +37,7 @@ result = submit("allocation_run", "create", {
     "allocation_type": "cost_allocation",
     "source_transaction_id": 1002,           # KEY: links to source document
     "source_plugin": "arfiti-core-cost-allocation"
-})
+}))
 
 # Returns:
 # {
@@ -71,7 +71,7 @@ result = submit("allocation_run", "create", {
 ### Standalone Example
 
 ```python
-result = submit("allocation_run", "submit_lines", {
+result = submit(object_type="allocation_run", operation="submit_lines", data=json.dumps({
     "allocation_run_id": 42,
     "lines": [
         # SOURCE line(s) — what is being allocated
@@ -114,7 +114,7 @@ result = submit("allocation_run", "submit_lines", {
             "dimension_1_value": "FINANCE"
         }
     ]
-})
+}))
 ```
 
 ### Document-Linked Example
@@ -122,7 +122,7 @@ result = submit("allocation_run", "submit_lines", {
 **CRITICAL**: When the allocation run has a `source_transaction_id`, the source line `account_number` MUST match a `gl_account_number` from the source transaction's lines. Using a different account will be rejected.
 
 ```python
-result = submit("allocation_run", "submit_lines", {
+result = submit(object_type="allocation_run", operation="submit_lines", data=json.dumps({
     "allocation_run_id": 42,
     "lines": [
         {
@@ -160,7 +160,7 @@ result = submit("allocation_run", "submit_lines", {
             "dimension_1_value": "SALES"
         }
     ]
-})
+}))
 
 # Returns:
 # {
@@ -234,14 +234,14 @@ Execute re-checks rules 9–12. A run that can no longer post (for example its s
 ## Approve
 
 ```python
-submit("allocation_run", "approve", {"allocation_run_id": 42})
+submit(object_type="allocation_run", operation="approve", data=json.dumps({"allocation_run_id": 42}))
 # Status: calculated -> approved
 ```
 
 ## Execute (Post GL Entry)
 
 ```python
-result = submit("allocation_run", "execute", {"allocation_run_id": 42})
+result = submit(object_type="allocation_run", operation="execute", data=json.dumps({"allocation_run_id": 42}))
 # Status: approved -> posted
 # Creates GL journal entry (COST_ALLOCATION, REVENUE_ALLOCATION, or INTERCOMPANY_CHARGE)
 # Returns: transaction_id, transaction_number
@@ -250,10 +250,10 @@ result = submit("allocation_run", "execute", {"allocation_run_id": 42})
 ## Void (Reverse)
 
 ```python
-submit("allocation_run", "void", {
+submit(object_type="allocation_run", operation="void", data=json.dumps({
     "allocation_run_id": 42,
     "void_reason": "Incorrect percentages, will recalculate"
-})
+}))
 # Creates reversing GL journal entry
 # Frees up source account amounts for re-allocation
 ```
@@ -261,10 +261,10 @@ submit("allocation_run", "void", {
 ## Reject
 
 ```python
-submit("allocation_run", "reject", {
+submit(object_type="allocation_run", operation="reject", data=json.dumps({
     "allocation_run_id": 42,
     "rejection_reason": "Percentages don't match board-approved split"
-})
+}))
 ```
 
 ---

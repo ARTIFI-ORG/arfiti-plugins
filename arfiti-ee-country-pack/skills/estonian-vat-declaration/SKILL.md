@@ -203,7 +203,7 @@ If there are differences, identify the cause (timing, manual entries, rounding) 
 Store the KMD calculation results in the ERP so they are viewable in Admin Dashboard → Tax → Returns and XML can be regenerated on demand:
 
 ```
-submit("tax_return", "create", {
+submit(object_type="tax_return", operation="create", data=JSON.stringify({
     "legal_entity_id": <entity_id>,
     "reporting_period_id": <period_id>,
     "tax_authority_id": <EMTA authority id>,
@@ -250,7 +250,7 @@ submit("tax_return", "create", {
         }
     },
     "notes": "<Month Year> KMD - auto-calculated"
-})
+}))
 ```
 
 Tell the user: "Tax return saved (ID: {tax_return_id}). You can view it at Admin Dashboard → Tax → Returns."
@@ -261,7 +261,7 @@ Post a journal entry to reclassify VAT accounts for the period. VAT Output/Input
 
 **If Line 12 > 0 (net VAT payable):**
 ```
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
     "transaction_type_code": "GL_JOURNAL",
     "legal_entity_id": <entity_id>,
     "description": "VAT closing - KMD <YYYY>/<MM>",
@@ -271,12 +271,12 @@ submit("transaction", "post", {
         { "account_number": "<VAT Input account>", "debit": 0, "credit": <inputVatTotal, line 5> },
         { "account_number": "<VAT Payable account>", "debit": 0, "credit": <net VAT payable, line 12> }
     ]
-})
+}))
 ```
 
 **If Line 13 > 0 (VAT overpaid/refundable):**
 ```
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
     "transaction_type_code": "GL_JOURNAL",
     "legal_entity_id": <entity_id>,
     "description": "VAT closing - KMD <YYYY>/<MM> (overpaid)",
@@ -286,7 +286,7 @@ submit("transaction", "post", {
         { "account_number": "<VAT Receivable account>", "debit": <net VAT overpaid, line 13>, "credit": 0 },
         { "account_number": "<VAT Input account>", "debit": 0, "credit": <inputVatTotal, line 5> }
     ]
-})
+}))
 ```
 
 Tell the user: "VAT closing journal entry posted. Net VAT {payable/overpaid}: EUR {amount}."
@@ -310,12 +310,12 @@ vendor-visible obligation — exactly the model payroll taxes already use
 
 1. Resolve the tax-authority vendor: `query("vendor", query="Maksu- ja
    Tolliamet")` (also try "EMTA"). If none exists, create one via
-   `submit("vendor", "create", …)` — name "Maksu- ja Tolliamet (EMTA)",
+   `submit(object_type="vendor", operation="create", …)` — name "Maksu- ja Tolliamet (EMTA)",
    no VAT number, no payment terms.
 
 2. Post the bill:
 ```
-submit("transaction", "post", {
+submit(object_type="transaction", operation="post", data=JSON.stringify({
     "transaction_type_code": "AP_INVOICE",
     "legal_entity_id": <entity_id>,
     "vendor_id": <EMTA vendor id>,
@@ -329,7 +329,7 @@ submit("transaction", "post", {
           "amount": <net VAT payable, line 12>,
           "description": "KMD <YYYY>/<MM> line 12" }
     ]
-})
+}))
 ```
 The line debits the VAT Payable account (the executor skips auto-VAT on
 tax-subtype accounts — the line IS the tax), crediting AP. VAT Payable
@@ -359,7 +359,7 @@ these account numbers apply to every entity. Do not create an AP settlement bill
 Before posting, check for the period's existing closing journal to avoid duplicates.
 
 Read the saved tax return and preserve its complete `return_data`. Add or update
-`return_data.open_item` using `submit("tax_return", "update", ...)` (the field is
+`return_data.open_item` using `submit(object_type="tax_return", operation="update", ...)` (the field is
 inside the JSON return payload, not a separate ERP object):
 
 ```json
@@ -407,20 +407,20 @@ Provide filing guidance from **references/emta-filing-guide.md**:
 After the user files with EMTA and receives confirmation, mark the return as filed
 (this also transitions the tax reporting period to `filed`):
 ```
-submit("tax_return", "file", {
+submit(object_type="tax_return", operation="file", data=JSON.stringify({
     "return_id": <tax_return_id from Step 8>,
     "confirmation_number": "<confirmation from e-MTA>"
-})
+}))
 ```
 
 Then offer to **lock the period** so the filed return keeps matching the ledger:
 ```
-submit("tax_period", "lock", {
+submit(object_type="tax_period", operation="lock", data=JSON.stringify({
     "period_id": <reporting_period_id>,
     "reason": "KMD filed — confirmation <number>"
-})
+}))
 ```
-To amend later: `submit("tax_period", "unlock", …)` → correct → re-file → re-lock.
+To amend later: `submit(object_type="tax_period", operation="unlock", …)` → correct → re-file → re-lock.
 The Reports → Sales tax reconciliation panel flags any ledger-vs-return drift.
 
 > **Payment note:** Check your e-MTA prepayment account (ettemaksukonto) balance before paying. If payroll taxes or other obligations already created a positive balance, the actual payment may be lower than KMD Line 12. Make a bank transfer to EMTA — it applies against the settlement bill from Step 9b (a lower actual payment applies partially; the remainder stays visibly open on the bill, which is correct).

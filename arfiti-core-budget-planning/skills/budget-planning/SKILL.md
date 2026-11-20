@@ -168,7 +168,7 @@ Wait for explicit user confirmation.
 ### Step 6: Create Budget Version
 
 ```python
-result = submit("budget_version", "create", {
+result = submit(object_type="budget_version", operation="create", data=json.dumps({
     "legal_entity_id": <entity_id>,
     "version_name": "FY2026 Operating Budget",
     "fiscal_year": 2026,
@@ -176,21 +176,21 @@ result = submit("budget_version", "create", {
     "version_type": "monthly",
     "currency_code": "EUR",
     "notes": "Built from 2025 actuals with 5% growth"
-})
+}))
 budget_version_id = result["budget_version_id"]
 ```
 
 ### Step 7: Submit Budget Lines
 
 ```python
-result = submit("budget_line", "bulk_upsert", {
+result = submit(object_type="budget_line", operation="bulk_upsert", data=json.dumps({
     "budget_version_id": <budget_version_id>,
     "lines": [
         {"account_number": "4000", "period_sequence": 1, "amount": 45000.00, "description": "January Revenue"},
         {"account_number": "4000", "period_sequence": 2, "amount": 45000.00, "description": "February Revenue"},
         // ... all lines
     ]
-})
+}))
 ```
 
 See `references/submission-format.md` for the complete payload format.
@@ -202,12 +202,12 @@ See `references/submission-format.md` for the complete payload format.
 If the user wants to tag lines by department, project, etc.:
 
 ```python
-submit("budget_line_dimension", "bulk_set", {
+submit(object_type="budget_line_dimension", operation="bulk_set", data=json.dumps({
     "budget_line_id": <line_id>,
     "dimensions": [
         {"dimension_type_code": "DEPARTMENT", "dimension_value_code": "SALES"}
     ]
-})
+}))
 ```
 
 ### Step 9: Next Steps
@@ -218,7 +218,7 @@ inform the user:
 1. The version's own `status` (a new version is **draft**; the `status: "approved"`
    in the submit receipt describes the workflow request, not the budget) and the
    number of lines and totals actually saved
-2. They can submit for approval: `submit("budget_workflow", "submit", {"budget_version_id": <id>})`
+2. They can submit for approval: `submit(object_type="budget_workflow", operation="submit", data=JSON.stringify({"budget_version_id": <id>}))`
 3. After approval, it can be locked to prevent edits
 
 ---
@@ -292,7 +292,7 @@ written yet.
 ### Step 6: Create the Version and Save the Lines
 
 ```python
-result = submit("budget_version", "create", {
+result = submit(object_type="budget_version", operation="create", data=json.dumps({
     "legal_entity_id": <entity_id>,
     "version_name": "FY2026 Operating Budget",
     "fiscal_year": 2026,
@@ -300,15 +300,15 @@ result = submit("budget_version", "create", {
     "version_type": "monthly",         # required: the source version's granularity unless the user chose another
     "currency_code": "EUR",            # required: the source version's currency
     "notes": "Copied from FY2025 approved budget (version <source_version_id>), +5% on all lines"
-})
+}))
 
-submit("budget_line", "bulk_upsert", {
+submit(object_type="budget_line", operation="bulk_upsert", data=json.dumps({
     "budget_version_id": result["budget_version_id"],
     "lines": [
         # every adjusted source line, with its account, period, amount and the same
         # project_id / customer_id / vendor_id and dimensions
     ]
-})
+}))
 ```
 
 **CP7 checkpoint**: Read the new version's lines back and confirm the line
@@ -402,7 +402,7 @@ Replace past months with actuals, project remaining months:
 
 ```python
 # Create forecast version
-result = submit("budget_version", "create", {
+result = submit(object_type="budget_version", operation="create", data=json.dumps({
     "legal_entity_id": <entity_id>,
     "version_name": "FY2026 Q2 Forecast",
     "fiscal_year": 2026,
@@ -410,13 +410,13 @@ result = submit("budget_version", "create", {
     "version_type": "monthly",
     "currency_code": "EUR",            # required: the entity's functional currency
     "notes": "Q2 forecast: actuals posted to 2026-06-30 (May-Jun provisional, periods open) + Jul-Dec projected (run rate)"
-})
+}))
 
 # Submit all lines (actuals + projections)
-submit("budget_line", "bulk_upsert", {
+submit(object_type="budget_line", operation="bulk_upsert", data=json.dumps({
     "budget_version_id": <forecast_version_id>,
     "lines": [...]
-})
+}))
 ```
 
 ---
@@ -468,7 +468,7 @@ Show a summary per department or per employee, with monthly breakdown.
 ### Step 5: Submit with Employee Dimensions
 
 ```python
-submit("budget_line", "bulk_upsert", {
+submit(object_type="budget_line", operation="bulk_upsert", data=json.dumps({
     "budget_version_id": <id>,
     "lines": [
         {
@@ -487,7 +487,7 @@ submit("budget_line", "bulk_upsert", {
         },
         // ... more lines per employee per period
     ]
-})
+}))
 ```
 
 ---
@@ -530,7 +530,7 @@ Show total revenue, total expense, and gross profit per project.
 ### Step 5: Submit with Project IDs
 
 ```python
-submit("budget_line", "bulk_upsert", {
+submit(object_type="budget_line", operation="bulk_upsert", data=json.dumps({
     "budget_version_id": <id>,
     "lines": [
         {
@@ -542,7 +542,7 @@ submit("budget_line", "bulk_upsert", {
         },
         // ... more project lines
     ]
-})
+}))
 ```
 
 ---
@@ -553,21 +553,21 @@ After successful line submission (any mode):
 
 ```python
 # Submit for approval
-submit("budget_workflow", "submit", {
+submit(object_type="budget_workflow", operation="submit", data=json.dumps({
     "budget_version_id": <id>,
     "comments": "FY2026 budget ready for CFO review"
-})
+}))
 
 # Approve (by authorized user)
-submit("budget_workflow", "approve", {
+submit(object_type="budget_workflow", operation="approve", data=json.dumps({
     "budget_version_id": <id>,
     "comments": "Approved by CFO"
-})
+}))
 
 # Lock (prevent further edits)
-submit("budget_workflow", "lock", {
+submit(object_type="budget_workflow", operation="lock", data=json.dumps({
     "budget_version_id": <id>
-})
+}))
 ```
 
 Tell the user:

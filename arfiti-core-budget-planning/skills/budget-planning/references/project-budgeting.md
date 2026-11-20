@@ -91,7 +91,7 @@ Budget lines follow milestone timing, not even monthly distribution.
 Budget all active projects in a single budget version using `project_id` to distinguish:
 
 ```python
-submit("budget_line", "bulk_upsert", {
+submit(object_type="budget_line", operation="bulk_upsert", data=json.dumps({
     "budget_version_id": <id>,
     "lines": [
         # Project A: Website Redesign
@@ -112,7 +112,7 @@ submit("budget_line", "bulk_upsert", {
 
         # ... repeat for all periods
     ]
-})
+}))
 ```
 
 ### Portfolio Summary View

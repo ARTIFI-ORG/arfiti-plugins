@@ -117,7 +117,7 @@ On success it writes:
 
 ## Phase 6 — Record & post to the ERP (SKILL steps 8–9)
 
-- `submit("tax_return", "create", …)` with `return_data.declaration_body` (+ annexes,
+- `submit(object_type="tax_return", operation="create", …)` with `return_data.declaration_body` (+ annexes,
   summaries). Report the `tax_return_id`.
 - Post the VAT closing journal entry (net to VAT Payable / Receivable).
 - When Line 12 > 0: post the EMTA settlement bill (SKILL step 9b) — DR VAT
@@ -131,11 +131,11 @@ On success it writes:
 2. "Laadi fail" → upload `KMD_YYYYMM_{REGCODE}.csv` (or the XML — both carry the main
    form and the INF partners). If Form VD applies, file it separately.
 3. Portal validates → sign digitally → submit. **Deadline: 20th of the following month.**
-4. After filing: `submit("tax_return", "file", {"return_id": …, "confirmation_number": …})` —
+4. After filing: `submit(object_type="tax_return", operation="file", data=JSON.stringify({"return_id": …, "confirmation_number": …}))` —
    this also transitions the tax reporting period to `filed`.
 5. **Lock the period** so the filed return keeps matching the ledger:
-   `submit("tax_period", "lock", {"period_id": <reporting_period_id>, "reason": "KMD filed — conf# …"})`.
-   Ask the user first; to amend later, `submit("tax_period", "unlock", …)`, correct, re-file, re-lock.
+   `submit(object_type="tax_period", operation="lock", data=JSON.stringify({"period_id": <reporting_period_id>, "reason": "KMD filed — conf# …"}))`.
+   Ask the user first; to amend later, `submit(object_type="tax_period", operation="unlock", …)`, correct, re-file, re-lock.
    The Reports → Sales tax reconciliation panel flags any ledger-vs-return drift either way.
 
 > **Payment note:** check the e-MTA prepayment account (ettemaksukonto) first — a

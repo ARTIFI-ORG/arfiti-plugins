@@ -159,10 +159,10 @@ Create multiple forecast versions to model different outcomes.
 **Implementation**:
 ```python
 # Create base forecast
-submit("budget_version", "create", {..., "scenario": "forecast", "version_name": "FY2026 Forecast - Base"})
+submit(object_type="budget_version", operation="create", data=json.dumps({..., "scenario": "forecast", "version_name": "FY2026 Forecast - Base"}))
 
 # Create stretch (optimistic)
-submit("budget_version", "create", {..., "scenario": "stretch", "version_name": "FY2026 Forecast - Optimistic"})
+submit(object_type="budget_version", operation="create", data=json.dumps({..., "scenario": "stretch", "version_name": "FY2026 Forecast - Optimistic"}))
 ```
 
 Use `scenario` field to distinguish:

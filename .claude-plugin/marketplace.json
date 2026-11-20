@@ -26,7 +26,7 @@
       "name": "arfiti-core-budget-planning",
       "source": "./arfiti-core-budget-planning",
       "description": "Budget planning: annual/quarterly budgets, forecasting from actuals, employee cost budgeting with burden rates, and project budgeting.",
-      "version": "2.0.6",
+      "version": "2.0.7",
       "category": "planning",
       "keywords": [
         "budget",
@@ -39,7 +39,7 @@
       "name": "arfiti-core-cost-allocation",
       "source": "./arfiti-core-cost-allocation",
       "description": "Cost allocation across departments, projects, or dimensions. Standalone mode (from GL balances) and document-linked mode (from a specific bill/invoice).",
-      "version": "3.0.4",
+      "version": "3.0.5",
       "category": "accounting",
       "keywords": [
         "cost-allocation",
@@ -52,7 +52,7 @@
       "name": "arfiti-ee-country-pack",
       "source": "./arfiti-ee-country-pack",
       "description": "Estonia country pack: VAT return (KMD) and EC Sales List, payroll and TSD, annual report with XBRL, and year-end bookkeeping.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "compliance",
       "keywords": [
         "estonia",
@@ -77,7 +77,7 @@
       "name": "arfiti-core-implementation-consultant",
       "source": "./arfiti-core-implementation-consultant",
       "description": "ERP implementation consultant. Guides customers through migration: chart of accounts, opening balances with open transactions, master data import, gap period transaction processing, and go-live verification.",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "category": "accounting",
       "keywords": [
         "migration",

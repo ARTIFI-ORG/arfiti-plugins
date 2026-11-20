@@ -5,7 +5,7 @@
 ## Create Budget Version
 
 ```python
-result = submit("budget_version", "create", {
+result = submit(object_type="budget_version", operation="create", data=json.dumps({
     "legal_entity_id": 12,                         # Required: entity ID
     "version_name": "FY2026 Operating Budget",     # Required: human-readable name
     "fiscal_year": 2026,                           # Required: year (2000-2100)
@@ -14,7 +14,7 @@ result = submit("budget_version", "create", {
     "currency_code": "EUR",                        # Required: normally the entity's functional currency
     "template_id": 1,                              # Optional: budget template reference
     "notes": "Built from 2025 actuals + 5% growth"  # Optional: saved with the version
-})
+}))
 # A field not listed here (for example copy_from_version_id) is refused.
 # To copy a budget, read its lines and bulk_upsert them into the new version.
 
@@ -50,7 +50,7 @@ Only ONE active (non-archived) version per `(legal_entity_id, fiscal_year, scena
 The primary way to submit budget lines — handles both insert and update:
 
 ```python
-result = submit("budget_line", "bulk_upsert", {
+result = submit(object_type="budget_line", operation="bulk_upsert", data=json.dumps({
     "budget_version_id": 8,
     "lines": [
         {
@@ -60,9 +60,9 @@ result = submit("budget_line", "bulk_upsert", {
             "description": "January Revenue",
             "memo": "Based on 2025 actual + 10% growth",
             "source": "formula",
-            "project_id": null,
-            "customer_id": null,
-            "vendor_id": null,
+            "project_id": None,
+            "customer_id": None,
+            "vendor_id": None,
             "dimensions": {"department": "SALES", "cost_center": "CC001"}
         },
         {
@@ -79,7 +79,7 @@ result = submit("budget_line", "bulk_upsert", {
             "dimensions": {"department": "ENG"}
         }
     ]
-})
+}))
 
 # Returns:
 # {
@@ -118,14 +118,14 @@ If a match is found, the line is **updated**. Otherwise, it is **inserted**.
 For adding individual lines:
 
 ```python
-result = submit("budget_line", "create", {
+result = submit(object_type="budget_line", operation="create", data=json.dumps({
     "budget_version_id": 8,
     "account_number": "6500",
     "period_sequence": 4,
     "amount": 5000.00,
     "description": "Q2 Training Budget",
     "dimensions": {"department": "ENG"}
-})
+}))
 
 # Returns: {"success": true, "budget_line_id": 142}
 ```
@@ -137,13 +137,13 @@ result = submit("budget_line", "create", {
 Add or replace dimension tags on a budget line:
 
 ```python
-submit("budget_line_dimension", "bulk_set", {
+submit(object_type="budget_line_dimension", operation="bulk_set", data=json.dumps({
     "budget_line_id": 142,
     "dimensions": [
         {"dimension_type_code": "DEPARTMENT", "dimension_value_code": "SALES"},
         {"dimension_type_code": "COST_CENTER", "dimension_value_code": "CC001"}
     ]
-})
+}))
 ```
 
 This **replaces** all existing dimensions on the line.
@@ -154,37 +154,37 @@ This **replaces** all existing dimensions on the line.
 
 ```python
 # Submit for approval (draft -> submitted)
-submit("budget_workflow", "submit", {
+submit(object_type="budget_workflow", operation="submit", data=json.dumps({
     "budget_version_id": 8,
     "comments": "Ready for CFO review"
-})
+}))
 
 # Approve (submitted -> approved)
-submit("budget_workflow", "approve", {
+submit(object_type="budget_workflow", operation="approve", data=json.dumps({
     "budget_version_id": 8,
     "comments": "Approved by CFO"
-})
+}))
 
 # Reject (submitted -> draft)
-submit("budget_workflow", "reject", {
+submit(object_type="budget_workflow", operation="reject", data=json.dumps({
     "budget_version_id": 8,
     "rejection_reason": "Need to revise Q3 projections"  # Required
-})
+}))
 
 # Lock (approved -> locked)
-submit("budget_workflow", "lock", {
+submit(object_type="budget_workflow", operation="lock", data=json.dumps({
     "budget_version_id": 8
-})
+}))
 
 # Archive (draft/approved/locked -> archived)
-submit("budget_workflow", "archive", {
+submit(object_type="budget_workflow", operation="archive", data=json.dumps({
     "budget_version_id": 8
-})
+}))
 
 # Reopen (submitted/archived -> draft)
-submit("budget_workflow", "reopen", {
+submit(object_type="budget_workflow", operation="reopen", data=json.dumps({
     "budget_version_id": 8
-})
+}))
 ```
 
 ### Status Flow

@@ -79,7 +79,7 @@ Explain: "Now we need to set up your bank accounts in the system. Each bank acco
    - Bank name (LHV, SEB, Swedbank, Wise, etc.)
    - IBAN (e.g., EE38 2200 2210 1234 5678)
    - Currency — confirm EUR (standard for Estonia)
-3. Create each: `submit('bank_account', 'create', {"legal_entity_id": ENTITY_ID, "bank_name": "...", "account_number": "IBAN", "currency": "EUR", "gl_account_id": ACCOUNT_ID})`
+3. Create each: `submit(object_type="bank_account", operation="create", data=JSON.stringify({"legal_entity_id": ENTITY_ID, "bank_name": "...", "account_number": "IBAN", "currency": "EUR", "gl_account_id": ACCOUNT_ID}))`
 4. If the company has payment card accounts (Wise card, Revolut, etc.), create those too
 
 **CP2 checkpoint**: Bank account exists for every bank the user identified.
@@ -258,14 +258,14 @@ Present the classification table to the user:
 
 1. After user confirms the classifications, post each line:
    ```
-   submit('transaction', 'post', {
+   submit(object_type="transaction", operation="post", data=JSON.stringify({
      "transaction_type_code": "AP_PAYMENT",
      "legal_entity_id": ENTITY_ID,
      "vendor_id": VENDOR_ID,
      "transaction_date": "2025-01-15",
      "bank_account_id": BANK_ACCOUNT_ID,
      "lines": [{"account_id": ACCOUNT_ID, "amount": 150.00, "description": "Payment to Vendor X"}]
-   })
+   }))
    ```
 2. Post in chronological order within each month
 3. For each transaction, use the correct `transaction_type_code` as classified in Step 9
@@ -310,8 +310,8 @@ For each gap identified:
 2. **If they have it**: read the document, extract vendor/customer, amounts, dates, line items, tax
 3. **If they don't have it**: create a simplified bill/invoice based on the payment details (amount, date, counterparty)
 4. Post the document:
-   - Bills: `submit('transaction', 'post', {"transaction_type_code": "AP_INVOICE", "legal_entity_id": ENTITY_ID, "vendor_id": VENDOR_ID, "lines": [...]})`
-   - Invoices: `submit('transaction', 'post', {"transaction_type_code": "AR_INVOICE", "legal_entity_id": ENTITY_ID, "customer_id": CUSTOMER_ID, "lines": [...]})`
+   - Bills: `submit(object_type="transaction", operation="post", data=JSON.stringify({"transaction_type_code": "AP_INVOICE", "legal_entity_id": ENTITY_ID, "vendor_id": VENDOR_ID, "lines": [...]}))`
+   - Invoices: `submit(object_type="transaction", operation="post", data=JSON.stringify({"transaction_type_code": "AR_INVOICE", "legal_entity_id": ENTITY_ID, "customer_id": CUSTOMER_ID, "lines": [...]}))`
 
 **Handle special transaction categories:**
 
@@ -332,7 +332,7 @@ Common adjustments for Estonian companies:
 4. **Provisions**: Any known future obligations (e.g., warranty claims, legal disputes)
 5. **Tax adjustments**: Estonian CIT is only on distributed profits (20/80 rate), so typically minimal. Check if any dividends were paid during the year.
 
-All adjustments posted via: `submit('transaction', 'post', {"transaction_type_code": "JOURNAL_ENTRY", "legal_entity_id": ENTITY_ID, ...})`
+All adjustments posted via: `submit(object_type="transaction", operation="post", data=JSON.stringify({"transaction_type_code": "JOURNAL_ENTRY", "legal_entity_id": ENTITY_ID, ...}))`
 
 ---
 

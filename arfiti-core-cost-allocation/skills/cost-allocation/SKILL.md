@@ -130,21 +130,21 @@ Wait for explicit user confirmation before proceeding.
 
 ```python
 # Create the run
-result = submit("allocation_run", "create", {
+result = submit(object_type="allocation_run", operation="create", data=json.dumps({
     "legal_entity_id": <entity_id>,
     "run_date": "<accounting_date>",  # confirmed with the user, see Prerequisites
     "period_name": "<period>",
     "description": "<user description or auto-generated>",
     "allocation_type": "cost_allocation",
     "source_plugin": "arfiti-core-cost-allocation"
-})
+}))
 allocation_run_id = result["allocation_run_id"]
 
 # Submit lines
-result = submit("allocation_run", "submit_lines", {
+result = submit(object_type="allocation_run", operation="submit_lines", data=json.dumps({
     "allocation_run_id": allocation_run_id,
     "lines": [ ... ]  # See references/submission-format.md
-})
+}))
 ```
 
 **CP8 checkpoint**: Verify submission succeeded (status = "calculated").
@@ -255,7 +255,7 @@ Show a preview table using the **correct account from the source transaction**:
 
 ```python
 # Create the run WITH source_transaction_id
-result = submit("allocation_run", "create", {
+result = submit(object_type="allocation_run", operation="create", data=json.dumps({
     "legal_entity_id": <entity_id>,
     "run_date": "<accounting_date>",  # confirmed with the user, see Prerequisites
     "period_name": "<period>",
@@ -263,12 +263,12 @@ result = submit("allocation_run", "create", {
     "allocation_type": "cost_allocation",
     "source_transaction_id": <source_tx_id>,  # KEY: links to source document
     "source_plugin": "arfiti-core-cost-allocation"
-})
+}))
 allocation_run_id = result["allocation_run_id"]
 # Returns: source_transaction_number for confirmation
 
 # Submit lines with correct source account
-result = submit("allocation_run", "submit_lines", {
+result = submit(object_type="allocation_run", operation="submit_lines", data=json.dumps({
     "allocation_run_id": allocation_run_id,
     "lines": [
         {
@@ -289,7 +289,7 @@ result = submit("allocation_run", "submit_lines", {
         },
         // ... more target lines
     ]
-})
+}))
 ```
 
 **CP8 checkpoint**: Verify submission succeeded.
@@ -306,10 +306,10 @@ After successful submission (either mode):
 
 ```python
 # Approve
-submit("allocation_run", "approve", {"allocation_run_id": <id>})
+submit(object_type="allocation_run", operation="approve", data=json.dumps({"allocation_run_id": <id>}))
 
 # Execute (post GL journal entry)
-result = submit("allocation_run", "execute", {"allocation_run_id": <id>})
+result = submit(object_type="allocation_run", operation="execute", data=json.dumps({"allocation_run_id": <id>}))
 # Returns: transaction_id, transaction_number
 ```
 
@@ -331,10 +331,10 @@ Tell the user:
 If the user needs to undo an allocation:
 
 ```python
-submit("allocation_run", "void", {
+submit(object_type="allocation_run", operation="void", data=json.dumps({
     "allocation_run_id": <id>,
     "void_reason": "Incorrect percentages, will recalculate"
-})
+}))
 ```
 
 This creates a reversing GL entry and frees up the source account for re-allocation.

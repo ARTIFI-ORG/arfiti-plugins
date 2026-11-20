@@ -171,7 +171,7 @@ Guide the user through each data type sequentially. For each type:
 
 For new companies with minimal data:
 - Ask what vendors/customers they expect to work with
-- Create interactively: `submit("vendor", "create", {...})` or small batch imports
+- Create interactively: `submit(object_type="vendor", operation="create", data='{...}')` or small batch imports
 - "You can always add more vendors and customers later as you start transacting"
 
 ### Path D (Hybrid)
@@ -377,14 +377,14 @@ For each month in the gap period:
 6. Present classification table for user review
 7. After confirmation, post each transaction:
    ```
-   submit('transaction', 'post', {
+   submit(object_type="transaction", operation="post", data=JSON.stringify({
        "transaction_type_code": "AP_PAYMENT",
        "legal_entity_id": ENTITY_ID,
        "vendor_id": VENDOR_ID,
        "transaction_date": "2026-01-15",
        "bank_account_id": BANK_ACCOUNT_ID,
        "lines": [{"account_id": ACCOUNT_ID, "amount": 150.00, "description": "Payment to Vendor X"}]
-   })
+   }))
    ```
 8. Report results: "Month complete: X transactions posted, Y failed"
 
