@@ -46,8 +46,8 @@ The four flags are mandatory; every value element is optional and carries a taxa
 
 | Element | Meaning |
 |---|---|
-| `noSales` | `true` when no sales partner exceeds the KMD INF threshold (then omit `salesAnnex`) |
-| `noPurchases` | `true` when no purchase partner exceeds the threshold (then omit `purchasesAnnex`) |
+| `noSales` | `true` when no sales partner reaches the KMD INF threshold (EUR 1,000.00 without VAT, inclusive) (then omit `salesAnnex`) |
+| `noPurchases` | `true` when no purchase partner reaches the threshold (then omit `purchasesAnnex`) |
 | `sumPerPartnerSales` | `true` = KMD INF A reported summed per partner (invoice no./date optional) |
 | `sumPerPartnerPurchases` | `true` = KMD INF B reported summed per partner |
 

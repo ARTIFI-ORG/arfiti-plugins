@@ -47,7 +47,7 @@ The following are exempt from VAT (no input VAT recovery):
 | Threshold | Requirement |
 |---|---|
 | **EUR 40,000** | Annual VAT registration threshold for businesses |
-| **EUR 1,000** | Partner reporting threshold for KMD INF annex |
+| **EUR 1,000** | KMD INF annex partner threshold: invoices **without VAT** total at least EUR 1,000.00 per partner per month (inclusive) — see `kmd-inf-annex.md` |
 | **EUR 10,000** | Distance selling threshold to other EU states (before OSS applies) |
 
 ## Source

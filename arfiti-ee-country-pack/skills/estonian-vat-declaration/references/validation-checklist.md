@@ -38,9 +38,9 @@ prose-header CSV) and the €20.79 line-5 gross-up error.
 Find cash movements in the period with no matching invoice/bill:
 
 ```
-query("transaction", filters={"legal_entity_id": ID, "transaction_type": "ar_payment"},
+query("transaction", filters={"legal_entity_id": ID, "transaction_type": "AR_PAYMENT"},
     date_filters={"transaction_date": {"from": "YYYY-MM-01", "to": "YYYY-MM-DD"}})
-query("transaction", filters={"legal_entity_id": ID, "transaction_type": "ap_payment"}, ...)
+query("transaction", filters={"legal_entity_id": ID, "transaction_type": "AP_PAYMENT"}, ...)
 # plus unmatched bank statement lines for the period
 ```
 
@@ -78,9 +78,14 @@ Reconcile the declaration against BOTH the canonical tax computation and the GL:
 
 1. **Canonical computation** — run `generate_report("vat_report", {"legal_entity_id":
    ID, "start_date": "YYYY-MM-01", "end_date": "YYYY-MM-DD"})`. It aggregates from the
-   `v_tax_lines` view (migration 465) — the same source as the dashboard Sales-tax
+   `v_tax_lines` view (migrations 465, 601) — the same source as the dashboard Sales-tax
    report — so output VAT, input VAT and net must match your computed
-   `declaration_body` figures.
+   `declaration_body` figures. This is the authoritative figure: the view counts every
+   ledger-effective document (`posted`, `partial`, `paid`, `partially_paid`,
+   `completed`, `approved`, `reversed` with `posted_at` set, each reversal signed in its
+   own period, amounts in the functional currency), so a
+   difference usually means a document list filtered on `status: "posted"` alone and
+   dropped the paid documents.
 2. **GL tie-out** — via
    `generate_report("trial_balance", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-DD"})`:
    - output VAT (`24%·line1 + reduced rates`) ↔ output-VAT account movement (2300 / 2310);
@@ -92,18 +97,36 @@ account or tax code.
 
 ## 6. INF threshold / annex consistency — BLOCK
 
-Sum sales per partner (excl. VAT) and purchases per partner (incl. VAT) for the period:
+Run the partner selection on the period's invoice lists (both sides **without VAT**,
+per EMTA's KMD INF instructions 07.2025 — see `kmd-inf-annex.md`):
 
 ```
-query("transaction", group_by=["party_name"], aggregates={"amount": "sum", "id": "count"},
-    filters={"legal_entity_id": ID, "transaction_type": "ar_invoice"}, date_filters={...})
-# and the same for ap_invoice
+python3 scripts/generate_kmd.py --select-inf invoices_A.json --side A
+python3 scripts/generate_kmd.py --select-inf invoices_B.json --side B
 ```
 
-If any partner ≥ EUR 1,000, the corresponding annex (`salesAnnex` / `purchasesAnnex`)
-must be present and `noSales` / `noPurchases` = FALSE. Otherwise both must be TRUE and
-the annexes omitted. (`generate_kmd.py` derives the flags from the annex lines, so the
-gate's job is to confirm the annex lines match the threshold sums.)
+Do not aggregate the transaction header `amount`: it is gross, and it includes invoices
+the instructions exclude (no supply at a positive rate, natural persons, part B
+invoices without deducted VAT).
+
+- Every partner in `declare` (invoices without VAT at least EUR 1,000.00, inclusive)
+  must have its invoices in the annex, and the annex must hold no other partner unless
+  declared voluntarily. If the annex is empty, `noSales` / `noPurchases` must be TRUE.
+  A partner below the limit that has an invoice carried from an earlier period
+  (`counted_in_earlier_period`) appears twice: the carried invoice under `declare` (it
+  must be presented) and its other invoices under `below_threshold` (they are not).
+  (`generate_kmd.py` derives the flags from the annex lines, so the gate's job is to
+  confirm the annex lines match the selection.)
+- Any partner in `needs_registry_code` — **BLOCK** until a person supplies a verified
+  register code or confirms the partner is a non-resident without one. Never fill it
+  from a VAT number.
+- Reversed and voided documents of the period (SKILL Step 2, item 3) — **WARN**: list
+  them for a person to decide how they appear in the annex. Their treatment in the KMD
+  INF is not settled by this gate.
+- Any `include_lines` response with the "Line items truncated" warning — **BLOCK** until
+  the lines are re-read; a truncated invoice has a net that is too low.
+- `vatSum` / `invoiceSumForRate` present while the entity is not on cash accounting —
+  **BLOCK** (the generator also refuses it).
 
 *Caught:* confirms Hala's `noSales` / `noPurchases` = TRUE were correct (Telia €910 <
 €1,000), and would flag the opposite mistake.
@@ -132,7 +155,7 @@ KMD Pre-Close Gate — Entity 41, 2026-06
   3. Period cut-off ........... WARN   Nexia inv 2026-04-…, settled 2026-06 → confirm April period
   4. Tax-code jurisdiction .... WARN   Vendor "AWS" (US) coded 845 (intra-EU) → should be line 7
   5. GL tie-out ............... PASS
-  6. INF threshold ............ PASS   no partner ≥ €1,000 → noSales/noPurchases=TRUE
+  6. INF threshold ............ PASS   no partner ≥ €1,000 without VAT → noSales/noPurchases=TRUE
   7. Arithmetic / form rules .. PASS
 
 RESULT: 1 BLOCK, 2 WARN → generation refused. Fix BLOCK items and re-run.

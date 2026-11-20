@@ -52,7 +52,7 @@
       "name": "arfiti-ee-country-pack",
       "source": "./arfiti-ee-country-pack",
       "description": "Estonia country pack: VAT return (KMD) and EC Sales List, payroll and TSD, annual report with XBRL, and year-end bookkeeping.",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "category": "compliance",
       "keywords": [
         "estonia",

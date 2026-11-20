@@ -6,6 +6,8 @@
   "month": 6,
   "declaration_type": 1,
   "input_vat_full_deduction": true,
+  "_comment_cash_accounting": "State it explicitly. true only if the company applies the special arrangements for cash accounting for VAT (kassapõhine, VAT Act § 44). KMD INF A column 8 (invoiceSumForRate) and B column 7 (vatSum) are 'filled in by taxable persons using cash-accounting for value added tax' (EMTA KMD INF instructions 2025-07); the generator refuses either field unless cash_accounting is true. Exception: a part B line with special code 11 (partial deduction, VAT Act § 32 / § 29(4)) in comments may carry vatSum.",
+  "cash_accounting": false,
   "_comment_declaration_body": "KMD main form (declarationBody). Omit or set 0 for lines that do not apply. Rate lines feed e-MTA's line-4 computation and INCLUDE reverse-charge/IC acquisition bases (EMTA: the KMD is declared by rate 'including' IC acquisition and reverse-charge services). Their deductible VAT goes into inputVatTotal (line 5); for full deduction the two cancel. Lines 6/6.1/7/7.1 are INFORMATIVE breakouts (EU suppliers -> line 6; non-EU services + domestic reverse charge -> line 7) and must not exceed the rate-line bases — the generator rejects that.",
   "declaration_body": {
     "transactions24": 100000.0,
@@ -35,7 +37,7 @@
     "adjustmentsPlus": 0.0,
     "adjustmentsMinus": 0.0
   },
-  "_comment_sales_annex": "KMD INF A (salesAnnex): sales partners where invoices to that partner total > EUR 1,000 in the period. Omit the whole key when no partner reaches the threshold — output then sets noSales=true and omits the annex. sum_per_partner=false is detailed per-invoice (invoiceNumber + invoiceDate as YYYY-MM-DD, rendered DD.MM.YYYY in the CSV); true summarises per partner. taxRate is the classifier value (e.g. '24', '24erikord').",
+  "_comment_sales_annex": "KMD INF A (salesAnnex): invoices issued to partners whose invoices WITHOUT VAT total at least EUR 1,000.00 in the period (inclusive; ordinary and credit invoices totalled separately; only invoices with supply at 24/22/20/13/9/5 % count). Select partners with `generate_kmd.py --select-inf invoices.json --side A`. buyerRegCode = register code or personal ID code assigned in Estonia (never a VAT number). Omit the whole key when no partner qualifies — output then sets noSales=true. EMTA's form is filled invoice-by-invoice: sum_per_partner=false with invoiceNumber + invoiceDate (YYYY-MM-DD, rendered DD.MM.YYYY in the CSV). invoiceSum = invoice total without VAT; taxRate = classifier value (e.g. '24', '24erikord'); sumForRateInPeriod = base declared on KMD lines 1/1¹/1²/2/2¹/2² this period. invoiceSumForRate (column 8) only when cash_accounting is true.",
   "sales_annex": {
     "sum_per_partner": false,
     "lines": [
@@ -50,7 +52,7 @@
       }
     ]
   },
-  "_comment_purchases_annex": "KMD INF B (purchasesAnnex): purchase partners where invoices from that partner total > EUR 1,000 (incl. VAT). invoiceSumVat = total incl. VAT; vatInPeriod = input VAT declared on line 5 for that partner this period. Omit the key when no partner reaches the threshold.",
+  "_comment_purchases_annex": "KMD INF B (purchasesAnnex): invoices received from partners whose invoices WITHOUT VAT total at least EUR 1,000.00 in the period, counting only invoices whose VAT is deducted in KMD line 5 this period. invoiceSumVat = invoice total WITH VAT (column 6); vatInPeriod = input VAT declared on line 5 for that invoice this period (column 8). vatSum (column 7) only when cash_accounting is true, or with special code 11 for a partial deduction. Omit the key when no partner qualifies.",
   "purchases_annex": {
     "sum_per_partner": false,
     "lines": [
@@ -60,7 +62,6 @@
         "invoiceNumber": "V-8842",
         "invoiceDate": "2026-06-09",
         "invoiceSumVat": 3660.0,
-        "vatSum": 660.0,
         "vatInPeriod": 660.0
       }
     ]

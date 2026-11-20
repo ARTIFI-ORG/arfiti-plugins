@@ -56,8 +56,29 @@ NOTE: an earlier version of this script prescribed the opposite ("bases only on
 6/7, never grossed") — for full-deduction taxpayers both conventions produce the
 same line 12/13, which is why filings under the old rule were still accepted.
 
+KMD INF annex (AR-1399, per EMTA "Instructions for filling in the appendix (form
+KMD INF)", vorm_kmd_inf_2025_07_eng.pdf, and the EMTA page "Filing VAT returns and
+reports"):
+
+  * Partner threshold: the invoices' total WITHOUT VAT per transaction partner per
+    taxation period is "at least 1,000 euros" (inclusive), counted separately for
+    invoices issued (part A) and received (part B), and separately for ordinary
+    invoices and for credit invoices. Only invoices containing supply at 24/13/9 %
+    (in exceptional cases 22/20/5 %) count; an invoice with only 0 %, exempt or
+    non-supply amounts does not. `select_inf_partners()` / `--select-inf` apply this.
+  * Column 8 of part A (`invoiceSumForRate`) and column 7 of part B (`vatSum`) are
+    "filled in by taxable persons using cash-accounting for value added tax". The
+    input therefore states `cash_accounting` explicitly; validate() refuses either
+    field unless it is true. Exception (part B col 7 text): a partial deduction under
+    VAT Act § 32 / § 29(4) may present the amount; the line must then carry special
+    code 11 in `comments` (code 11 is the instructions' own code for that partial
+    deduction, so requiring it is our derivation, not a sentence in the source).
+  * Column 2 is the partner's Estonian register code or personal ID code, never a
+    VAT number: validate() refuses a reg-code value with a country prefix.
+
 Usage:
     python3 generate_kmd.py --input /tmp/kmd_data_14276473.json --output /tmp/
+    python3 generate_kmd.py --select-inf invoices.json --side A   # KMD INF partner selection
 
 Input JSON format: see input_schema_kmd.json (real KMD2 element names).
 """
@@ -68,7 +89,7 @@ import re
 import subprocess
 import sys
 import tempfile
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -111,7 +132,23 @@ BODY_ELEMENTS: List[str] = [
     "adjustmentsMinus",                     # line 11  (- adjustment, non-negative)
 ]
 
+# KMD INF partner threshold (EMTA KMD INF instructions 2025-07, "Accounting the limit
+# per transaction partner"): total WITHOUT VAT per partner per period, "at least
+# 1,000 euros" — inclusive, so exactly 1000.00 qualifies.
+INF_THRESHOLD = Decimal("1000.00")
+
+# A VAT number starts with a two-letter country prefix (EE123456789). KMD INF column 2
+# takes the partner's register code or personal ID code assigned in Estonia, so a value
+# shaped like a VAT number is refused rather than filed.
+VAT_NUMBER_RE = re.compile(r"^[A-Za-z]{2}\s*[0-9A-Za-z]")
+
+# Part B special code 11: partial deduction of input VAT (VAT Act § 32 or § 29(4)).
+# The only case in which a non-cash-accounting taxpayer may fill column 7 (vatSum).
+PARTIAL_DEDUCTION_SPECIAL_CODE = "11"
+
 INTEGER_ELEMENTS = {"numberOfCars", "numberOfCarsPartial"}
+ANNEX_AMOUNT_FIELDS = ("invoiceSum", "invoiceSumForRate", "sumForRateInPeriod",
+                       "invoiceSumVat", "vatSum", "vatInPeriod")
 NON_NEGATIVE_ELEMENTS = {"adjustmentsPlus", "adjustmentsMinus"}
 
 # Every machine-CSV row is padded to this many semicolon-separated fields.
@@ -143,6 +180,37 @@ def dec(value) -> Decimal:
     if value is None or value == "":
         return Decimal("0")
     return Decimal(str(value))
+
+
+def is_number(value) -> bool:
+    """True for an int/float/Decimal or a numeric string ("1000.00"); False for bools,
+    None, "" and text such as "1,000.00" that Decimal cannot parse."""
+    if isinstance(value, bool) or value is None:
+        return False
+    try:
+        parsed = Decimal(str(value))
+        if not parsed.is_finite():
+            return False
+        parsed.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    except (InvalidOperation, ValueError, TypeError):
+        return False
+    return True
+
+
+def is_integer(value) -> bool:
+    """True for a whole number (int, or a numeric string / Decimal without a fraction)."""
+    return is_number(value) and Decimal(str(value)) == Decimal(str(value)).to_integral_value()
+
+
+def required_amount(record: dict, key: str, label: str) -> Decimal:
+    """Read a required monetary field, refusing a missing, null or non-numeric value
+    instead of treating it as 0.00 (a silent zero can drop a partner below the KMD INF
+    limit and the annex from the filing)."""
+    if key not in record:
+        raise ValueError(f"{label}: {key} is required")
+    if not is_number(record[key]):
+        raise ValueError(f"{label}: {key} must be a number with a dot decimal, got {record[key]!r}")
+    return q2(record[key])
 
 
 def q2(value) -> Decimal:
@@ -238,21 +306,28 @@ def validate(data: dict) -> List[str]:
     """Validate input data structurally. Returns a list of error strings."""
     errors: List[str] = []
 
+    if not isinstance(data, dict):
+        return ["the input must be a JSON object"]
     if not data.get("regcode"):
         errors.append("regcode is required")
-    if not data.get("year"):
-        errors.append("year is required")
-    month = data.get("month")
-    if month is None or not (1 <= int(month) <= 12):
+    year, month = data.get("year"), data.get("month")
+    if not is_integer(year):
+        errors.append("year is required and must be a whole number")
+    if not is_integer(month) or not (1 <= int(Decimal(str(month))) <= 12):
         errors.append("month is required and must be 1-12")
-    elif data.get("year") and (int(data["year"]) * 100 + int(month)) < 202401:
+    elif is_integer(year) and (int(Decimal(str(year))) * 100 + int(Decimal(str(month)))) < 202401:
         errors.append(
-            f"period {data['year']}-{int(month):02d} predates the KMD2 format "
+            f"period {year}-{int(Decimal(str(month))):02d} predates the KMD2 format "
             "(valid from 01.2024)"
         )
 
-    if int(data.get("declaration_type", 1)) not in (1, 2):
+    dtype = data.get("declaration_type", 1)
+    if not is_integer(dtype) or int(Decimal(str(dtype))) not in (1, 2):
         errors.append("declaration_type must be 1 (normal) or 2 (bankruptcy)")
+
+    for key in ("expected_vat_payable", "expected_vat_overpaid"):
+        if data.get(key) is not None and not is_number(data[key]):
+            errors.append(f"{key} must be a number with a dot decimal, got {data[key]!r}")
 
     body = data.get("declaration_body", {})
     if not isinstance(body, dict):
@@ -274,6 +349,30 @@ def validate(data: dict) -> List[str]:
         errors.append(
             f"declaration_body has unknown element(s): {', '.join(sorted(unknown))}"
         )
+
+    # A present value must be numeric: an absent element means "line does not apply",
+    # but text such as "1,000.00" must be refused, not crash or become 0. The count
+    # fields must be whole numbers (they were truncated before).
+    bad = [k for k, v in body.items() if v not in (None, "") and not is_number(v)]
+    errors += [
+        f"declaration_body.{k} must be a number with a dot decimal, got {body[k]!r}"
+        for k in sorted(bad)
+    ]
+    fractional = [k for k in INTEGER_ELEMENTS
+                  if k in body and k not in bad and body[k] not in (None, "")
+                  and not is_integer(body[k])]
+    errors += [f"declaration_body.{k} must be a whole number, got {body[k]!r}"
+               for k in sorted(fractional)]
+    if bad or fractional:
+        # The checks below compare body values; with a value missing they would report
+        # a structural problem the return may not have.
+        errors += _validate_annex(data.get("sales_annex"), "sales_annex",
+                                  "buyerRegCode", "buyerName", "invoiceSum", "taxRate")
+        errors += _validate_annex(data.get("purchases_annex"), "purchases_annex",
+                                  "sellerRegCode", "sellerName", "invoiceSumVat",
+                                  "vatInPeriod")
+        errors += _validate_cash_accounting_columns(data)
+        return errors
 
     for key in NON_NEGATIVE_ELEMENTS:
         if key in body and dec(body[key]) < 0:
@@ -310,6 +409,60 @@ def validate(data: dict) -> List[str]:
     errors += _validate_annex(data.get("purchases_annex"), "purchases_annex",
                               "sellerRegCode", "sellerName", "invoiceSumVat",
                               "vatInPeriod")
+    errors += _validate_cash_accounting_columns(data)
+    return errors
+
+
+def _has_value(value) -> bool:
+    return value not in (None, "")
+
+
+def _special_codes(comments) -> List[str]:
+    """Split a KMD INF special-code cell ("11", "11,12", "11 12") into codes."""
+    return [c for c in re.split(r"[\s,;]+", str(comments or "").strip()) if c]
+
+
+def _annex_lines(annex) -> List[dict]:
+    """The annex's line objects; malformed shapes are reported by _validate_annex."""
+    if not isinstance(annex, dict) or not isinstance(annex.get("lines"), list):
+        return []
+    return [line if isinstance(line, dict) else {} for line in annex["lines"]]
+
+
+def _validate_cash_accounting_columns(data: dict) -> List[str]:
+    """
+    Refuse the cash-accounting-only annex columns unless the input says the taxpayer
+    uses cash accounting (EMTA KMD INF instructions 2025-07: part A column 8 and part B
+    column 7 are "filled in by taxable persons using cash-accounting for value added
+    tax"). `cash_accounting` must be stated as true; absent or false refuses them.
+    Part B column 7 may also be filled for a partial deduction (special code 11).
+    """
+    errors: List[str] = []
+    flag = data.get("cash_accounting")
+    if flag is not None and not isinstance(flag, bool):
+        return ["cash_accounting must be true or false"]
+    on_cash = flag is True
+    if on_cash:
+        return errors
+    state = "false" if flag is False else "not stated"
+    for i, line in enumerate(_annex_lines(data.get("sales_annex"))):
+        if _has_value(line.get("invoiceSumForRate")):
+            errors.append(
+                f"sales_annex.lines[{i}]: invoiceSumForRate (KMD INF A column 8) is filled "
+                f"only by a cash-accounting taxpayer, but cash_accounting is {state}. "
+                "Remove it, or set cash_accounting: true if the company uses cash accounting."
+            )
+    for i, line in enumerate(_annex_lines(data.get("purchases_annex"))):
+        if not _has_value(line.get("vatSum")):
+            continue
+        if PARTIAL_DEDUCTION_SPECIAL_CODE in _special_codes(line.get("comments")):
+            continue
+        errors.append(
+            f"purchases_annex.lines[{i}]: vatSum (KMD INF B column 7) is filled only by a "
+            f"cash-accounting taxpayer, but cash_accounting is {state}. Remove it, set "
+            "cash_accounting: true if the company uses cash accounting, or mark a partial "
+            f"deduction with special code {PARTIAL_DEDUCTION_SPECIAL_CODE} in comments."
+        )
     return errors
 
 
@@ -320,13 +473,31 @@ def _validate_annex(annex, name, id_field, name_field, *required_fields) -> List
         return errors
     if not isinstance(annex, dict):
         return [f"{name} must be an object"]
-    for i, line in enumerate(annex.get("lines", []) or []):
+    lines = annex.get("lines", []) or []
+    if not isinstance(lines, list):
+        return [f"{name}.lines must be an array"]
+    for i, line in enumerate(lines):
         prefix = f"{name}.lines[{i}]"
+        if not isinstance(line, dict):
+            errors.append(f"{prefix} must be an object")
+            continue
         if not line.get(id_field) and not line.get(name_field):
             errors.append(f"{prefix}: at least one of {id_field} / {name_field} is required")
+        if line.get(id_field) and VAT_NUMBER_RE.match(str(line[id_field]).strip()):
+            errors.append(
+                f"{prefix}: {id_field} '{line[id_field]}' looks like a VAT number. KMD INF "
+                "column 2 is the register code or personal ID code assigned in Estonia; "
+                "never derive it from a VAT number. Resolve the partner's register code "
+                "or list the partner for review."
+            )
         for field in required_fields:
             if line.get(field) in (None, ""):
                 errors.append(f"{prefix}: {field} is required")
+        for field in ANNEX_AMOUNT_FIELDS:
+            if line.get(field) not in (None, "") and not is_number(line[field]):
+                errors.append(
+                    f"{prefix}: {field} must be a number with a dot decimal, got {line[field]!r}"
+                )
     return errors
 
 
@@ -355,6 +526,245 @@ def reverse_charge_warnings(data: dict) -> List[str]:
             "payable. Review the split before filing."
         )
     return warnings
+
+
+# --------------------------------------------------------------------------- #
+# KMD INF partner selection (threshold)
+# --------------------------------------------------------------------------- #
+INF_EXCLUDED_PARTNER_KINDS = {"natural_person"}
+# The KMD INF limit and annex amounts are in euros. The ledger keeps a foreign-currency
+# document in its own currency; the invoice list must carry amounts converted to the
+# entity's functional currency (EUR) and say so in `currency`.
+INF_CURRENCY = "EUR"
+# Document types per side. A credit memo's lines are stored positive and the canonical
+# tax view negates them (migration 601: -abs(...) for AR/AP_CREDIT_MEMO); the selector
+# applies the same rule, so a credit memo always counts toward the credit total.
+INF_DOCUMENT_TYPES = {
+    "A": {"AR_INVOICE": False, "AR_CREDIT_MEMO": True},
+    "B": {"AP_INVOICE": False, "AP_CREDIT_MEMO": True},
+}
+BOOLEAN_INVOICE_FLAGS = (
+    "has_positive_rate_supply", "registry_code_verified", "non_resident",
+    "travel_special_procedure_only", "professional_secrecy", "counted_in_earlier_period",
+)
+
+
+def select_inf_partners(invoices: List[dict], side: str) -> dict:
+    """
+    Decide which partners' invoices go into KMD INF part A (side "A", invoices issued)
+    or part B (side "B", invoices received), from invoice-level input. Rules, all from
+    EMTA's KMD INF instructions (vorm_kmd_inf_2025_07_eng.pdf):
+
+      * The limit is the invoices' total WITHOUT VAT per partner in the period and is
+        met at "at least 1,000 euros" (>= INF_THRESHOLD).
+      * Ordinary invoices and credit invoices are totalled separately; either total
+        reaching the limit brings ALL that partner's invoices in, credit invoices
+        included.
+      * Only invoices containing supply taxable at 24/22/20/13/9/5 % count and are
+        presented (`has_positive_rate_supply`); for such an invoice the whole total
+        without VAT counts, 0 %/exempt parts included. Invoices issued solely under the
+        travel-services special procedure (§ 40) and invoices subject to professional
+        secrecy are not presented.
+      * An invoice to a natural person (not self-employed) is not presented; nor is one
+        with a non-resident that has no register code assigned in Estonia.
+      * Part B: an invoice whose VAT is not deducted in field 5 this period is not
+        presented (`vat_deducted_in_period` 0 or absent).
+      * An invoice counts into the limit only once, in the first period it must be
+        presented. An invoice already presented in an earlier period whose supply (part A)
+        or deduction (part B) also falls in this period must be presented again
+        (`counted_in_earlier_period: true`): it stays out of the limit but is always
+        presented, whatever this period's totals. The partner's other invoices join it
+        only when this period's totals reach the limit.
+
+    Each invoice dict: partner_key (required; the ERP customer / vendor id), document_type
+    (required: AR_INVOICE / AR_CREDIT_MEMO on side A, AP_INVOICE / AP_CREDIT_MEMO on side
+    B; a credit memo always counts as a credit, whatever the sign of net_amount),
+    currency (required, must be "EUR": amounts converted to the functional currency),
+    partner_name, registry_code,
+    registry_code_verified (bool), non_resident (bool), partner_kind
+    ("legal_person" default | "self_employed" | "authority" | "natural_person"),
+    invoice_number, invoice_date, net_amount (REQUIRED, signed, WITHOUT VAT — credit
+    invoices negative; a missing, null or non-numeric value is refused, never read as
+    0), vat_amount, has_positive_rate_supply (bool, required),
+    travel_special_procedure_only, professional_secrecy, counted_in_earlier_period,
+    and for side B vat_deducted_in_period (REQUIRED on side B; 0 means not deducted).
+
+    For a non-resident, `registry_code_verified: true` with an empty registry_code means
+    a person confirmed it has no register code assigned in Estonia (then not presented).
+    Partner records that carry the same register code are combined into one partner (the
+    limit is per transaction partner); `partner_keys` and `partner_names` list them. A
+    partner is declared only when every one of its invoices carries the same verified
+    code; otherwise it goes to `needs_registry_code` once it reaches the limit. Each
+    returned invoice carries `signed_net_amount`, and `signed_vat_amount` /
+    `signed_vat_deducted_in_period` when given (credit invoices negative), for the annex.
+    A partner whose invoices carry conflicting register codes, or a code shaped like a
+    VAT number, is also returned under `needs_registry_code` (see `conflicts`).
+    A partner that qualifies but has no verified register code is returned under
+    `needs_registry_code` for a person to resolve — never filled from a VAT number or
+    another company's record. Returns {"declare", "needs_registry_code",
+    "below_threshold", "excluded"}.
+    """
+    if side not in ("A", "B"):
+        raise ValueError("side must be 'A' (invoices issued) or 'B' (invoices received)")
+
+    if not isinstance(invoices, list):
+        raise ValueError("the invoice list must be a JSON array of invoice objects")
+    excluded: List[dict] = []
+    included: List[tuple] = []
+    for inv in invoices:
+        if not isinstance(inv, dict):
+            raise ValueError("each invoice must be a JSON object")
+        key = str(inv.get("partner_key") or "").strip()
+        if not key:
+            raise ValueError(f"invoice {inv.get('invoice_number')!r} has no partner_key")
+        if not isinstance(inv.get("has_positive_rate_supply"), bool):
+            raise ValueError(
+                f"invoice {inv.get('invoice_number')!r}: has_positive_rate_supply is required "
+                "and must be true or false (true when the invoice contains supply at "
+                "24/22/20/13/9/5 %)"
+            )
+        for flag in BOOLEAN_INVOICE_FLAGS:
+            if flag in inv and inv[flag] is not None and not isinstance(inv[flag], bool):
+                raise ValueError(
+                    f"invoice {inv.get('invoice_number')!r}: {flag} must be true or false, "
+                    f"got {inv[flag]!r}"
+                )
+        label = f"invoice {inv.get('invoice_number')!r}"
+        currency = str(inv.get("currency") or "").strip().upper()
+        if currency != INF_CURRENCY:
+            raise ValueError(
+                f"{label}: currency must be {INF_CURRENCY!r} — convert the amounts to the "
+                f"entity's functional currency first (got {inv.get('currency')!r})"
+            )
+        doc_type = str(inv.get("document_type") or "").strip().upper()
+        if doc_type not in INF_DOCUMENT_TYPES[side]:
+            raise ValueError(
+                f"{label}: document_type must be one of "
+                f"{', '.join(sorted(INF_DOCUMENT_TYPES[side]))} on side {side}, "
+                f"got {inv.get('document_type')!r}"
+            )
+        net = required_amount(inv, "net_amount", label)
+        if INF_DOCUMENT_TYPES[side][doc_type]:
+            net = -abs(net)
+        vat_deducted = (required_amount(inv, "vat_deducted_in_period", label)
+                        if side == "B" else None)
+        reason = None
+        reg_code = str(inv.get("registry_code") or "").strip()
+        verified = bool(inv.get("registry_code_verified")) and bool(reg_code)
+        if not inv["has_positive_rate_supply"]:
+            reason = "no supply at 24/22/20/13/9/5 % on the invoice"
+        elif inv.get("travel_special_procedure_only"):
+            reason = "issued solely under the travel-services special procedure (VAT Act § 40)"
+        elif inv.get("professional_secrecy"):
+            reason = "subject to professional secrecy"
+        elif (inv.get("partner_kind") or "legal_person") in INF_EXCLUDED_PARTNER_KINDS:
+            reason = "partner is a natural person (not self-employed)"
+        elif inv.get("non_resident") and not reg_code and inv.get("registry_code_verified"):
+            reason = "non-resident without a register code assigned in Estonia"
+        elif side == "B" and vat_deducted == 0:
+            reason = "VAT not deducted in field 5 this period"
+        if reason:
+            excluded.append({"partner_key": key, "invoice_number": inv.get("invoice_number"),
+                             "reason": reason})
+            continue
+
+        # Returned with the invoice: the signed EUR net to put in the annex (credit
+        # invoices are entered with a minus sign, KMD INF instructions parts A and B).
+        signed = dict(inv, signed_net_amount=f"{net:.2f}")
+        is_credit = INF_DOCUMENT_TYPES[side][doc_type] or net < 0
+        for src, dst in (("vat_amount", "signed_vat_amount"),
+                         ("vat_deducted_in_period", "signed_vat_deducted_in_period")):
+            if src in inv and inv[src] not in (None, ""):
+                value = required_amount(inv, src, label)
+                signed[dst] = f"{(-abs(value) if is_credit else value):.2f}"
+        included.append((key, reg_code, verified, net, signed))
+
+    # The limit is per transaction partner, not per ERP record. Records are linked
+    # through any register code they carry, verified or not (two cards for one company
+    # with the same code are one partner); a code shaped like a VAT number links nothing.
+    parent: Dict[str, str] = {}
+
+    def find(node: str) -> str:
+        parent.setdefault(node, node)
+        while parent[node] != node:
+            parent[node] = parent[parent[node]]
+            node = parent[node]
+        return node
+
+    def union(a: str, b: str) -> None:
+        parent[find(a)] = find(b)
+
+    for key, reg_code, _verified, _net, _inv in included:
+        find("key:" + key)
+        if reg_code and not VAT_NUMBER_RE.match(reg_code):
+            union("key:" + key, "code:" + reg_code)
+
+    groups: Dict[str, dict] = {}
+    for key, reg_code, verified, net, inv in included:
+        g = groups.setdefault(find("key:" + key), {
+            "partner_key": key, "partner_keys": [], "partner_names": [],
+            "codes": set(), "all_verified": True, "conflicts": [],
+            "invoice_total": Decimal("0.00"), "credit_total": Decimal("0.00"),
+            "invoices": [],
+        })
+        if key not in g["partner_keys"]:
+            g["partner_keys"].append(key)
+        name = inv.get("partner_name")
+        if name and name not in g["partner_names"]:
+            g["partner_names"].append(name)
+        if reg_code and VAT_NUMBER_RE.match(reg_code):
+            g["conflicts"].append(
+                f"invoice {inv.get('invoice_number')!r}: registry_code {reg_code!r} looks "
+                "like a VAT number"
+            )
+            g["all_verified"] = False
+        elif reg_code:
+            g["codes"].add(reg_code)
+        if not verified:
+            g["all_verified"] = False
+        if not inv.get("counted_in_earlier_period"):
+            if net < 0:
+                g["credit_total"] += -net
+            else:
+                g["invoice_total"] += net
+        g["invoices"].append(inv)
+
+    declare: List[dict] = []
+    needs_code: List[dict] = []
+    below: List[dict] = []
+    for g in groups.values():
+        codes = sorted(g.pop("codes"))
+        all_verified = g.pop("all_verified")
+        if len(codes) > 1:
+            g["conflicts"].append(f"different register codes for one partner: {codes}")
+        verified_code = codes[0] if (all_verified and len(codes) == 1) else None
+        if len(g["partner_keys"]) > 1 and not verified_code:
+            g["conflicts"].append(
+                f"records {g['partner_keys']} share a register code that is not verified "
+                "on every invoice; confirm they are one partner"
+            )
+        g["partner_name"] = g["partner_names"][0] if g["partner_names"] else None
+        g["registry_code"] = verified_code
+        g["registry_code_verified"] = verified_code is not None
+        qualifies = g["invoice_total"] >= INF_THRESHOLD or g["credit_total"] >= INF_THRESHOLD
+        carried = [i for i in g["invoices"] if i.get("counted_in_earlier_period")]
+        row = dict(g, invoice_total=f"{g['invoice_total']:.2f}",
+                   credit_total=f"{g['credit_total']:.2f}")
+        if not qualifies and not carried:
+            below.append(row)
+            continue
+        if not qualifies:
+            # Only the invoices carried from an earlier period must be presented.
+            others = [i for i in g["invoices"] if not i.get("counted_in_earlier_period")]
+            if others:
+                below.append(dict(row, invoices=others))
+            row["invoices"] = carried
+        if not row["registry_code_verified"] or row["conflicts"]:
+            needs_code.append(row)
+        else:
+            declare.append(row)
+    return {"declare": declare, "needs_registry_code": needs_code,
+            "below_threshold": below, "excluded": excluded}
 
 
 # --------------------------------------------------------------------------- #
@@ -434,9 +844,9 @@ def _purchases_annex_xml(annex: Optional[dict]) -> List[str]:
 def build_xml(data: dict) -> str:
     """Build the full vatDeclaration XML document as a string."""
     regcode = str(data["regcode"])
-    year = int(data["year"])
-    month = int(data["month"])
-    dtype = int(data.get("declaration_type", 1))
+    year = int(dec(data["year"]))
+    month = int(dec(data["month"]))
+    dtype = int(dec(data.get("declaration_type", 1)))
     version = compute_version(year, month)
     body = data.get("declaration_body", {}) or {}
     sales = data.get("sales_annex")
@@ -502,9 +912,9 @@ def build_csv(data: dict) -> str:
       B;{sellerReg};{sellerName};{invNo};{invDate};{sumVat};{vatSum};{vatInPeriod};{comments}
     """
     regcode = str(data["regcode"])
-    year = int(data["year"])
-    month = int(data["month"])
-    dtype = int(data.get("declaration_type", 1))
+    year = int(dec(data["year"]))
+    month = int(dec(data["month"]))
+    dtype = int(dec(data.get("declaration_type", 1)))
     version = compute_version(year, month)
     submitter = str(data.get("submitter_person_code") or "")
     body = data.get("declaration_body", {}) or {}
@@ -696,12 +1106,38 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generate the Estonian VAT return (KMD2 machine CSV + vatDeclaration XML)"
     )
-    parser.add_argument("--input", required=True, help="Path to input JSON file")
+    parser.add_argument("--input", help="Path to input JSON file")
     parser.add_argument("--output", default=".", help="Output directory (default: .)")
+    parser.add_argument("--select-inf", metavar="INVOICES_JSON",
+                        help="Select KMD INF partners from an invoice list (JSON array) "
+                             "and print the selection; writes no files")
+    parser.add_argument("--side", choices=("A", "B"),
+                        help="With --select-inf: A = invoices issued, B = invoices received")
     args = parser.parse_args()
 
-    with open(args.input, encoding="utf-8") as fh:
-        data = json.load(fh)
+    if args.select_inf:
+        if not args.side:
+            parser.error("--select-inf needs --side A or --side B")
+        if args.input:
+            parser.error("--select-inf and --input are separate runs; pass one of them")
+        try:
+            with open(args.select_inf, encoding="utf-8") as fh:
+                invoices = json.load(fh)
+            selection = select_inf_partners(invoices, args.side)
+        except (OSError, ValueError) as exc:  # json.JSONDecodeError is a ValueError
+            print(f"INVALID INVOICE LIST: {exc}", file=sys.stderr)
+            sys.exit(1)
+        print(json.dumps(selection, indent=2, ensure_ascii=False, default=str))
+        return
+    if not args.input:
+        parser.error("--input is required")
+
+    try:
+        with open(args.input, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError) as exc:  # json.JSONDecodeError is a ValueError
+        print(f"INVALID INPUT FILE: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     errors = validate(data)
     if errors:
@@ -711,8 +1147,8 @@ def main() -> None:
         sys.exit(1)
 
     regcode = str(data["regcode"])
-    year = int(data["year"])
-    month = int(data["month"])
+    year = int(dec(data["year"]))
+    month = int(dec(data["month"]))
     stem = f"{year}{month:02d}_{regcode}"
 
     # Build both artifacts, then run the output-format gate (check 1) BEFORE writing

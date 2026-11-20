@@ -51,6 +51,12 @@ A;2345678;Nimi;887766385;10.07.2025;1000.00;24;1000.00;1000.00;;… ← salesAnn
 B;3456789;Nimi;448826649;07.07.2025;1220.00;220.00;110.00;12;;…   ← purchasesAnnex purchaseLine (KMD INF B)
 ```
 
+In this example the A row's 8th field (`invoiceSumForRate`, KMD INF A column 8) and the
+B row's 7th field (`vatSum`, KMD INF B column 7) are filled. EMTA's KMD INF instructions
+(07.2025) reserve both columns for taxable persons using cash accounting for VAT; an
+accrual-basis entity leaves them empty, and `generate_kmd.py` refuses them unless the
+input sets `cash_accounting: true` (part B special code 11, partial deduction, excepted).
+
 The 26 body values are the `declarationBody` elements in XSD sequence order (omitting the
 obsolete `selfSupply20`/`selfSupply9`): transactions24, transactions22, transactions20,
 transactions9, transactions5, transactions13, transactionsZeroVat,
@@ -98,7 +104,7 @@ file per upload, max 10 MB).
 - Amounts: `xs:decimal`, 2 fraction digits, **dot** separator, no thousands separator.
 - `version` is period-dependent: **KMD4** (01.2024–12.2024), **KMD5**
   (01.2025–06.2025), **KMD6** (from 07.2025). `generate_kmd.py` sets it automatically.
-- When a period has no partner exceeding the KMD INF threshold, set `noSales` /
+- When a period has no partner reaching the KMD INF threshold (EUR 1,000.00 without VAT), set `noSales` /
   `noPurchases` to `true` and **omit** the corresponding annex.
 - Do **not** emit total VAT (line 4), VAT due (line 12) or overpaid (line 13) —
   there are no elements/columns for them; e-MTA computes them.

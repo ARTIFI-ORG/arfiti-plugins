@@ -29,8 +29,19 @@ generated. Use it to check early, or to re-check after corrections.
 ## Phase 1 — Gather (SKILL steps 1–3)
 
 Follow **skills/estonian-vat-declaration/SKILL.md**:
+0. Establish whether the entity is on cash accounting (`cash_accounting`), and resolve the
+   registered VAT form code with `query("tax_filing_form", filters={"country_code": "EE"})`
+   (Estonia: `KMD`). No registered form → the return cannot be saved; say so (SKILL Prerequisites).
 1. Discover & classify tax codes (property-based — never hardcode names).
-2. Fetch all posted transactions for the period (AR/AP invoices, credit notes, journals).
+2. Take the box figures from `generate_report("vat_report", …)` (authoritative) and fetch
+   the period's documents in every ledger-effective status — `posted`, `partial`, `paid`,
+   `partially_paid`, `completed`, `approved`, `reversed`, with `posted_at` set, plus the
+   reversals dated in the period — never `status: "posted"` alone, which drops paid
+   documents. Convert foreign-currency amounts to EUR with the header `exchange_rate`,
+   re-read any response warned "Line items truncated", and list reversed and voided
+   documents for a person to decide (SKILL Step 2).
+   List supplier invoice numbers that already appear for the same supplier in a filed
+   period (SKILL Step 2.5) for a person to review — never excluded automatically.
 3. Verify every line has a valid tax code.
 
 ## Phase 2 — Pre-close validation gate (BLOCK / WARN)
@@ -59,7 +70,10 @@ Once the gate is green (no open BLOCK):
   reverse-charge/IC acquisition bases INCLUDED in the rate lines — plus `inputVatTotal`
   (incl. the deductible RC VAT) and the informative acquisition breakout on lines 6/7.
   Do **not** supply total VAT / line 12 / line 13 — e-MTA computes them.
-- Aggregate KMD INF partners (threshold EUR 1,000) into `sales_annex` / `purchases_annex`.
+- Select KMD INF partners with `scripts/generate_kmd.py --select-inf … --side A|B`
+  (invoices **without VAT** at least EUR 1,000.00 per partner, inclusive) and build
+  `sales_annex` / `purchases_annex` invoice by invoice. Partners without a verified
+  register code go to a person; never use the VAT number.
 
 Build the input JSON (see `scripts/input_schema_kmd.json` for the full example):
 
@@ -69,6 +83,7 @@ Build the input JSON (see `scripts/input_schema_kmd.json` for the full example):
   "submitter_person_code": null,
   "year": YYYY, "month": MM, "declaration_type": 1,
   "input_vat_full_deduction": true,
+  "cash_accounting": false,
   "expected_vat_payable": 138.07,
   "declaration_body": {
     "transactions24": 910.00, "inputVatTotal": 80.33,
@@ -85,6 +100,9 @@ Build the input JSON (see `scripts/input_schema_kmd.json` for the full example):
 - Set `input_vat_full_deduction: false` if the taxpayer's input VAT is only partly
   deductible; line 5 then carries only the deductible portion while line 4 still
   self-assesses the full reverse-charge VAT — the generator warns to review the split.
+- Set `cash_accounting` from the entity's VAT setup. Only a cash-accounting entity fills
+  `invoiceSumForRate` (part A col 8) and `vatSum` (part B col 7); the generator refuses
+  them otherwise (part B special code 11 excepted).
 - Omit an annex entirely when no partner reaches EUR 1,000 (the generator sets
   `noSales` / `noPurchases` = true).
 

@@ -12,6 +12,31 @@ Activate when the user mentions: VAT declaration, KMD, kaibemaksudeklaratsioon, 
 Before starting, ask the user for:
 1. **Legal entity ID** — which Estonian entity to prepare the declaration for
 2. **Period** — month and year (e.g., January 2026)
+3. **VAT accounting method** — whether the entity applies the special arrangements for
+   cash accounting for VAT (kassapõhine, VAT Act § 44). Use what the entity's recorded
+   VAT setup says; if nothing records it, ask. Never assume. It decides which KMD INF
+   columns are filled (Step 5) and is passed to the generator as `cash_accounting`.
+
+Then resolve the **filing form code** the return is saved under (Step 8). Core validates
+`return_type` against the forms registered in `tax_filing_forms` for the tax authority's
+country; it is not a free-text label:
+
+```
+get_entity("legal_entity", id=ID)                          # → country_code (EE)
+query("tax_filing_form", filters={"country_code": "EE", "form_code": "KMD", "is_active": true})
+```
+
+Use the row whose `form_code` is `KMD` (form name "Käibedeklaratsioon"), and take its
+`tax_authority_id` as the authority. The list returns only the display fields
+(`id`, `country_code`, `form_code`, `form_name`, `tax_authority_id`,
+`filing_frequency`, `due_day_of_period_end`, `is_active`); `metadata` is read only with
+`get_entity("tax_filing_form", id=<id>)` and is not needed to choose the form. If no VAT return form is registered for the
+entity's country, STOP before Step 8: tell the user the country setup has not
+registered the KMD form (the `setup_tax_filing_forms` onboarding task, or
+`/arfiti-core-country-setup:set-up-country`), and that the return can be prepared and
+the files generated but not saved as a tax return until it is registered. Never fall
+back to a generic `return_type` such as `vat_return`, and never pick a form registered
+for another country.
 
 ## Mandatory Checkpoints
 
@@ -22,7 +47,8 @@ is open, STOP and do not generate. The individual checkpoints below feed that ga
 - **CP1**: All transactions for the period are posted (no drafts) — gate check 2
 - **CP2**: All transaction lines have tax codes assigned — gate check 4
 - **CP3**: KMD calculations balance and tie to the GL — gate checks 1, 5, 7
-- **CP4**: KMD INF totals reconcile and respect the €1,000 threshold — gate check 6
+- **CP4**: KMD INF covers every partner whose invoices **without VAT** total at least
+  €1,000.00 in the period (inclusive), and reconciles to the KMD — gate check 6
 - **CP5**: EC Sales List reconciles with the KMD: VD goods = line 3.1.1, VD services = line 3.1 − 3.1.1 — gate check 7
 
 ## Workflow Steps
@@ -50,40 +76,179 @@ This step is CRITICAL. Do NOT hardcode tax code names. Always discover and class
 
 4. Ask the user to confirm the classification before proceeding.
 
-### Step 2: Fetch Period Transactions
+### Step 2: Fetch Period Figures and Documents
 
-Fetch all posted transactions for the reporting period:
+A document belongs to the period by its ledger effect and date, **not** by whether it
+has been paid. Settlement moves a posted invoice or bill from `posted` to `partial` or
+`paid` (and some flows use `partially_paid` or `completed`); all of them still carry
+the VAT. A `status: "posted"` filter alone drops every paid document from
+the return.
 
-1. **AR invoices** (sales):
+**Ledger-effective statuses** — the set the canonical tax view `v_tax_lines` counts
+(migration `601_canonical_tax_history.sql`), with `posted_at` set:
+
+```
+LEDGER_STATUSES = ["posted", "partial", "paid", "partially_paid", "completed", "approved", "reversed"]
+```
+
+Keep only posted rows. `approved` is in the list because the view counts it once
+posted, but an `approved` document can also be one awaiting posting (it can still be
+cancelled); the view excludes it then, and so must you. `posted_at` is not among the
+fields `query("transaction")` returns, so filter on it instead: the date filter
+`"posted_at": {"from": "1900-01-01"}` keeps only rows with a posting time (a NULL
+`posted_at` never matches), as in the queries below.
+
+`draft`, `void` and `cancelled` are not counted. A `reversed` original **stays** in its
+own period; its reversal is a separate document dated on the reversal date that carries
+the original's lines with the opposite sign. Count both, each in its own period — never
+drop the original because it was later reversed.
+
+1. **Box figures (authoritative source)** — the canonical tax lines:
+   ```
+   generate_report("vat_report", {"legal_entity_id": ID, "start_date": "YYYY-MM-01",
+       "end_date": "YYYY-MM-DD"})
+   ```
+   It sums `v_tax_lines`: signed bases and VAT per tax name and rate, by direction
+   (`output_vat_details`, `input_vat_details`), credit notes negative, tax-inclusive
+   lines net of tax, reversals signed, ledger-effective statuses only. A reverse-charge
+   purchase appears on both sides (self-assessed output and recoverable input). Map each
+   row to its KMD line with the Step 1 classification. Where two tax codes share a tax
+   name but feed different KMD lines, split that row with the document lines below.
+   `registration_exceptions` lists deductible documents dated outside the entity's VAT
+   registration; they are kept out of the totals and go to the person for review.
+   Do not pass `country_code`: it filters on each tax code's own country and would drop
+   codes with no or another country (generic exempt or 0 % codes, some reverse-charge
+   codes).
+
+2. **Documents** (for the KMD INF annex, the review lists and the split above), with
+   lines:
    ```
    query("transaction", filters={
        "legal_entity_id": ID,
-       "transaction_type": "ar_invoice",
-       "status": "posted"
-   }, date_filters={"transaction_date": {"from": "YYYY-MM-01", "to": "YYYY-MM-DD"}},
+       "transaction_type": ["AR_INVOICE", "AR_CREDIT_MEMO"],
+       "status": LEDGER_STATUSES
+   }, date_filters={"transaction_date": {"from": "YYYY-MM-01", "to": "YYYY-MM-DD"},
+                 "posted_at": {"from": "1900-01-01"}},
    include_lines=true)
-   ```
 
-2. **AP invoices** (purchases):
-   ```
    query("transaction", filters={
        "legal_entity_id": ID,
-       "transaction_type": "ap_invoice",
-       "status": "posted"
-   }, date_filters={"transaction_date": {"from": "YYYY-MM-01", "to": "YYYY-MM-DD"}},
+       "transaction_type": ["AP_INVOICE", "AP_CREDIT_MEMO"],
+       "status": LEDGER_STATUSES
+   }, date_filters={"transaction_date": {"from": "YYYY-MM-01", "to": "YYYY-MM-DD"},
+                 "posted_at": {"from": "1900-01-01"}},
    include_lines=true)
    ```
+   Then the reversals dated in the period (each negates the lines of the document it
+   reverses, `reversal_of_id`):
+   ```
+   query("transaction", filters={"legal_entity_id": ID, "reversal_of_id": {"gt": 0},
+       "status": LEDGER_STATUSES},
+       date_filters={"transaction_date": {"from": "YYYY-MM-01", "to": "YYYY-MM-DD"},
+                 "posted_at": {"from": "1900-01-01"}})
+   ```
+   And any other posted document with VAT lines (journals with a tax code):
+   ```
+   query("transaction", filters={"legal_entity_id": ID, "status": LEDGER_STATUSES},
+       date_filters={"transaction_date": {"from": "YYYY-MM-01", "to": "YYYY-MM-DD"},
+                 "posted_at": {"from": "1900-01-01"}},
+       include_lines=true)
+   ```
+   Read every page. `include_lines` returns at most 500 lines across one response; when
+   the response carries the `warnings` entry "Line items truncated…", lines are missing
+   and an invoice's net would come out too low. Re-read with a smaller `limit` until no
+   such warning appears, or read the affected invoices one by one with
+   `get_entity("transaction", id=…)`. `get_entity` also stops at 500 lines per
+   document, so an invoice with more than 500 lines cannot be read in full either way:
+   give it to a person. Transaction type codes are matched exactly and stored in upper case
+   (`AR_INVOICE`, not `ar_invoice`); a lower-case value returns no rows. The lists
+   overlap (an invoice is in the first list and in the catch-all), so de-duplicate by
+   `id` before rebuilding any total.
 
-3. **Credit notes** and **journal entries** with VAT impact:
+   Per document line, the net (tax base) is `line_amount − tax_amount` when the line
+   `is_tax_inclusive`, otherwise `line_amount` — the same rule `v_tax_lines` applies.
+   These are document-currency amounts. For a foreign-currency document convert to the
+   entity's functional currency with the header's `exchange_rate` (document → functional
+   rate, kept equal to `document_to_functional_rate` at posting): EUR amount = document
+   amount × `exchange_rate`, rounded to cents per invoice. `vat_report` sums the
+   functional amounts, and the KMD and KMD INF are in euros. If the entity's
+   functional currency is not EUR, stop and ask the person how to convert.
+   `vat_report` converts each line at the document's functional/document amount ratio
+   and rounds per line, so a few cents' difference from it is expected; a larger gap
+   means the document's rate needs checking (documents imported through a connector
+   carry the rate the source system gave).
+   A credit memo's lines are stored positive; the view makes each line negative. Pass
+   a credit memo's `net_amount` as −Σ|line net| (each line's absolute value, summed,
+   negated) with its `document_type`; the selector treats any credit memo as a credit.
+
+3. **Reversed and voided documents of the period — review list.** A reversal carries
+   no document lines and no customer or vendor of its own, and `vat_report` nets it
+   against the reversed invoice. A voided document was never posted (only an unposted
+   document can be voided), so it was never in the ledger figures; it is listed only so
+   the person sees what was withdrawn.
+   How a reversed or voided invoice is shown in the KMD INF is not settled here. List
+   them separately for a person to decide, and do not add or remove annex lines for
+   them on your own:
    ```
-   query("transaction", filters={
-       "legal_entity_id": ID,
-       "status": "posted"
-   }, date_filters={"transaction_date": {"from": "YYYY-MM-01", "to": "YYYY-MM-DD"}},
-   include_lines=true)
+   query("transaction", filters={"legal_entity_id": ID,
+       "transaction_type": ["AR_INVOICE", "AR_CREDIT_MEMO", "AP_INVOICE", "AP_CREDIT_MEMO"],
+       "status": ["reversed", "void", "voided"]},
+       date_filters={"transaction_date": {"from": "YYYY-MM-01", "to": "YYYY-MM-DD"}})
    ```
+   plus the reversals dated in the period (the `reversal_of_id` query above), each with
+   the document it reverses.
+
+**Which source wins.** The `vat_report` totals are authoritative for the KMD box
+figures: they are the ledger's canonical tax computation, shared with the dashboard
+Sales-tax report and the reconciliation panel. Totals rebuilt from the document lists
+must agree with them per KMD line. If they differ, do not file either figure: find the
+cause (a document missing from the lists — usually a status or type filter — a line
+without a tax code, a registration exception, a document dated outside the period) and
+present it to the person. File only once the two agree or the person has decided how
+the difference is treated.
 
 **CP1 checkpoint**: Check for any draft transactions in the period. If drafts exist, list them and ask the user to post or exclude them.
+
+### Step 2.5: Supplier invoices already in a filed period (review list)
+
+Before preparing the return, list supplier invoice numbers in this period that also
+appear, for the same supplier, in a period whose return has already been filed. The
+case this catches: a bill included in a filed return is later voided and reposted with
+a new date, so its input VAT would be claimed a second time. This is a **review list
+for a person**, not an automatic exclusion: a supplier can legitimately reuse a number,
+and a correction may belong in this period.
+
+Use existing reads only:
+
+1. Filed periods for the entity:
+   ```
+   query("tax_period", filters={"legal_entity_id": ID, "status": "filed"})
+   ```
+   Also include periods with status `locked`, and periods that have a tax return in
+   status `filed`, `amended`, `accepted` or `paid`:
+   ```
+   query("tax_return", filters={"legal_entity_id": ID})   # read every page
+   ```
+2. This period's AP invoices from Step 2 (all ledger-effective statuses): keep
+   `vendor_id`, `reference_number` (the supplier's invoice number),
+   `transaction_number`, `transaction_date`, `status`.
+3. For each vendor in that list, its AP invoices dated inside the filed periods, **in
+   any status** (posted, partial, paid, void, reversed):
+   ```
+   query("transaction", filters={"legal_entity_id": ID, "transaction_type": "AP_INVOICE",
+       "vendor_id": VENDOR_ID},
+       date_filters={"transaction_date": {"from": "<filed period start>", "to": "<filed period end>"}})
+   ```
+   Read every page.
+4. Compare `reference_number` per vendor after trimming spaces and ignoring case.
+   Skip empty references (a bill generated from a purchase order carries an empty
+   reference on purpose).
+
+Present each match: supplier, invoice number, this period's transaction (number, date,
+status, VAT) and the earlier one (number, date, status, filed period). Ask the person
+to confirm, for each, whether this period's VAT on it is claimed or left out. Record the
+decision in `return_data.validation_results` (Step 8). Do not void, edit or exclude a
+transaction on your own.
 
 ### Step 3: Verify Tax Code Coverage
 
@@ -112,7 +277,8 @@ cut-off errors (check 3), tax-code/jurisdiction problems (check 4), GL mismatche
 
 ### Step 4: Calculate the KMD main form (declarationBody)
 
-Using the tax code classification from Step 1 and transactions from Step 2, compute the
+Using the tax code classification from Step 1 and the `vat_report` figures from Step 2
+(the authoritative source; document lines only to split a shared tax name), compute the
 KMD2 `declaration_body` values following **references/kmd-form-structure.md**. These are
 taxable **bases** by rate (except the input-VAT lines, which are VAT amounts). Use the
 **real KMD2 element names** — NOT Line1_1…Line13.
@@ -149,29 +315,56 @@ refundable if negative).
 
 ### Step 5: Prepare KMD INF Annex
 
-Following **references/kmd-inf-annex.md**:
+Following **references/kmd-inf-annex.md** (rules from EMTA's KMD INF instructions, 07.2025):
 
-1. **Part A (Sales)**: Group AR invoices by customer. For each customer where total > EUR 1,000:
+1. **Build the invoice lists** from Step 2's invoices (`include_lines=true`): per invoice
+   the `document_type`, the total **without VAT in EUR** (Σ line net × `exchange_rate`,
+   see Step 2) with `currency: "EUR"`, the VAT (Σ `tax_amount`, converted the same way),
+   whether any line is at 24/22/20/13/9/5 %, the partner (`partner_key` = the
+   `customer_id` or `vendor_id`) and its register code. Part A uses invoices issued; part B uses invoices received whose VAT
+   is deducted in KMD line 5 this period (with the amount deducted).
+2. **Select partners** with the generator's selection mode, which applies the
+   threshold (at least EUR 1,000.00 without VAT per partner, inclusive; ordinary and
+   credit invoices totalled separately; excluded invoice types left out). The limit is
+   per transaction partner: records that carry the same register code are combined
+   (`partner_keys`, `partner_names` list them), and such a group is declared only when
+   every invoice in it carries the same verified code — otherwise it goes to
+   `needs_registry_code`. It refuses non-EUR amounts and a missing document type:
    ```
-   query("transaction", group_by=["party_name"], aggregates={"amount": "sum", "id": "count"},
-       filters={"legal_entity_id": ID, "transaction_type": "ar_invoice"},
-       date_filters={"transaction_date": {"from": "YYYY-MM-01", "to": "YYYY-MM-DD"}})
+   python3 scripts/generate_kmd.py --select-inf invoices_A.json --side A
+   python3 scripts/generate_kmd.py --select-inf invoices_B.json --side B
    ```
-   Collect per partner: registration code, name, taxable amount (excl. VAT), tax rate.
-   These become `sales_annex.lines` entries (`buyerRegCode`, `buyerName`, `invoiceSum`,
-   `taxRate`, `sumForRateInPeriod`).
+   Do not total the header `amount`: it is the gross amount.
+3. **Register codes**: use only a verified register code from the partner's own record
+   (see the reference: a customer's `tax_id`, a registry-code custom field, never a VAT
+   number). Partners in `needs_registry_code` go on a review list for a person to
+   resolve. Never fill the code from the VAT number or from another company's record.
+4. **Build the annex lines**, invoice by invoice (`sum_per_partner: false`). Credit
+   invoices are entered with a **minus sign** in every amount column (`invoiceSum`,
+   `sumForRateInPeriod`, `invoiceSumVat`, `vatInPeriod`, and the cash-accounting
+   columns). Use the signed values each returned invoice carries: `invoiceSum` (the
+   whole invoice without VAT) from `signed_net_amount`; `sumForRateInPeriod` = Σ line net
+   at that line's rate group declared this period, negative for a credit invoice (one
+   annex line per rate group, up to 4 per invoice); `vatInPeriod` from
+   `signed_vat_deducted_in_period`; `invoiceSumVat` = `signed_net_amount` +
+   `signed_vat_amount`. Never the unsigned `net_amount` for a credit invoice.
+   - Part A: `buyerRegCode`, `buyerName`, `invoiceNumber`, `invoiceDate`, `invoiceSum`
+     (total without VAT), `taxRate`, `sumForRateInPeriod`, special code in `comments`.
+   - Part B: `sellerRegCode`, `sellerName`, `invoiceNumber` (supplier's number),
+     `invoiceDate`, `invoiceSumVat` (total with VAT), `vatInPeriod` (line 5 amount),
+     special code in `comments`.
+   - **Only if the entity is on cash accounting** (`cash_accounting: true`): part A
+     `invoiceSumForRate` (column 8) and part B `vatSum` (column 7). For an accrual-basis
+     entity leave both out; the generator refuses them otherwise (part B special code 11,
+     partial deduction, is the one exception for `vatSum`).
 
-2. **Part B (Purchases)**: Group AP invoices by vendor. For each vendor where total
-   (incl. VAT) > EUR 1,000: collect registration code, name, total incl. VAT, input VAT
-   for the period. These become `purchases_annex.lines` entries (`sellerRegCode`,
-   `sellerName`, `invoiceSumVat`, `vatInPeriod`).
-
-3. Validate registration codes (8-digit format for Estonian partners).
-
-When no partner reaches the EUR 1,000 threshold, omit the annex — the generator sets
+When no partner reaches the threshold, omit the annex — the generator sets
 `noSales` / `noPurchases` to `true`.
 
-**CP4 checkpoint**: Verify Part A totals are consistent with KMD output VAT lines. Verify Part B totals are consistent with total AP invoice base.
+**CP4 checkpoint**: Part A column 9 per rate ≤ the KMD rate lines, part B column 8 ≤
+`inputVatTotal`; explain the difference by cause (partners below the threshold, natural
+persons, excluded invoices). Present the `needs_registry_code` list and stop for the
+person's answer before filing.
 
 ### Step 6: Prepare EC Sales List (Form VD)
 
@@ -200,16 +393,21 @@ If there are differences, identify the cause (timing, manual entries, rounding) 
 
 ### Step 8: Submit Tax Return to ERP
 
-Store the KMD calculation results in the ERP so they are viewable in Admin Dashboard → Tax → Returns and XML can be regenerated on demand:
+Store the KMD calculation results in the ERP so they are viewable in Admin Dashboard → Tax → Returns and XML can be regenerated on demand.
+`return_type` is the **registered form code** resolved in Prerequisites from
+`query("tax_filing_form", …)` (for Estonia `KMD`), and `tax_authority_id` is that form's
+authority. If no VAT form is registered for the entity's country, do not submit: report
+it as described in Prerequisites.
 
 ```
 submit(object_type="tax_return", operation="create", data=JSON.stringify({
     "legal_entity_id": <entity_id>,
     "reporting_period_id": <period_id>,
     "tax_authority_id": <EMTA authority id>,
-    "return_type": "vat_return",
+    "return_type": "<form_code resolved in Prerequisites, e.g. KMD>",
     "return_data": {
-        "form_code": "KMD",
+        "form_code": "<same form_code>",
+        "cash_accounting": <true|false, from Prerequisites>,
         "year": <YYYY>,
         "month": <MM>,
         "regcode": "<business registry code>",
