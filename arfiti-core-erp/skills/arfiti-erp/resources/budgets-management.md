@@ -236,9 +236,12 @@ There is no copy operation: `budget_version.create` refuses
 the user every amount before writing:
 
 1. Read all source lines, page by page, with their scope:
-   `query("budget_line", filters={"budget_version_id": 3}, limit=200, offset=0)`
-   (rows carry account, period, amount, currency, description, memo,
-   project/customer/vendor and `dimension_combo_json`).
+   `query("budget_line", filters={"budget_version_id": 3}, limit=100, offset=0)`,
+   then the next `offset` (add `pagination.page_size`) while `pagination.has_next`
+   is true; a page holds at most 100 rows. Rows carry account, period, amount,
+   currency, description, memo, project/customer/vendor and
+   `dimension_combo_json`. Check the count equals `pagination.total_count`, no
+   `id` repeats and the total matches the source before proposing the copy.
 2. Create the target version (`budget_version.create` with its own fiscal year,
    scenario, `version_type`, `currency_code` and `notes`).
 3. Apply the agreed adjustment and save every line with one

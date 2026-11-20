@@ -26,7 +26,7 @@
       "name": "arfiti-core-budget-planning",
       "source": "./arfiti-core-budget-planning",
       "description": "Budget planning: annual/quarterly budgets, forecasting from actuals, employee cost budgeting with burden rates, and project budgeting.",
-      "version": "2.0.4",
+      "version": "2.0.5",
       "category": "planning",
       "keywords": [
         "budget",
@@ -122,7 +122,7 @@
       "name": "arfiti-core-erp",
       "source": "./arfiti-core-erp",
       "description": "Core operating skill for the Arfiti ERP: post, query, report and run workflows through the Arfiti MCP connector, with a domain guide for each area of the ledger.",
-      "version": "2.0.104",
+      "version": "2.0.105",
       "category": "accounting",
       "keywords": [
         "erp",

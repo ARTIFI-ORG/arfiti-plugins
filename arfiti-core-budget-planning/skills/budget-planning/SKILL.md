@@ -50,6 +50,27 @@ You MUST verify each checkpoint before proceeding. If a checkpoint fails, STOP a
 
 ---
 
+## Reading every row
+
+`query` returns at most **100 rows per page**, whatever `limit` you ask for (the
+default is 50). Lists in this skill (accounts, budget lines, dimension values,
+employees) are often longer, so read them page by page:
+
+1. Ask for `limit=100`, starting at `offset=0`, and leave `include_total` at its
+   default (true): without it the response carries no `pagination`.
+2. After each page, read `pagination`: stop when `has_next` is false, otherwise
+   add the returned `pagination.page_size` to `offset` and read the next page.
+   Never step by a larger number than the page actually held, and never stop
+   just because a page came back short of what you asked for.
+3. Check the result: the row count equals `pagination.total_count` and no record
+   key appears twice (`id` for budget lines, `master_account_id` for accounts). If either check fails, read again rather than continue with a
+   partial list.
+4. Tell the user how many rows you read.
+
+The same applies to every "page until complete" or "every page" below.
+
+---
+
 ## Workflow Steps — Mode 1: Build from Scratch
 
 ### Step 1: Discover Chart of Accounts
@@ -57,14 +78,20 @@ You MUST verify each checkpoint before proceeding. If a checkpoint fails, STOP a
 Fetch the entity's active accounts to know what to budget:
 
 ```python
-accounts = query("account", filters={
-    "legal_entity_id": <entity_id>,
-    "is_active": true
-}, limit=200, offset=0)   # repeat with offset += 200 until fewer rows come back
+accounts, offset = [], 0
+while True:
+    page = query("account", filters={
+        "legal_entity_id": <entity_id>,
+        "is_active": true
+    }, limit=100, offset=offset)
+    accounts += page["results"]
+    if not page["pagination"]["has_next"]:
+        break
+    offset += page["pagination"]["page_size"]   # a page holds at most 100 rows
 ```
 
-Read every page (a chart often has more than the default 50 accounts) and tell
-the user how many accounts you read. Group accounts by `account_type` (revenue,
+Read every page (see **Reading every row** above; a chart often has more than
+100 accounts) and tell the user how many accounts you read. Group accounts by `account_type` (revenue,
 expense, asset, liability), never by account number prefix, and leave out header
 accounts.
 
@@ -219,9 +246,19 @@ There is no copy operation: `budget_version.create` refuses
 keeping each line's scope:
 
 ```python
-lines = query("budget_line", filters={"budget_version_id": <source_version_id>},
-              limit=200, offset=0)   # repeat with offset += 200 until every line is read
+lines, offset = [], 0
+while True:
+    page = query("budget_line", filters={"budget_version_id": <source_version_id>},
+                 limit=100, offset=offset)
+    lines += page["results"]
+    if not page["pagination"]["has_next"]:
+        break
+    offset += page["pagination"]["page_size"]
 ```
+
+Before proposing the copy, check the read is complete (see **Reading every
+row**): the line count equals `pagination.total_count`, no line `id` appears
+twice, and the total of the amounts is the source version's total.
 
 Each row carries account, period, amount, currency, description, memo,
 `project_id` / `customer_id` / `vendor_id` and `dimension_combo_json`. Tell the
