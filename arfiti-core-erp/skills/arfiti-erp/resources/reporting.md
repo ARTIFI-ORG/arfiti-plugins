@@ -679,6 +679,18 @@ the day it was proposed, so an aging or open-items report dated after that day
 showed a paid document as open. The history itself is unchanged; rerun aging
 to get a fresh snapshot (an existing snapshot keeps its result).
 
+**Changes effective before the history cutover (AR-1390, migration 917).** The
+cutover wrote one `baseline` row per application, dated on the cutover date. A
+change recorded later but effective before that date (a reviewed correction
+dated on its source documents, a payment reversal dated by its ledger date)
+has an earlier effective date than the baseline row, and until 917 the baseline
+row answered for every date from the cutover on: a bill whose application was
+restated in full read as partly open from the cutover until the day of the
+correction. The same readers now rank a baseline row after every other row
+effective by the report date, so the later-recorded state is used; when no
+other row is effective yet, the baseline still answers. The history is
+unchanged; rerun aging to get a fresh snapshot.
+
 A card settlement against a bill is undone by reversing its settlement journal (the
 card reclass). An ordinary undo is dated on the day it is done; a historical undo can
 date the reversal earlier. From that reversal's accounting date the settlement no
