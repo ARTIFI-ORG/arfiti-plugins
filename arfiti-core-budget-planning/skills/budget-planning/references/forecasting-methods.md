@@ -5,11 +5,12 @@ Use these methods when creating a mid-year forecast (Mode 3). The goal is to ble
 ## Setup
 
 Before applying any method, gather:
-- **YTD Actuals**: actual movements for each completed month, in the entity's functional currency. Read them per month (`query("transaction_line", ..., date_filters={"transaction_date": {...}}, group_by=["account_number"], aggregates={"debit": "sum", "credit": "sum"})`, one call per month, paging until complete) or as one period with `generate_report("trial_balance", {"legal_entity_id": ..., "start_date": ..., "end_date": ...})`. Check the dates the report says it used, and stop at the last closed month: a month still open is not an actual.
+- **Actuals cutoff and basis**: the user's choice, asked before any figures are read (SKILL.md, Mode 3 Step 2): either closed periods only, or everything posted up to a cutoff date with open months marked provisional. Neither needs a period close to have run.
+- **YTD Actuals**: actual movements for each month inside that cutoff, in the entity's functional currency. Read them per month (`query("transaction_line", ..., date_filters={"transaction_date": {...}}, group_by=["account_number"], aggregates={"debit": "sum", "credit": "sum"})`, one call per month, paging until complete) or as one period with `generate_report("trial_balance", {"legal_entity_id": ..., "start_date": ..., "end_date": ...})`. Check the dates the report says it used and stop at the chosen cutoff. On the posted-to-date basis, label open months provisional. Keep each month's sign: a reversal month can be negative.
 - **Fiscal months**: count months from the entity's fiscal year start (`query("fiscal_period", ...)`), not from January.
-- **Original Budget**: Approved budget line amounts for all 12 months
+- **Original Budget**: the line amounts of the approved or locked version being revised, for every period
 - **Prior Year Actuals**: Same period last year (optional, for seasonal methods)
-- **Current Month**: The dividing line between actuals and projections
+- **Cutoff**: the dividing line between actuals and projections (the cutoff above)
 
 ## 1. Run Rate
 
@@ -89,7 +90,7 @@ Calculate weights from the amounts at full precision and round only the final am
 
 ## 4. Three-Month Moving Average
 
-Use the average of the last 3 completed months as the forecast for each remaining month.
+Use the average of the last 3 months of actuals (inside the cutoff) as the forecast for each remaining month.
 
 **Formula**: `forecast[m] = (actual[m-1] + actual[m-2] + actual[m-3]) / 3`
 
@@ -140,7 +141,7 @@ Full-year forecast: 285K + 285K = 570K
 ## Edge Cases (every method)
 
 - **Precision**: calculate at full precision, round each month to the currency's minor unit at the end, and put any rounding difference in the last month so the months add up to the total you showed.
-- **Too little history**: fewer than 3 closed months for a trend or moving average, or no prior-year data for seasonal weights: say so and offer Run Rate or a manual override instead of guessing.
+- **Too little history**: fewer than 3 months of actuals for a trend or moving average, or no prior-year data for seasonal weights: say so and offer Run Rate or a manual override instead of guessing.
 - **Zero or negative bases**: a weight or variance with a zero or negative denominator (no prior-year amount, a reversal month) is undefined; leave that account to the user rather than dividing.
 - **Sign**: work in the report's convention (positive amounts for revenue and expenses, see variance-interpretation.md), not the GL's debit/credit sign.
 

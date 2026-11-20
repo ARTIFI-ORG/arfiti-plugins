@@ -56,8 +56,7 @@ You MUST verify each checkpoint before proceeding. If a checkpoint fails, STOP a
 default is 50). Lists in this skill (accounts, budget lines, dimension values,
 employees) are often longer, so read them page by page:
 
-1. Ask for `limit=100`, starting at `offset=0`, and leave `include_total` at its
-   default (true): without it the response carries no `pagination`.
+1. Ask for `limit=100`, starting at `offset=0`.
 2. After each page, read `pagination`: stop when `has_next` is false, otherwise
    add the returned `pagination.page_size` to `offset` and read the next page.
    Never step by a larger number than the page actually held, and never stop
@@ -233,11 +232,12 @@ versions = query("budget_version", filters={
     "legal_entity_id": <entity_id>,
     "fiscal_year": 2025,
     "scenario": "budget",
-    "status": "approved"
+    "status": ["approved", "locked"]   # a locked version is an approved one frozen against edits
 })
 ```
 
-If multiple versions exist, show the user the options and ask which to copy.
+If several versions qualify, show the user the options with their status and ask
+which to copy. A draft or submitted version is a source only if the user names it.
 
 ### Step 2: Read Every Source Line
 
@@ -318,27 +318,41 @@ count and totals match the confirmed preview.
 
 ## Workflow Steps — Mode 3: Forecast
 
-### Step 1: Load Approved Budget
+### Step 1: Load the Budget to Revise
 
 ```python
 budget = query("budget_version", filters={
     "legal_entity_id": <entity_id>,
     "fiscal_year": 2026,
     "scenario": "budget",
-    "status": "approved"
+    "status": ["approved", "locked"]   # the same sources as /forecast-budget
 })
 ```
 
-Also fetch budget lines:
-```python
-budget_lines = query("budget_line", filters={
-    "budget_version_id": <budget_version_id>
-})
-```
+If several versions qualify, show them with their status and ask which to revise.
+Then read every line of the chosen version, page by page (see **Reading every
+row**), and check the count, ids and total.
 
-### Step 2: Load YTD Actuals
+### Step 2: Choose the Actuals Cutoff, Then Load YTD Actuals
 
-Determine which months have passed. For each completed month, fetch actual GL amounts:
+Which months count as actuals is the user's (or their firm's) choice, not a
+fixed rule. Ask before reading any figures:
+
+- **Cutoff date**: the last day whose posted activity counts as actual
+  (for example the end of last month).
+- **Basis**:
+  - **Closed periods only**: months whose fiscal period is closed
+    (`query("fiscal_period", filters={"legal_entity_id": <entity_id>})`, read the
+    `status`). If no period is closed yet, say so; there are then no actuals on
+    this basis.
+  - **Posted to date**: every month up to the cutoff, closed or not. Months
+    still open are **provisional**: label them so in the preview and in
+    `notes`, because later postings can change them.
+
+Neither basis needs a period close or a month-end process to have run; both read
+posted transactions. Record the cutoff and basis in the forecast's `notes`.
+
+For the months inside the cutoff, fetch actual movements:
 
 ```python
 # start_date + end_date give the period's debit/credit movements; as_of_date alone
@@ -346,9 +360,13 @@ Determine which months have passed. For each completed month, fetch actual GL am
 actuals = generate_report("trial_balance", {
     "legal_entity_id": <entity_id>,
     "start_date": "2026-01-01",
-    "end_date": "2026-06-30"  # Through end of last completed month
+    "end_date": "2026-06-30"  # the cutoff the user chose
 })
 ```
+
+Keep each month's movement with its sign. A month with a reversal can be
+negative for an expense or revenue account; carry it as it is rather than as an
+absolute value, and point it out to the user.
 
 ### Step 3: Show YTD Comparison
 
@@ -374,7 +392,7 @@ Replace past months with actuals, project remaining months:
 |---------|---------|---------|-----|---------|---------|-----|---------|-----------|
 | 4000 | 47,500 | 48,000 | ... | 47,000 | 47,500 | ... | 52,000 | 580,000 |
 
-(A) = Actual, (F) = Forecast
+(A) = Actual, (F) = Forecast; on the posted-to-date basis mark open months (P) = provisional actual
 
 ### Step 6: User Confirmation
 
@@ -391,7 +409,7 @@ result = submit("budget_version", "create", {
     "scenario": "forecast",
     "version_type": "monthly",
     "currency_code": "EUR",            # required: the entity's functional currency
-    "notes": "Q2 forecast: Jan-Jun actuals + Jul-Dec projected (run rate method)"
+    "notes": "Q2 forecast: actuals posted to 2026-06-30 (May-Jun provisional, periods open) + Jul-Dec projected (run rate)"
 })
 
 # Submit all lines (actuals + projections)
@@ -573,5 +591,9 @@ Every write is checked before anything is saved; a refusal lists every reason
 - **"customer_id / vendor_id / project_id ... is not a ... of legal entity"**: the party or project must exist for the version's entity.
 - **"Extra inputs are not permitted"**: the field is not part of the operation (for example `copy_from_version_id`); see `references/submission-format.md`.
 - **"No prior year data"**: build from scratch with manual amounts instead of growth-based.
-- **"Version already exists"**: an active budget/forecast/stretch version already exists for this entity/year/scenario. Archive the old one first or create a different scenario.
-- **A submission is pending approval or its outcome is uncertain**: do not resend it under a new idempotency key; check it with `get_submissions` and wait or resume with the same key.
+- **One version per entity, year and scenario**: every version that is not archived (draft, submitted, approved or locked) holds the place for its entity, fiscal year and scenario, so a second `budget_version.create` for the same three is refused by the database, and the receipt may say only that the outcome is unknown. Before creating, `query("budget_version", filters={"legal_entity_id": ..., "fiscal_year": ..., "scenario": ...})` and tell the user which version holds the place. To replace it, archive that version first (a locked one can be archived; deleting it is a separate choice), or use another scenario.
+- **A submission is pending approval or its outcome is uncertain** (pending, `posting_unknown`, `workflow_result_unavailable`): do not resend it under a new idempotency key. Check what happened, in this order:
+  1. `get_submissions` for the submission: its status and history say whether it was applied, rolled back or is still waiting.
+  2. Read the record itself (`query("budget_version", ...)` or the version's lines) on the scope you meant to write.
+  3. If it is still waiting or unclear, wait and retry with the **same** idempotency key; a replay returns the first result instead of writing twice.
+  4. Use a new key only once history shows the first attempt rolled back **and** the read-back shows nothing was saved; fix the cause first (for example the version-per-scenario rule above).

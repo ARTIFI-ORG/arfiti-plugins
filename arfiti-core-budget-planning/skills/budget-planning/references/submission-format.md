@@ -210,7 +210,7 @@ and lists every reason.
 6. **Currency match**: a line currency, when given, equals the version currency
 7. **Dimensions valid**: dimension types and values must be eligible for the entity
 8. **Parties**: a customer, vendor or project must belong to the version's entity
-9. **Unique version**: only one active version per entity/year/scenario
+9. **Unique version**: one version per entity, fiscal year and scenario that is not archived (draft, submitted, approved and locked all count); query for it before `budget_version.create`, and on an uncertain outcome follow the recovery order in SKILL.md (Error Handling) before trying again
 10. **Declared fields only**: a field the operation does not declare is refused, never ignored
 
 ---

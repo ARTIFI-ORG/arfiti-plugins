@@ -26,7 +26,7 @@
       "name": "arfiti-core-budget-planning",
       "source": "./arfiti-core-budget-planning",
       "description": "Budget planning: annual/quarterly budgets, forecasting from actuals, employee cost budgeting with burden rates, and project budgeting.",
-      "version": "2.0.5",
+      "version": "2.0.6",
       "category": "planning",
       "keywords": [
         "budget",
