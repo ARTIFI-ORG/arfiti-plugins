@@ -49,7 +49,7 @@ Use the unified query tools to find tax codes and related data:
 |-----------|---------|---------|
 | `query("tax_code", query, filters)` | Search tax codes | `query("tax_code", query="california")` |
 | `query("tax_code", filters)` | List all tax codes | `query("tax_code", filters={"is_active": true})` |
-| `get_entity("tax_code", id=X)` | Get single tax code by ID | `get_entity("tax_code", id=115)` |
+| `get_entity("tax_code", id=X)` | Get one tax code, its `calculation_method` and its rate components (`related.components`) | `get_entity("tax_code", id=115)` |
 
 **Valid filter fields for `tax_code` search/list:**
 
@@ -58,8 +58,10 @@ Use the unified query tools to find tax codes and related data:
 | `is_active` | boolean | Filter by active status |
 | `is_recoverable` | boolean | Filter by input tax credit eligibility |
 | `tax_type` | string | Filter by tax type (`"sales"`, `"vat"`, `"gst"`, `"use"`, `"excise"`) |
+| `calculation_method` | string | `"rate"` (taxed at `default_rate`) or `"components"` (taxed by its rate components) |
+| `legal_entity_id` | integer | The entity's effective values (its override where it has one). Filter one entity at a time to compare overrides: a list over several entities returns one row per code (its `legal_entity_id` says whose) |
 
-> **Note:** `legal_entity_id` is NOT a valid filter for tax codes. Tax codes are organization-wide (master records). Use entity-specific tax code overrides or tax registrations for entity-level filtering.
+**Rate components.** `get_entity("tax_code", id=X)` returns the code's components under `related.components`: every `tax_code_rate` row with its `component_name`, `rate` (percentage points), `calculation_order`, `is_compound` / `applies_on_component`, `tax_account_number`, `effective_from` / `effective_to`, `is_active` and `legal_entity_id` (empty = the whole organisation). A caller limited to some legal entities reads only its own entities' tax-code rows, and sees the organisation's components and its own entities', not other entities'. Which apply to a line: the active rows effective on the document date; when the entity has rows of its own they replace the organisation's as a set. To check a configuration, read it here, then post a test document and read its lines (`transaction_line_taxes` rows sum to the line's tax).
 
 ### Finding Tax Code IDs
 
