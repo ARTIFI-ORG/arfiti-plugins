@@ -55,19 +55,31 @@ Lanes are assigned by your organisation's workflow rules; the submit() result is
 
 ### From Plugin Calculation
 
-After calculating the return data (KMD lines, VAT boxes, sales tax summary, etc.):
+After calculating the return data (KMD lines, VAT boxes, sales tax summary, etc.),
+find the registered filing form. `return_type` must be the `form_code` of an
+active `tax_filing_form` row, for the tax authority's country when you send
+`tax_authority_id` (any active form when you do not); anything else (such as
+`"vat_return"`) is refused:
+
+```python
+query("tax_filing_form", filters={"country_code": "<the tax authority's country>", "is_active": true})
+```
+
+Use the code the country plugin names (for example `KMD` for an Estonian VAT
+return) and check it is in that list; if it is not, the country's forms are
+not set up for this organisation: stop and ask, never type a code from memory.
 
 ```
 submit(object_type="tax_return", operation="create", data=JSON.stringify({
     "legal_entity_id": 1,
-    "return_type": "vat_return",
+    "return_type": "<form_code from tax_filing_form>",
     "reporting_period_id": 45,
     "tax_authority_id": 3,
     "return_data": {
         // The form, its lines, the filing portal and the due date come from the
         // country plugin that calculated the return and from the reporting period:
         // never type a form code, portal URL or deadline from memory.
-        "form_code": "<form code from the plugin>",
+        "form_code": "<the same form_code>",
         "year": 2026,
         "month": 3,
         // ...the plugin's own line fields (see "Jurisdiction-Specific Plugins" below for each one's keys)
@@ -84,7 +96,7 @@ Returns: `{ "success": true, "tax_return_id": 5, "status": "draft" }`
 
 ```python
 # Search tax returns
-query("tax_return", query="vat_return")
+query("tax_return", filters={"legal_entity_id": 12, "return_type": "<form_code>"})
 
 # List all draft returns for an entity
 query("tax_return", filters={"legal_entity_id": 12, "status": "draft"})

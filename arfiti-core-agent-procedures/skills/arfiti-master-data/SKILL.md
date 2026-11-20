@@ -201,6 +201,12 @@ create a vendor; the register check is about identity.
      `server_defaults`.
    - `country` (ISO 2 letters), `tax_id` (VAT or tax number), `email`,
      `website`, `phone` when known.
+   - **Never invent an identifier.** `tax_id`, a registry code, a bank
+     account or a website is sent only as the document, the register or the
+     records show it: never derived from the country or the name (a GB VAT
+     number for a US company) and never a stand-in. Not known: leave it out
+     and list it under `needs_review`, so the agent that asked raises it for a
+     person.
    - `payment_terms_code`: a string code from the payment terms list (never an
      id), only when the document prints the terms ("payment within 14 days"
      matching a listed code's `days_until_due`) or a client rule names them.

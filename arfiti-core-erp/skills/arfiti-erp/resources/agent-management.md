@@ -542,10 +542,14 @@ Inter-agent communication. One agent creates a request, another processes it.
 | `query("agent_request", filters={...})` | List requests with filters |
 | `get_entity("agent_request", id="X")` | Get request details |
 | `submit(object_type="agent_request", operation="create", data='{...}')` | Create a new request |
-| `submit(object_type="agent_request", operation="update", data='{...}')` | Agent-side request updates; not a substitute for a human answer |
-| `submit(object_type="agent_request", operation="respond", data='{...}')` | Authenticated human answer with current version and retry key; follow the task contract |
+| `submit(object_type="agent_request", operation="update", data='{...}')` | A person's answer to a task with no owning agent (a review task a managed agent raised, see below); for an agent, linking the outcome, cancelling its own question, or a hand-back |
+| `submit(object_type="agent_request", operation="respond", data='{...}')` | A person's answer to a task a built-in agent owns (`owner_agent_type` set), with current version and retry key; follow the task contract |
 | `submit(object_type="agent_request", operation="add_reminder", data='{...}')` | Add follow-up reminder |
 | `query("agent_request", filters={assigned_to_employee_id: X, status: "pending"})` | Get requests pending for a specific employee |
+
+These are all the `agent_request` operations; there is no `comment` operation
+through MCP (comments are added on the task page), and a dry run of an
+operation not listed here fails, listing the ones that exist.
 
 ### Raising a review task for a person
 
@@ -573,6 +577,15 @@ submit(object_type="agent_request", operation="create", data=JSON.stringify({
   followed by the subject label. Put the full question in `question`.
 - Ask one question the person can answer. Give options when the answers are
   known; leave `options` out to get a written answer.
+- Offer only options you can carry out yourself: each option's `note` says
+  what you will do, with your own tools and permissions. Leave out an option
+  that needs someone else to act.
+- Collect a run's open questions and raise them together after doing all the
+  work you can, not one at a time; when acting on an answer, finish what it
+  allows, then raise what is still open in one round instead of a new task
+  from each answer.
+- Never invent an identifier (tax ID, VAT number, registry code, bank
+  account) to get past a required field: leave it empty and ask for it.
 - A refusal by the system is never a question. Use `kind: "system_refusal"`
   with `refusal: {operation, reason, workflow_id}` and no `question`; it goes
   to an administrator (the owner when there is none).
@@ -595,11 +608,49 @@ submit(object_type="agent_request", operation="create", data=JSON.stringify({
   is no longer needed, and it is refused when it answers, completes,
   reassigns or re-prioritises a task.
 
+### Answering a review task as a person
+
+Which operation answers a task depends on who raised it. Read it first with
+`get_entity("agent_request", id=<request_id>)` and decide from what the read
+returns (it does not return the owning agent):
+
+- `request_data.action` is `"agent_review"` (its `response_contract.contract_id`
+  is `"agent_review.v1"`): a review task a managed agent or another MCP caller
+  raised. No agent owns it. Answer with `agent_request.update`; `respond`
+  refuses it:
+
+```
+submit(object_type="agent_request", operation="update", data=JSON.stringify({
+  request_id: "<task id>",
+  status: "completed",
+  response_data: {
+    resolution_id: "<option id>",   // only when the task offers options
+    notes: "<the answer in your own words>"
+  }
+}))
+```
+
+  Send `resolution_id` only with one of the task's option ids
+  (`response_contract.options[].id`); any other value is refused, and a task
+  without options takes `notes` alone.
+
+  To decline the task instead, send `status: "cancelled"` without
+  `response_data`. This is the same call the task page makes. The agent that
+  asked reads `response_data.selected_option` and `response_data.notes`.
+- Any other task with a response contract (a built-in agent's task, such as
+  a Bill review with `request_data.action` `"review_bill"`): answer with
+  `agent_request.respond`, as described under Request Flow. If `respond`
+  refuses with a sentence naming `update`, the task is a review task: use the
+  call above.
+- Only a person answers a review task. An agent sending a status or
+  `response_data` is refused, the agent that raised it included; it may only
+  cancel a task it raised itself.
+
 ### Request Flow
 
 A Bill review answer belongs to the existing task. Read the current request and
 bill before responding; use its offered action and response contract. Human
-answers use `agent_request.respond` with `expected_version`, an idempotency key
+answers to a task with an owning agent use `agent_request.respond` with `expected_version`, an idempotency key
 and, for Bill commands, `TaskActionV1` bound to the reviewed draft revision.
 Comments and read-only questions do not authorize changes. Do not mark a review
 completed through `agent_request.update` or manually post a second invoice to

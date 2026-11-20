@@ -51,6 +51,24 @@ so the next session does not ask at all. Items that need a decision of their
 own (which of two candidates, what a payment was for) still get their own
 task.
 
+**Offer only what you can do yourself.** Every option's note says what you
+will do when it is chosen, and you must be able to do exactly that with your
+own tools and permissions (or through the master-data or configuration agent
+you may ask). An option that needs someone else to act ("Ask the supplier
+for a corrected invoice", "Have the accountant fix it") is not an option you
+can carry out: leave it out, or, when only a person can do the step, write
+the task as that work and offer "I have done it" (see "When you are not
+allowed to do something"). The free answer is always there for anything
+else.
+
+**Collect your questions, then ask them together.** Do all the work the
+records and rules allow first, noting each open question as you meet it.
+Raise the run's questions together at the end, one task per decision as
+above, never one at a time while you work. The same holds when you act on an
+answer: carry out everything the answer allows, then raise whatever is still
+open in one round. Do not raise a new task from each answer, and do not ask
+about something the answer you were given already decides.
+
 ## When you are not allowed to do something
 
 A refusal that says you lack a permission, or that a step needs a person of
