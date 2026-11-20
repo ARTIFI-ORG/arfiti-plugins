@@ -441,8 +441,8 @@ The `reconciliation_agent` is an automated code agent. Card charges get ONE dete
 
 | Scope | Payment Types | Invoice Types | Party Column |
 |-------|--------------|---------------|-------------|
-| `vendor` | `AP_PAYMENT`, `AP_PREPAYMENT`, `AP_REFUND`, `CARD_EXPENSE`, `AP_CREDIT_MEMO` | `AP_INVOICE` | `vendor_id` |
-| `customer` | `AR_PAYMENT`, `AR_PREPAYMENT`, `AR_REFUND` | `AR_INVOICE`, `AR_CREDIT_MEMO` | `customer_id` |
+| `vendor` | `AP_PAYMENT`, `AP_PREPAYMENT`, `AP_REFUND`, `CARD_EXPENSE` | `AP_INVOICE` | `vendor_id` |
+| `customer` | `AR_PAYMENT`, `AR_PREPAYMENT`, `AR_REFUND` | `AR_INVOICE` | `customer_id` |
 
 ### Agent Execution Flow
 
