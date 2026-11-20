@@ -12,7 +12,7 @@
       "name": "arfiti-core-financial-reports",
       "source": "./arfiti-core-financial-reports",
       "description": "Financial reporting suite: Balance Sheet, Profit & Loss, Cash Flow, Trial Balance, Aging Analysis and P&L by dimension, presented from the server's exact report contract.",
-      "version": "3.0.0",
+      "version": "3.0.1",
       "category": "reporting",
       "keywords": [
         "financial-reports",

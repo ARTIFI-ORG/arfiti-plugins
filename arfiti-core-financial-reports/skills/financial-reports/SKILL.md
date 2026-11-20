@@ -52,7 +52,7 @@ Show every evidence gap, including warnings on a complete report (for example a 
 
 Ratios, margins, days outstanding and follow-up suggestions are this plugin's analysis, not server facts, and the output labels them so. The plugin's classification of current items, cash, receivables, payables and inventory, its example ratio bands and its example follow-up wording live in `scripts/ratio_policy.json`. That file is example policy for a firm to edit; never present its bands as universal ("healthy") or its follow-up steps as instructions. Days outstanding use the actual length of the income statement period, never a fixed 365.
 
-Overdue means more than 0 days past due, as the server counts it (`totals.overdue`, every past-due bucket). Credits and unapplied amounts keep their sign and stay visible.
+Overdue means more than 0 days past due, as the server counts it (`totals.overdue`, every past-due bucket). Both agings report amounts owed: positive is owed by the customer (AR) or to the vendor (AP). A party with a negative total is a credit or unapplied amount, by its own sign, never by comparison with the overall total; it keeps its sign and stays visible.
 
 Collection and payment suggestions are advice for the user to decide on. This plugin sends no reminders and schedules no payments.
 

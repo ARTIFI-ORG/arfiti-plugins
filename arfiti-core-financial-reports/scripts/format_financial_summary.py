@@ -83,7 +83,9 @@ def build_report(data, entity_name=None, **_):
     complete = pnl["quality"]["status"] == "complete" and bs["quality"]["status"] == "complete"
 
     def days_outstanding(balance, basis):
-        if not complete or balance is None or not basis or not days:
+        # A zero balance is a real 0 days; a negative balance (a debit payables
+        # balance) or a non-positive basis would give meaningless days.
+        if not complete or balance is None or basis is None or not days or balance < 0 or basis <= 0:
             return None
         return (balance / basis * days).quantize(Decimal("1"))
 

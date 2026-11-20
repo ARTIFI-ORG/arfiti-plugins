@@ -40,6 +40,6 @@ Example input: `scripts/examples/ap_aging.json`.
 
 ## Present
 
-Show the generated markdown. Amounts are the server's signed figures. A vendor whose balance has the opposite sign to a non-zero total is a credit or unapplied payment, listed for review. When the total nets to zero or is unavailable, the formatter lists the negative and positive balances separately instead of guessing which are credits.
+Show the generated markdown. Amounts are the server's signed figures, as amounts owed: positive is owed to the vendor, a negative vendor total is a credit or unapplied payment, listed for review. The overdue list shows vendors with a positive or unavailable past-due amount. This holds whatever the overall total nets to; a vendor whose total is unavailable is listed separately, as neither.
 
 The overdue list and the amounts coming due in 7, 14 and 30 days come from the server's documents. Whether and when to pay is the business's decision (terms, disputes, cash); don't tell the user to "pay immediately", and don't schedule or make payments from this command.

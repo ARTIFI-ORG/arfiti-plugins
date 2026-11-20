@@ -44,7 +44,7 @@ Example input: `scripts/examples/ar_aging.json`.
 
 ## Present
 
-Show the generated markdown. Overdue means 1 or more days past due, as the server counts it. Credits (a negative balance) stay visible and are listed for review.
+Show the generated markdown. Overdue means 1 or more days past due, as the server counts it. Amounts are amounts owed: positive is owed by the customer, and a negative customer total is a credit or unapplied amount that stays visible and is listed for review, whatever the overall total nets to. A customer whose total is unavailable is listed separately, as neither.
 
 If the aging is not certified, say so first: its totals do not agree with the control account or some payment applications are incomplete.
 

@@ -8,7 +8,7 @@
 - `totals`: the same buckets plus `overdue`, all four past-due buckets summed by the server.
 - `details.certified` and `details.control_tie_out`: whether the open documents agree with the control account. `details.documents`: the open documents with due dates and balances.
 
-Amounts are signed as booked against the control account. A party whose balance has the opposite sign to a non-zero total is a credit or unapplied amount; it stays visible in its bucket. When the total nets to zero or is unavailable, no sign tells credits apart: review the negative and positive balances as two groups. Values are in functional currency; the document currency is separate.
+Amounts are amounts owed, on both agings: positive is owed by the customer (AR) or to the vendor (AP); the server turns the credit-normal AP control balance the same way. A party whose own total is negative is a credit or unapplied amount and stays visible in its bucket. This does not depend on the overall total: a portfolio can net negative or to zero and the owed parties are still owed. A party whose total is unavailable is neither owed nor credit until it is reviewed. Values are in functional currency; the document currency is separate.
 
 ## Overdue
 
@@ -16,7 +16,7 @@ Overdue means more than 0 days past due: every amount in 1–30, 31–60, 61–9
 
 ## Days outstanding
 
-DSO = closing AR ÷ revenue × days in the revenue period. DPO = closing AP ÷ cost of sales × days in the period. Use an income statement whose period ends on the aging date, and its actual length. This is an approximation on the closing balance, not an average.
+DSO = closing AR ÷ revenue × days in the revenue period. DPO = closing AP ÷ cost of sales × days in the period. Use an income statement whose period ends on the aging date, and its actual length. This is an approximation on the closing balance, not an average. It, and the overdue share, are unavailable when the total is not a net amount owed (zero or a net credit) or the revenue or cost of sales is not positive.
 
 ## Follow-up and payments: firm policy
 
