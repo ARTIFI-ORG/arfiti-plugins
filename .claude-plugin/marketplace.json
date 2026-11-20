@@ -39,7 +39,7 @@
       "name": "arfiti-core-cost-allocation",
       "source": "./arfiti-core-cost-allocation",
       "description": "Cost allocation across departments, projects, or dimensions. Standalone mode (from GL balances) and document-linked mode (from a specific bill/invoice).",
-      "version": "3.0.1",
+      "version": "3.0.2",
       "category": "accounting",
       "keywords": [
         "cost-allocation",
@@ -92,7 +92,7 @@
       "name": "arfiti-core-agent-procedures",
       "source": "./arfiti-core-agent-procedures",
       "description": "The procedures Arfiti's own agents follow: bills, bank and card lines, payment reconciliation, vendors and customers, configuration, expense claims, period close and billing usage, for your own Claude or Cowork through the Arfiti MCP server.",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "category": "accounting",
       "keywords": [
         "bills",

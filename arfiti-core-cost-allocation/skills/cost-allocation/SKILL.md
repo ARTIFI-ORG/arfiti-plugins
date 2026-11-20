@@ -26,7 +26,7 @@ Before starting, confirm with the user:
 2. **Mode** — standalone or from a specific document
 3. For standalone: **Source account(s)** — which account(s) to allocate from
 4. For document-linked: **Source transaction** — which bill/invoice/JE to allocate from
-5. **Period** — which period to allocate (e.g., "2026-03")
+5. **Accounting date** — the date the allocation journal posts on (`run_date`). It alone decides the fiscal period the journal lands in, which must be open. The user chooses it; confirm it, and never default to today when the user means an earlier period (the date must fall inside that period). `period_name` is an optional label and, if you send it, must be the name of the fiscal period that contains that date, or the run is refused.
 
 ## Mandatory Checkpoints
 
@@ -36,8 +36,8 @@ You MUST verify each checkpoint before proceeding. If a checkpoint fails, STOP a
 - **CP2**: Target accounts exist and are active
 - **CP3**: Total debits equal total credits (balanced)
 - **CP4**: At least one source line and one target line
-- **CP5**: For document-linked: source line accounts match the source transaction
-- **CP6**: For document-linked: account is not already fully allocated
+- **CP5**: For document-linked: source lines take the cost off the side the source posted it to (CR for a cost allocation), on accounts the capacity report lists
+- **CP6**: For document-linked: the source lines for each account fit within its `available` amount in the capacity report
 - **CP7**: User has reviewed and confirmed the preview
 - **CP8**: Submission via `submit_lines` succeeds
 
@@ -66,6 +66,23 @@ Or use `generate_report` for a trial balance if allocating across multiple accou
 
 Ask the user which method to use. Common methods (see references/allocation-methods.md):
 
+Before using any dimension (department, project, cost centre) on a line, read the
+ones this organisation actually has; the `DEPT` / `SALES` codes in this skill
+are examples only:
+
+```python
+types = query("dimension_type", filters={"is_active": True})
+# dimension_N_code on a line = the type's `name`
+values = query("dimension_value", filters={
+    "dimension_type_id": <type_id>, "legal_entity_id": <entity_id>, "is_active": True
+})
+# dimension_N_value on a line = the value's `code`
+```
+
+An unknown, inactive or ineligible dimension is refused when the lines are
+submitted. If the dimension a method needs does not exist (for example no
+department dimension), say so; do not treat missing data as zero.
+
 1. **Fixed percentage** — "Split IT costs 60/40 between Sales and Marketing"
 2. **By headcount** — "Allocate based on employee count per department"
 3. **By revenue** — "Allocate proportional to each department's revenue"
@@ -83,7 +100,13 @@ employees = query("employee", filters={
 
 ### Step 3: Calculate Target Splits
 
-Apply the chosen method to calculate how much goes to each target. Show the user a clear preview table:
+Apply the chosen method to calculate how much goes to each target, in decimal
+arithmetic (never binary floating point). Round every line to the currency's
+decimals (2 for most currencies; amounts with more decimals are refused, not
+rounded), then place any rounding remainder on one target line so that debits
+equal credits exactly. Which line takes it is the user's rule (or their firm's
+documented practice); if they have none, propose one (for example the largest
+target) in the preview and let them confirm it. There is no tolerance. Show the user a clear preview table:
 
 | Line | Type | Account | Dept | DR/CR | Amount |
 |------|------|---------|------|-------|--------|
@@ -109,7 +132,7 @@ Wait for explicit user confirmation before proceeding.
 # Create the run
 result = submit("allocation_run", "create", {
     "legal_entity_id": <entity_id>,
-    "run_date": "<today>",
+    "run_date": "<accounting_date>",  # confirmed with the user, see Prerequisites
     "period_name": "<period>",
     "description": "<user description or auto-generated>",
     "allocation_type": "cost_allocation",
@@ -164,24 +187,34 @@ Identify the **expense/revenue lines** (not control accounts like AP/AR) — tho
 
 Check if this transaction (or specific accounts from it) has already been allocated:
 
-Allocation runs aren't a queryable entity (there is no registered `query()`
-type for them, even though `submit("allocation_run", ...)` is a valid
-workflow). Use the allocation summary report to see recent activity for this
-entity/rule instead:
+Read what the source can still allocate, per account:
 
 ```python
-# Review recent allocations for the period
-results = generate_report("allocation_summary", {
+capacity = generate_report("allocation_capacity", {
     "legal_entity_id": <entity_id>,
-    "start_date": "<period_start>",
-    "end_date": "<period_end>"
+    "source_transaction_id": <source_tx_id>,
+    # "allocation_type": "revenue_allocation" for a revenue source
 })
+# capacity["data"]["eligible"]          False -> the source is reversed or not posted: stop
+# capacity["data"]["accounts"][]:
+#     account_number, original (posted on the cost side),
+#     reserved (held by runs that are not voided or rejected), available,
+#     reserved_by[] (run number, status, amount; needs accounting:read)
 ```
 
-**CP6 checkpoint**: If any active (non-voided) allocations exist for the same
-account, inform the user of the remaining allocatable balance. The backend
-also validates this at submit time and will reject a run that over-allocates
-an already fully-allocated account.
+To see the runs themselves:
+
+```python
+runs = query("allocation_run", filters={
+    "legal_entity_id": <entity_id>, "source_transaction_id": <source_tx_id>
+})
+run = get_entity("allocation_run", <run_id>, include_related=True)  # with its lines
+```
+
+**CP6 checkpoint**: Tell the user what is `available` per account. Only
+accounts in the report (the cost side of the source) can be allocated. The
+report is a preview, not a reservation: `submit_lines` re-checks it under a
+lock, and refuses lines that no longer fit.
 
 ### Step 3: Determine Which Line(s) to Allocate
 
@@ -210,7 +243,7 @@ Show a preview table using the **correct account from the source transaction**:
 **CP2**: All accounts exist and are active.
 **CP3**: Balanced (DR = CR).
 **CP4**: Has source and target lines.
-**CP5**: Source line account (60002) matches the source transaction's GL lines.
+**CP5**: Source line account (60002) is listed in the capacity report, and the source line is CR (it takes the cost off that account).
 
 ### Step 6: User Confirmation
 
@@ -224,7 +257,7 @@ Show a preview table using the **correct account from the source transaction**:
 # Create the run WITH source_transaction_id
 result = submit("allocation_run", "create", {
     "legal_entity_id": <entity_id>,
-    "run_date": "<today>",
+    "run_date": "<accounting_date>",  # confirmed with the user, see Prerequisites
     "period_name": "<period>",
     "description": "Allocate Slack costs from EE-BILL000527 across teams",
     "allocation_type": "cost_allocation",
@@ -280,6 +313,14 @@ result = submit("allocation_run", "execute", {"allocation_run_id": <id>})
 # Returns: transaction_id, transaction_number
 ```
 
+If a submission comes back with `"status": "posting_unknown"`, the outcome is not
+known yet. Do not submit it again under a new idempotency key. Read the run back
+(`get_entity("allocation_run", <id>, include_related=True)` or the capacity
+report) and continue from what was saved; a retry of the same request may reuse
+the same key. A reply with `"refused": true` and `"effect_outcome": "no_effect"`
+is a definite refusal: nothing was saved; fix the cause its message names and
+submit again.
+
 Tell the user:
 - The GL journal entry has been posted
 - For document-linked: they can see the full document chain in the admin dashboard
@@ -306,6 +347,6 @@ This creates a reversing GL entry and frees up the source account for re-allocat
 - **"Source lines for account X total A, more than the B left"**: Only part of the source line is available. Reduce the allocation amount or void existing allocations.
 - **"Source transaction X is reversed / not posted"**: Only a posted, unreversed document can be allocated. If execute refuses an approved run for this reason, reject it.
 - **Account not found**: Suggest the user check the chart of accounts. Use `query("account", query="<number>")`.
-- **Unbalanced lines or "more than 2 decimal places"**: Debits must equal credits exactly and amounts carry at most the currency's decimals. Round each line, then adjust the largest target line to absorb the remainder.
+- **Unbalanced lines or "more than 2 decimal places"**: Debits must equal credits exactly and amounts carry at most the currency's decimals. Round each line, then put the remainder on the target line the user's rule names (see Step 3).
 - **Period closed**: The fiscal period must be open for posting.
 - **Run not in draft**: If the run is already calculated, lines will be replaced (recalculation is supported).

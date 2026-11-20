@@ -221,7 +221,7 @@ as not checked.
 - `control_account_signs`, `reporting_source_evidence`: control accounts by
   `account_subtype` and their sign in the trial balance; the trial balance's
   evidence gaps. PARTIAL.
-- `generate_report("gl_integrity")`: unbalanced or line-less postings,
+- `generate_report("gl_integrity", {"legal_entity_id": X})`: unbalanced or line-less postings,
   orphan lines, dates outside a period, stale drafts. Not a close check, but
   any finding in the period is reported.
 - Manual journal review: read the period's manual journal entries

@@ -55,8 +55,8 @@ result = submit("allocation_run", "create", {
 | Field | Required | Description |
 |-------|----------|-------------|
 | `legal_entity_id` | Yes | Legal entity ID |
-| `run_date` | Yes | Allocation date (YYYY-MM-DD) |
-| `period_name` | No | Fiscal period (e.g., "2026-03") |
+| `run_date` | Yes | Accounting date (YYYY-MM-DD): the journal posts on it, in the fiscal period that contains it |
+| `period_name` | No | Label only; if sent, must be the name of the fiscal period containing `run_date` (e.g. "2026-03"), else refused |
 | `description` | No | Human-readable description |
 | `allocation_type` | No | `cost_allocation` (default), `revenue_allocation`, `intercompany_charge` |
 | `source_transaction_id` | No | Source document transaction ID (enables document-linked mode) |
