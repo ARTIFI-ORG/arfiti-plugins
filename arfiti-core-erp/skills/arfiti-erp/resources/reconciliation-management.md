@@ -18,6 +18,20 @@ history. Native receipts retain their existing date rules; previously receipted 
 items are not certified as reusable new proposals. Mixed native and
 simple applications on one source currently require separate supported recovery.
 
+Other live applications on the same documents must themselves be simple
+evidence: a payment, or (since migration 918, AR-1392) a credit memo applied to
+its own invoice type (AP_CREDIT_MEMO -> AP_INVOICE, AR_CREDIT_MEMO -> AR_INVOICE),
+in the document's currency, with no variance and the same amount on both sides.
+A bill part-settled by a vendor credit can therefore take a dated payment for the
+rest. Anything else still refuses with "Interacting application evidence requires
+review", and live applications may never exceed the document amount.
+
+An application cannot be dated before a later application change already in the
+history of either document ("Application date precedes affected history"). A
+voided application keeps its applied interval in that history, so a correct
+application replacing a mistaken one is dated no earlier than the void; a
+reviewed "never happened" correction is backlog (AR-1393).
+
 Run void and standalone payment reversal/void refuse live dated applications;
 explicit-date unmatch must finish first. Payment reversal using a caller-supplied
 connection is unsupported once this schema is installed unless an audited outer
