@@ -17,7 +17,7 @@ during onboarding* are accepted.
 | Area | Operations | Scope | Read back |
 |---|---|---|---|
 | Tax codes | `tax_code.create/update/delete` | Organisation | `query("tax_code")` |
-| Tax code rate components | `tax_code_rate.create/update/delete` | Organisation or entity | no `query` entity yet: the submit receipt, then the tax code's quick view in Records → Tax codes |
+| Tax code rate components | `tax_code_rate.create/update/delete` | Organisation or entity | `get_entity("tax_code", <master_tax_code_id>)` → `related.components` |
 | Tax authorities | `tax_authority.create/update/delete` | Organisation | `query("tax_authority")` |
 | Tax jurisdictions | `tax_jurisdiction.create/update/delete` | Organisation | `query("tax_jurisdiction")` |
 | Tax registrations | `tax_registration.create/update/delete` | Entity | `query("tax_registration")` |
@@ -108,7 +108,7 @@ For a `components` code, posting:
 
 Units and dates: `rate` is percentage points (`7.25` means 7.25 %); dates are
 `YYYY-MM-DD`; `effective_to` is the last day the component applies, or empty.
-Keep the code's `default_rate` equal to the combined rate: posting ignores it
+Keep the code's `default_rate` equal to the combined effective rate: posting ignores it
 for a `components` code, but tax reports label the code with it and the bill
 agent matches supplier invoices against it.
 
@@ -121,24 +121,44 @@ Booked history does not move:
   name or compound setting.
 - `tax_code_rate.delete` deactivates the component; it is not removed, and
   documents already posted keep what they booked.
-- A credit memo reverses what the invoice it credits booked, whatever the
-  code's method or components are today.
+- A credit memo linked to its invoice (`original_transaction_id`) reverses
+  what that invoice booked for the code, whatever the code's method or
+  components are today. A credit memo with no linked invoice, or a line with
+  a code the invoice never carried, is taxed by the code's current setup.
 - Switching a code between `rate` and `components` changes new postings only.
 
-**Verify** (there is no `query` entity for components yet):
+**Verify.** A submit receipt says the write ran; it is not a read-back.
 
-1. `query("tax_code")` and check `calculation_method` and `default_rate` on
-   the code.
-2. Check each component's submit receipt (`tax_code_rate_id`), then open the
-   code's quick view in Records → Tax codes and compare each component's
-   name, rate, order, basis, compound setting, account and dates with what
-   the customer confirmed.
-3. Check coverage: for every date the code will be used on, at least one
-   active component is effective, and the components add up to the
-   confirmed total.
+1. `get_entity("tax_code", <master_tax_code_id>)` returns the code with
+   `calculation_method` and `default_rate`, and its components under
+   `related.components`, each row with `component_name`, `rate`,
+   `calculation_order`, `taxable_basis`, `applies_on_component`,
+   `is_compound`, `tax_account_number`, `legal_entity_id`, `is_active` and the
+   dates. A caller limited to some entities sees the organisation's
+   components and its own entities', never another entity's.
+   `query("tax_code", filters={"calculation_method": "components"})` lists
+   the codes that opted in. Compare every field with what the customer
+   confirmed.
+2. Coverage: for every date the code will be used on, at least one active
+   component is effective for each entity that uses it (an entity's own
+   components replace the organisation's).
+3. The combined effect: with a compound component the tax is not the sum of
+   the nominal rates (a 7 % component, then a 5 % compound component charged
+   on the line plus the 7 %, gives 12.35 %, not 12 %). Work out the tax on a sample amount
+   from the components, in their order and basis, and compare it with the
+   total the customer confirmed; set `default_rate` to that effective rate.
 4. If the customer wants proof of the arithmetic, post one test document
    only with their yes and in a period they choose, read its tax lines back,
    and reverse it. Never post a test document without that yes.
+
+If `get_entity` does not return `calculation_method` or
+`related.components` (an older server), say so: the components cannot be
+read back through MCP there. The tax code's full record in Records → Tax
+codes, tab **Rates**, shows each component's order, the component it applies
+on, basis, account, status and dates; it does not show `is_compound` or the
+code's `calculation_method`. Report those two as not verified rather than
+taking them from the receipt. The quick view shows only name, type, rate and
+dates.
 
 ### Tax authorities, jurisdictions, registrations
 
