@@ -360,7 +360,7 @@ submit(object_type="tax_code", operation="delete", data=JSON.stringify({
 
 ### Tax Code Rate Workflows
 
-> **Rate components (`tax_code_rate`) are configuration only today.** They are stored and shown in Admin, but posting does not use them yet: every document line is taxed at its tax code's rate (`v_tax_codes_effective.default_rate`). Using components in posting is planned. A component's `rate` is a percentage, the same unit as the tax code's rate (7.25 means 7.25%); dates are `YYYY-MM-DD`; `taxable_basis` is one of `subtotal`, `gross`, `custom`, `net_amount`. The compound examples below show the intended configuration, not a calculation the platform performs today.
+> **Rate components (`tax_code_rate`).** A tax code is calculated by its own rate (`calculation_method = 'rate'`, the default) or by its rate components (`'components'`, set with `tax_code.update`). For a components code, posting taxes each line with the components active and effective on the document date (an entity's own components replace the organisation's as a set), in `calculation_order`. A compound component (`is_compound: true`, `applies_on_component` = the name of an earlier component) taxes the line plus that component; otherwise `taxable_basis` must be `subtotal` or `net_amount` (`gross` and `custom` are refused at posting). Each component rounds half-up, books its own tax GL line and is recorded in `transaction_line_taxes`. A component's `tax_account_number` is an output (sales-side) account: sales documents and revenue journal lines book that component there (else the code's sales account; a component account the entity does not have refuses the posting); purchase documents book input tax to the code's purchase account. Tax-inclusive prices back-solve the combined rate, so net + tax equals the amount entered. A code with no effective component on the document date is refused, never posted untaxed. A credit memo reverses what the invoice it credits booked: its components when it booked any for the code, otherwise the code's rate, whatever the code's method is today. Once a component is booked, its name and compound setting cannot change (`tax_code_rate.update` refuses); end it with `effective_to` and add a new component instead. A component's `rate` is a percentage (7.25 means 7.25%); dates are `YYYY-MM-DD`. Keep the code's `default_rate` equal to the combined rate: posting ignores it for a components code, but tax reports label the code with it and the bill agent matches supplier invoices against it.
 
 #### Create Tax Code Rate
 
@@ -1024,47 +1024,23 @@ tax rows need a separately reviewed historical repair. Do not recommend
 reject reverse-charge shapes or retranslate amounts, and reversal copies the
 original amounts with debit/credit sides swapped.
 
-## Tax Priority Waterfall
+## Which tax code a line gets
 
-When multiple tax code sources exist, the system uses this priority order:
+Posting uses the tax code each line names (`tax_code_id` or `tax_code`),
+resolved for the document's entity; a code the entity cannot use is refused.
+There is **no** item, customer or entity default at posting: a line without a
+code posts untaxed. So set the code on every taxable line you send. Choose it
+from what you know (the item, the customer's tax profile, the client's rules),
+and ask when you cannot tell.
 
-**Priority (Highest to Lowest):**
-1. **Line-Level Override** - Explicit tax code on transaction line
-2. **Item Default** - Tax code assigned to item/product
-3. **Customer Default** - Tax code from customer tax profile
-4. **Entity Default** - Legal entity's default tax code
+Billing runs are the exception: a contract line without its own code takes the
+customer's tax profile (`customer_tax_profiles.default_tax_code_id`, or exempt).
 
-**Example:**
-```javascript
-// Configuration:
-const entity_default_tax_code = "SALES-US-CA";      // 7.25%
-const customer_default_tax_code = "SALES-US-CA-LA"; // 9.50% (CA + LA county)
-const item_default_tax_code = "SALES-US-FOOD";      // 0% (food exempt)
-const line_override_tax_code = "SALES-US-CA";       // 7.25% (explicit override)
-
-// Priority Resolution:
-// Line override exists? → Use "SALES-US-CA" (7.25%)
-// If no line override AND item default exists? → Use "SALES-US-FOOD" (0%)
-// If no line override AND no item default AND customer default exists? → Use "SALES-US-CA-LA" (9.50%)
-// If none of above? → Use "SALES-US-CA" (entity default 7.25%)
-```
-
-**Implementation:**
-```sql
--- Tax resolution query
-SELECT COALESCE(
-  line.tax_code_override,           -- Priority 1
-  item.default_tax_code,             -- Priority 2
-  customer_profile.default_tax_code, -- Priority 3
-  entity.default_tax_code            -- Priority 4
-) as effective_tax_code
-FROM transaction_lines line
-LEFT JOIN items item ON item.id = line.item_id
-LEFT JOIN customer_tax_profiles customer_profile
-  ON customer_profile.customer_id = line.customer_id
-LEFT JOIN legal_entities entity
-  ON entity.id = line.legal_entity_id;
-```
+Each line is taxed at its code's rate (`default_rate`, percentage points):
+exclusive `amount × rate / 100`, inclusive `amount − amount / (1 + rate/100)`,
+rounded half-up to the cent. A code whose `calculation_method` is `components`
+is taxed by its rate components instead (see the rate components note above):
+one tax GL line per component, recorded in `transaction_line_taxes`.
 
 ---
 
@@ -2120,9 +2096,9 @@ See [Entity Management](entity-management.md) for the full `submit(object_type="
 
 2. **Tax Rates Have Date Ranges**: Always use effective_from/effective_to for rate changes
 
-3. **Priority Waterfall**: Line override → Item default → Customer default → Entity default
+3. **Tax code per line**: posting uses the code the line names; there is no item, customer or entity default (billing runs use the customer's tax profile)
 
-4. **Compound Taxes Need Order**: Use calculation_order and applies_on_component
+4. **Compound Taxes Need Order**: Use calculation_order and applies_on_component, and set the code's calculation_method to components
 
 5. **Tax-Inclusive Pricing**: Prices are net by default (B2B everywhere, EU included); set is_tax_inclusive only on codes for consumer price lists quoted gross
 
