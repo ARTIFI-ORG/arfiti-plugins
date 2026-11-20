@@ -39,7 +39,7 @@
       "name": "arfiti-core-cost-allocation",
       "source": "./arfiti-core-cost-allocation",
       "description": "Cost allocation across departments, projects, or dimensions. Standalone mode (from GL balances) and document-linked mode (from a specific bill/invoice).",
-      "version": "3.0.3",
+      "version": "3.0.4",
       "category": "accounting",
       "keywords": [
         "cost-allocation",

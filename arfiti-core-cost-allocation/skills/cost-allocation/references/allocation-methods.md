@@ -15,7 +15,7 @@ Target: 6900 IT Overhead (Marketing), DR 2,500  (25%)
 Target: 6900 IT Overhead (Finance),   DR 1,500  (15%)
 ```
 
-**Validation**: Percentages must sum to 100%. Handle rounding by adjusting the largest target.
+**Validation**: Percentages must sum to 100%. Rounding follows the section below: the remainder goes to the line the user's rule names.
 
 ## 2. Proportional by Account Balance
 
@@ -81,11 +81,14 @@ Any combination of the above, or user-defined rules.
 
 ## Rounding
 
-When percentages don't produce exact amounts, always:
-1. Calculate each target's amount and round to 2 decimal places
-2. Sum the rounded amounts
-3. If the sum differs from the source amount, adjust the largest target line
-4. This ensures total debits = total credits exactly
+When a method doesn't produce exact amounts:
+1. Calculate each target's amount in decimal arithmetic (never binary floating point)
+2. Round each line to the decimals of the run's currency (2 for most currencies, 0 for some, such as JPY; allocation amounts never carry more than 2, even in a 3-decimal currency). Amounts with more decimals than that are refused, not rounded
+3. Sum the rounded amounts; the difference from the source amount is the rounding remainder
+4. Put the remainder on the one target line that the user's rule (or their firm's documented practice) names. If they have none, propose one in the preview (for example the largest target) and let them confirm it before submitting. The largest target is only a suggestion, not a fixed rule
+5. Total debits then equal total credits exactly; there is no tolerance
+
+Example, JPY (0 decimals), source CR 10,000 split three ways equally, with the user's rule "remainder to Finance": Sales DR 3,333, Marketing DR 3,333, Finance DR 3,334.
 
 ## Multi-Dimension Allocations
 
