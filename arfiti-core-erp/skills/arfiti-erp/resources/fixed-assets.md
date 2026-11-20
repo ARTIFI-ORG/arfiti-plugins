@@ -178,6 +178,16 @@ Use the `fixed_asset.create` workflow to add new asset records.
 `name` (two different values are refused). `in_service_date` is the date depreciation starts; it is
 never defaulted to the acquisition date, so ask for it when the user has not given it.
 
+An asset depreciated before it came into this system (a migration) takes
+`accumulated_depreciation` with `depreciated_through`, the last day that amount covers.
+Create records it on the subledger only (no GL: the opening balances carry it) and schedules
+only what remains from the next day, so depreciation runs never take it twice. It must not
+exceed cost less salvage; `depreciated_through` must be a month end on or after
+`in_service_date`; the method and life must be known (asset or category); and an asset whose
+life already ended with an amount left is refused: ask the user what was actually taken.
+Use `fixed_asset.sync_subledger` instead when the history is already posted period by period
+in this system.
+
 ### Basic Asset
 
 ```json

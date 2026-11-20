@@ -107,22 +107,13 @@ Always pick the shape that matches user intent. If they want "this item in entit
 
 Entity overrides allow per-entity customization without affecting other entities. All override fields end with `_override` suffix.
 
-**Customizable Fields (all optional):**
-- `item_name_override` (string, max 255 chars) - Entity-specific item name
-- `description_override` (text) - Entity-specific description
-- `item_type_override` (enum) - Entity-specific item type
-- `unit_of_measure_override` (string, max 20 chars) - Entity-specific unit
-- `unit_price_override` (decimal) - Entity-specific default price
-- `cost_price_override` (decimal) - Entity-specific default cost
-- `is_taxable_override` (boolean) - Entity-specific tax status
-- `revenue_account_number_override` (string, max 50 chars) - Entity-specific revenue account
-- Entity-specific expense account: stored as `items.expense_account_override` and honoured by every flow, but `item.update` does not set it today; to change an item's account for one entity, tell the user rather than updating the master item
-- `asset_account_number_override` (string, max 50 chars) - Entity-specific asset account
-- `cogs_account_number_override` (string, max 50 chars) - Entity-specific COGS account
-- `tax_code_override` (string, max 50 chars) - Entity-specific tax code
-- `category_override` (string, max 100 chars) - Entity-specific category
-- `is_active_override` (boolean) - Entity-specific active status (hide from entity)
-- `metadata_override` (jsonb) - Entity-specific metadata
+**Set through `item.update` with `legal_entity_id`** (written to that entity's row only, never the master):
+- `item_name`, `description`, `unit_price`, `cost_price`, `is_taxable`, `is_active` → stored as `item_name_override` … `is_active_override` (`is_active: false` hides the item from that entity alone)
+- `expense_account_override` (string, max 20 chars) - the entity's expense account for the item; bills, AP invoices and expense reports post the item here first. Must be an active, non-header account of the entity, otherwise refused with nothing changed. `expense_account_override_clear: true` removes it.
+
+Any other field sent with `legal_entity_id` (for example `revenue_account_number`) still changes the master for every entity.
+
+**Columns that exist but no tool sets or no flow reads:** `item_type_override`, `unit_of_measure_override`, `revenue_account_number_override`, `expense_account_number_override` (unused; the expense override is `expense_account_override`), `asset_account_number_override`, `cogs_account_number_override`, `tax_code_override`, `category_override`, `metadata_override`. Do not promise a per-entity value for these; tell the user.
 
 **System Fields:**
 - `master_item_id` (bigint, required) - FK to master_items
@@ -853,16 +844,19 @@ submit(object_type="item", operation="create", data=JSON.stringify({
     "is_global": true
 }))
 
-// Create entity override with different GL accounts
+// Entity 10 books this item to its own expense account
 submit(object_type="item", operation="update", data=JSON.stringify({
     "item_number": "WIDGET-001",
-    "legal_entity_id": 10,  // Create override for Entity 10
-    "revenue_account_number": "4100"  // Override revenue account
+    "legal_entity_id": 10,  // override for Entity 10 only
+    "expense_account_override": "6510"  // active, non-header account of entity 10
 }))
 
 // Result:
-// - Entity 10: Revenue -> 4100
-// - Other entities: Revenue -> 4000
+// - Entity 10: bills, AP invoices and expense reports post the item to 6510
+// - Other entities: the master expense_account_number
+// - "expense_account_override_clear": true removes it
+// Only the expense account has a per-entity override; revenue_account_number
+// sent with legal_entity_id changes the master for every entity.
 ```
 
 ---

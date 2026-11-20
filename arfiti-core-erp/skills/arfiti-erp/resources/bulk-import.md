@@ -63,7 +63,7 @@ submit(object_type="<type>", operation="import", data=JSON.stringify({
 |-------------|----------------|---------------|-------|
 | `card_transaction` | external_transaction_id, card_id, amount, transaction_date | external_transaction_id + card_id + transaction_type | From connector or CSV. Writes to `bank_card_transactions`. **Also set `metadata.provider_purchase_id`** — the provider's id for the *purchase*, shared by every leg (charge, refund, fee) — or each leg becomes its own singleton and refunds land in review with no netting. See bank-statements-management.md, "Two ids per card row". |
 | `opening_balance` | legal_entity_id, as_of_date, lines[] | — | Posts opening balance journal entry |
-| `opening_balances_with_subledger` | legal_entity_id, balances[], fiscal_period_name | — | Opening balances with individual AR/AP items and fixed assets (uses clearing account 0000) |
+| `opening_balances_with_subledger` | legal_entity_id, balances[], fiscal_period_name | — | Opening balances with individual AR/AP items and fixed assets (uses clearing account 0000). Fixed assets are created with or without open items |
 
 ### Transaction Importer (Generic)
 
@@ -395,13 +395,28 @@ manage_imports("opening_balances_with_subledger", {
          "invoice_date": "2024-12-10", "due_date": "2025-01-10"}
     ],
     fixed_assets_detail: [
-        {"name": "Server Equipment", "acquisition_date": "2023-06-15",
-         "original_cost": 25000, "accumulated_depreciation": 10000, "useful_life_months": 60},
-        {"name": "Office Furniture", "acquisition_date": "2022-01-01",
-         "original_cost": 15000, "accumulated_depreciation": 5000, "useful_life_months": 84}
+        {"name": "Server Equipment", "category": "COMPUTER", "acquisition_date": "2023-06-15",
+         "in_service_date": "2023-06-15", "original_cost": 25000,
+         "accumulated_depreciation": 10000, "useful_life_months": 60},
+        {"name": "Office Furniture", "category": "FURNITURE", "acquisition_date": "2022-01-01",
+         "in_service_date": "2022-01-01", "original_cost": 15000,
+         "accumulated_depreciation": 5000, "useful_life_months": 84}
     ]
 })
 ```
+
+**Fixed assets (AR-1409).** Each record needs `name`, `category` (an existing category code of
+the entity), `acquisition_date`, `in_service_date` (never defaulted) and `original_cost`;
+`useful_life_months`, `depreciation_method` and `salvage_value` fall back to the category when
+omitted. Assets are created whether or not there are open AR/AP items. Every record is checked
+before anything posts: one unusable record (or an entity without a `fixed_asset` number series)
+refuses the whole migration, naming each asset and why, and nothing is written; the dry run
+reports the same. `accumulated_depreciation` is recorded on each asset as taken through the day
+before the migration period, posting no GL (the opening entry carries it), and the schedule
+covers only what remains. The answer's `fixed_assets` block lists the assets created and any
+difference between the asset register and the GL accounts (`gl_variances`, also named in
+`warnings`): compare the assets' cost and accumulated depreciation with the trial balance lines
+of their category accounts.
 
 **How the subledger version works:** The system uses a clearing account (0000) to keep the GL balanced. Each open AR/AP item becomes its own posted transaction. The OPENING_ENTRY posts the clearing account instead of the AR/AP control accounts. The clearing account nets to zero. Result: same GL balances, but individual items in aging reports.
 
