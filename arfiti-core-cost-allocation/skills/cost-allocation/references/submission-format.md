@@ -287,6 +287,7 @@ Allocate one line from an invoice now, another line later. Each creates a separa
 
 ### Intercompany charge
 Use `allocation_type: "intercompany_charge"`.
+An intercompany charge is one journal in the run's single legal entity, between the accounts on its lines. The run has no counterparty entity: it does not post the other entity's side, a due-to/due-from pair, a settlement or an elimination. Say so to the user and post the other entity's side as its own transaction there.
 
 ### Document chain
 After posting, the admin dashboard shows a full chain:

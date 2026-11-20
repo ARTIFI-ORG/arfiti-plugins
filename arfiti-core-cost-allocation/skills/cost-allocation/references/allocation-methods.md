@@ -26,7 +26,7 @@ Allocate proportional to each target's existing balance (e.g., by department exp
 **Example**: "Allocate rent based on each department's total expenses"
 
 **Steps**:
-1. Find the dimension's real name first (`query("dimension_type", filters={"is_active": True})`; "Department" below is an example), then fetch target balances by it: `generate_report("dimension_analysis", {"legal_entity_id": <id>, "dimension_type_name": "<name>", "start_date": <period_start>, "end_date": <period_end>, "account_type": "EXPENSE"})`. If the dimension or its data is missing, say so; do not treat it as zero.
+1. Find the dimension's real name first (`query("dimension_type", filters={"is_active": True})`; "Department" below is an example), then fetch target balances by it: `generate_report("dimension_analysis", {"legal_entity_id": <id>, "dimension_type_name": "<name>", "start_date": <period_start>, "end_date": <period_end>, "account_type": "expense"})`. Account types are lowercase: `asset`, `liability`, `equity`, `revenue`, `cogs`, `expense`. A refusal (an unknown dimension or `REPORT_INVALID_ACCOUNT_TYPE`) means the drivers could not be read, not that they are zero: say so and stop. A successful report with no values means nothing was posted with that dimension in the period; say that too before choosing another driver.
 2. Calculate each department's share: `dept_balance / total_balance`
 3. Apply percentages to source amount
 

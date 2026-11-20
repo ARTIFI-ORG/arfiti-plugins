@@ -48,6 +48,8 @@ Plugin/Agent                          Backend (MCP Server)
 
 Lanes are assigned by your organisation's workflow rules; the submit() result is authoritative.
 
+Every `allocation_run` operation needs `accounting:write`, checked against the submitter when the request is submitted and again when the run executes after any approval (the approver is not checked for it), whatever the workflow definition says. An organisation's own workflow may require more; it cannot require less. A caller without it gets `error: permission_denied` with `required_permission: accounting:write`, and nothing is saved.
+
 ---
 
 ## Creating Allocation Runs

@@ -466,6 +466,13 @@ trial balance, `as_of_date` alone gives balances at that date; `start_date`
 with `end_date` gives the period's movements; `end_date` without `start_date`
 is refused (`REPORT_INVALID_DATES`).
 
+`account_type` (`dimension_analysis`, `dimension_hierarchy`,
+`variance_by_account`) takes one of `asset`, `liability`, `equity`, `revenue`,
+`cogs`, `expense`, in any case (`"EXPENSE"` reads as `expense`); leave it
+out for every type. Any other value, an empty string included, is refused before anything runs (`code: REPORT_INVALID_ACCOUNT_TYPE`,
+with `supported_values`), so a typo never reads as a report with no amounts
+(AR-1379: `"EXPENSE"` used to return an empty result).
+
 ---
 
 ## Discovering Reports

@@ -349,4 +349,5 @@ This creates a reversing GL entry and frees up the source account for re-allocat
 - **Account not found**: Suggest the user check the chart of accounts. Use `query("account", query="<number>")`.
 - **Unbalanced lines or "more than 2 decimal places"**: Debits must equal credits exactly and amounts carry at most the currency's decimals. Round each line, then put the remainder on the target line the user's rule names (see Step 3).
 - **Period closed**: The fiscal period must be open for posting.
+- **`permission_denied` with `required_permission: accounting:write`**: Every allocation operation (create, submit_lines, approve, execute, void, reject) needs `accounting:write`. Nothing was saved. Tell the user who asked that someone with that permission must do it; do not retry under another identity.
 - **Run not in draft**: If the run is already calculated, lines will be replaced (recalculation is supported).
