@@ -17,7 +17,7 @@ during onboarding* are accepted.
 | Area | Operations | Scope | Read back |
 |---|---|---|---|
 | Tax codes | `tax_code.create/update/delete` | Organisation | `query("tax_code")` |
-| Tax code rate components | `tax_code_rate.create/update/delete` | Organisation or entity | the submit receipt and the Admin tax screen (no `query` entity yet) |
+| Tax code rate components | `tax_code_rate.create/update/delete` | Organisation or entity | no `query` entity yet: the submit receipt, then the tax code's quick view in Records → Tax codes |
 | Tax authorities | `tax_authority.create/update/delete` | Organisation | `query("tax_authority")` |
 | Tax jurisdictions | `tax_jurisdiction.create/update/delete` | Organisation | `query("tax_jurisdiction")` |
 | Tax registrations | `tax_registration.create/update/delete` | Entity | `query("tax_registration")` |
@@ -63,9 +63,11 @@ allow-list also covers other master data).
 - A regional rate (US state, Canadian province, Swiss canton) is its own code
   with `jurisdiction_level` and `state_province`, never a national code with
   the most common rate.
-- Tax codes have no effective dates. A rate change is a new code, with the old
-  one deactivated when it stops being used; posted documents keep the code
-  they were posted with.
+- A tax code itself has no effective dates. For a code taxed at its own rate
+  (`calculation_method = 'rate'`, the default), a rate change is a new code,
+  with the old one deactivated when it stops being used. For a code taxed by
+  its components, a rate change is a dated component (next section). Posted
+  documents keep the code and the tax they were posted with.
 - A code needs its tax account: `default_tax_account_number`, or both
   `sales_account_number` and `purchase_account_number` (an `exempt` code needs
   none). The accounts are the customer's choice by type and subtype.
@@ -76,9 +78,67 @@ allow-list also covers other master data).
 `effective_to`, `legal_entity_id`, `component_name`, `calculation_order`,
 `taxable_basis`, `applies_on_component`, `is_compound`, `tax_account_number`.
 
-Stored and shown, **not yet used by posting**: posting computes tax from the
-tax code's `default_rate`. Do not tell the customer a compound tax is being
-calculated from components.
+Posting uses components **only for a code that opts in**. A tax code is taxed
+either at its own `default_rate` (`calculation_method = 'rate'`, the default)
+or by its rate components (`'components'`, set with `tax_code.update`).
+Components on a `rate` code are stored but do not change what posts; `fixed`
+and `tiered` also post as `rate`. Opt in only for a tax the customer confirmed
+is made of separate parts (a state plus a county rate, a compound levy), and
+say which codes you switched.
+
+For a `components` code, posting:
+
+- takes the components **active and effective on the document date**; an
+  entity's own components (`legal_entity_id` set) replace the organisation's
+  as a set for that entity;
+- applies them in `calculation_order`; a compound component (`is_compound:
+  true`, `applies_on_component` = the `component_name` of an earlier
+  component) is charged on the line plus that component; any other component
+  needs `taxable_basis` `subtotal` or `net_amount` (`gross` and `custom` are
+  refused at posting);
+- rounds each component half-up and books it as its own tax GL line, recorded
+  in `transaction_line_taxes`. `tax_account_number` is an output (sales-side)
+  account; without it the code's sales account is used. Purchase documents
+  book input tax to the code's purchase account. A component account the
+  entity does not have refuses the posting;
+- back-solves the combined rate for tax-inclusive prices;
+- **refuses** a line when no component is effective on the document date. It
+  never posts it untaxed, so the components must cover every date the code
+  will be used on.
+
+Units and dates: `rate` is percentage points (`7.25` means 7.25 %); dates are
+`YYYY-MM-DD`; `effective_to` is the last day the component applies, or empty.
+Keep the code's `default_rate` equal to the combined rate: posting ignores it
+for a `components` code, but tax reports label the code with it and the bill
+agent matches supplier invoices against it.
+
+Booked history does not move:
+
+- A rate change is a new component from its `effective_from`, with the old
+  one ended by `effective_to` the day before. Do not edit the rate of a
+  component that documents were posted with.
+- Once a component is booked, `tax_code_rate.update` refuses a change to its
+  name or compound setting.
+- `tax_code_rate.delete` deactivates the component; it is not removed, and
+  documents already posted keep what they booked.
+- A credit memo reverses what the invoice it credits booked, whatever the
+  code's method or components are today.
+- Switching a code between `rate` and `components` changes new postings only.
+
+**Verify** (there is no `query` entity for components yet):
+
+1. `query("tax_code")` and check `calculation_method` and `default_rate` on
+   the code.
+2. Check each component's submit receipt (`tax_code_rate_id`), then open the
+   code's quick view in Records → Tax codes and compare each component's
+   name, rate, order, basis, compound setting, account and dates with what
+   the customer confirmed.
+3. Check coverage: for every date the code will be used on, at least one
+   active component is effective, and the components add up to the
+   confirmed total.
+4. If the customer wants proof of the arithmetic, post one test document
+   only with their yes and in a period they choose, read its tax lines back,
+   and reverse it. Never post a test document without that yes.
 
 ### Tax authorities, jurisdictions, registrations
 

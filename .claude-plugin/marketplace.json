@@ -107,7 +107,7 @@
       "name": "arfiti-core-country-setup",
       "source": "./arfiti-core-country-setup",
       "description": "Configure a live Arfiti company for its country through the Arfiti connector: tax codes, authorities, registrations, filing calendars, withholding, payroll taxes and expense rates, researched from official sources, confirmed with you, applied through the submit gateway and read back. Also helps author your own country payroll and VAT plugins.",
-      "version": "3.0.0",
+      "version": "3.0.1",
       "category": "configuration",
       "keywords": [
         "onboarding",

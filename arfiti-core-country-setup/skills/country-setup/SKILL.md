@@ -1,6 +1,6 @@
 ---
 name: country-setup
-description: Configures a live Arfiti company for its country — tax codes, tax authorities and jurisdictions, registrations, filing forms and calendars, withholding rates, payroll taxes and expense rates — by reading what the company already has, researching the gaps from official sources, confirming each value with the customer, writing it through the Arfiti submit gateway and reading it back. Also guides the customer in authoring their own country plugins (payroll calculator, VAT declaration). Use for "set up <country>", "configure tax for my entity", "add withholding rates", "fix our filing calendar", "author a payroll plugin for <country>".
+description: Configures a live Arfiti company for its country — tax codes, tax authorities and jurisdictions, registrations, filing forms and calendars, withholding rates, payroll taxes and expense rates — by reading what the company already has, researching the gaps from official sources, confirming each value with the customer, writing it through the Arfiti submit gateway and reading it back. Also guides the customer in authoring their own country plugins (payroll calculator, VAT declaration). Use for "set up Germany" (any country), "configure tax for my entity", "add withholding rates", "fix our filing calendar", "author a payroll plugin for Spain".
 ---
 
 # Country setup for a live company
@@ -170,9 +170,12 @@ When the customer needs either, offer `/author-country-plugin`
 - **A rate changed:** for dated records (withholding, payroll taxes, per-diem,
   mileage) add a record from the new `effective_from` and end the old one
   (`effective_to`, or `withholding_tax_rate.deactivate`), so history keeps the
-  old rate. Tax codes have no dates: create a new code for the new rate and
-  deactivate the old one when it stops being used; posted documents keep the
-  code they were posted with. Do not overwrite a rate in place.
+  old rate. A tax code taxed at its own rate has no dates: create a new code
+  for the new rate and deactivate the old one when it stops being used. A code
+  taxed by its components (`calculation_method = 'components'`) changes by a
+  new dated component, the old one ended with `effective_to`
+  (`references/operations.md`). Posted documents keep what they booked. Do
+  not overwrite a rate in place.
 - **A wrong reporting period:** `tax_reporting_period.update` and `.delete`
   work on open periods. A locked or filed period is refused; a period a tax
   return refers to keeps its dates and is never deleted.

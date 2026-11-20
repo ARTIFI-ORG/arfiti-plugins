@@ -45,6 +45,12 @@ the rows), or not applicable (with why).
   dates, the old one ended.
 - Regional taxes are regional records; a national record does not stand in
   for a regional rate.
+- A tax code taxed by its components (`calculation_method = 'components'`)
+  has at least one active component effective on every date it will be used
+  on (posting refuses a line otherwise), and its components add up to the
+  confirmed total, which is also the code's `default_rate`. Components on a
+  code left at `rate` change nothing that posts; say so if the customer
+  expects them to.
 
 **Applicability** — no minimum counts
 - Each area is configured, marked not applicable with the reason, or left
@@ -80,3 +86,8 @@ Withholding tax rates — entity 12 (Example OÜ)
 ```
 
 Counts come from the read-back, never from the number of submissions sent.
+
+Tax code rate components have no `query` entity yet. Read them back from the
+submit receipt and the tax code's quick view in Records → Tax codes, and say in
+the report that the read-back was done there (`references/operations.md`,
+"Tax code rate components").
