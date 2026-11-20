@@ -24,6 +24,12 @@ Result:
 
 ### Burden Rates by Country
 
+The table below is an undated illustration, not legal or payroll validation.
+Rates, ceilings and thresholds change by year and depend on the person and the
+contract. Before using any rate, confirm the country, the effective date and the
+client's own figures with the user (or the organisation's payroll plugin or
+configuration), and record the basis in the version's `notes`.
+
 | Country | Social Tax | Unemployment (Employer) | Typical Benefits | Total Burden |
 |---------|-----------|------------------------|-----------------|-------------|
 | Estonia (EE) | 33% | 0.8% | ~2-5% | ~36-39% |
@@ -57,29 +63,42 @@ Additional indirect costs per employee:
 
 ## Budget Line Structure Per Employee
 
+First discover how the organisation classifies people, because an employee
+record ID is not a dimension value and the write refuses it:
+
+```python
+values = query("dimension_value", filters={"legal_entity_id": <entity_id>})  # page until complete
+```
+
+If there is an eligible "employee" dimension with a value per person (here
+`EMP-JSMITH`), use those codes; otherwise put the person in `memo` and tag only
+the dimensions that exist (department, cost center). A dry run
+(`submit(..., validate_only=True)`) refuses an ineligible dimension before
+anything is written.
+
 Each employee generates multiple budget lines per month:
 
 ```python
 # For Employee ID 67 (John Smith), January:
 lines = [
     {"account_number": "6000", "period_sequence": 1, "amount": 3500.00,
-     "dimensions": {"employee_id": "67", "department": "ENG"},
+     "dimensions": {"employee": "EMP-JSMITH", "department": "ENG"},
      "memo": "John Smith - Base salary"},
 
     {"account_number": "6010", "period_sequence": 1, "amount": 1183.00,
-     "dimensions": {"employee_id": "67", "department": "ENG"},
+     "dimensions": {"employee": "EMP-JSMITH", "department": "ENG"},
      "memo": "John Smith - Social tax + unemployment (33.8%)"},
 
     {"account_number": "6200", "period_sequence": 1, "amount": 70.00,
-     "dimensions": {"employee_id": "67"},
+     "dimensions": {"employee": "EMP-JSMITH"},
      "memo": "John Smith - Laptop depreciation"},
 
     {"account_number": "6400", "period_sequence": 1, "amount": 150.00,
-     "dimensions": {"employee_id": "67"},
+     "dimensions": {"employee": "EMP-JSMITH"},
      "memo": "John Smith - Software licenses (JetBrains, Figma, etc.)"},
 
     {"account_number": "6500", "period_sequence": 1, "amount": 300.00,
-     "dimensions": {"employee_id": "67"},
+     "dimensions": {"employee": "EMP-JSMITH"},
      "memo": "John Smith - T&E budget"}
 ]
 ```
@@ -91,7 +110,9 @@ Repeat for each of 12 months. For a team of 10 employees with 5 cost categories 
 ## Headcount Planning
 
 ### Existing Employees
-Fetch active employees and their compensation to calculate budget amounts:
+Fetch active employees and their compensation to calculate budget amounts.
+Use only compensation in effect for each budget month (check its effective
+start and end dates and status); a future or ended record is not current pay:
 
 ```python
 employees = query("employee", filters={
@@ -156,15 +177,15 @@ Annual revenue: 241,200
 ```python
 # Cost budget
 {"account_number": "6000", "period_sequence": 1, "amount": 5200.00,
- "dimensions": {"employee_id": "67"}, "memo": "John Smith - Fully loaded cost"}
+ "dimensions": {"employee": "EMP-JSMITH"}, "memo": "John Smith - Fully loaded cost"}
 
 # Revenue budget (per project)
 {"account_number": "4100", "period_sequence": 1, "amount": 12000.00,
- "project_id": 45, "dimensions": {"employee_id": "67"},
+ "project_id": 45, "dimensions": {"employee": "EMP-JSMITH"},
  "memo": "John Smith - Website Redesign (60% allocation)"}
 
 {"account_number": "4100", "period_sequence": 1, "amount": 8100.00,
- "project_id": 52, "dimensions": {"employee_id": "67"},
+ "project_id": 52, "dimensions": {"employee": "EMP-JSMITH"},
  "memo": "John Smith - Mobile App (40% allocation)"}
 ```
 

@@ -29,8 +29,12 @@ Before starting, confirm with the user:
 1. **Legal entity ID** — which entity to budget for
 2. **Fiscal year** — which year (e.g., 2026)
 3. **Scenario** — budget (baseline), forecast (revised), or stretch (aspirational)
-4. **Granularity** — monthly (12 periods), quarterly (4), or annual (1)
-5. **Mode** — which of the four modes to use
+4. **Granularity** — monthly (12 periods), quarterly (4), or annual (1); required when the version is created
+5. **Currency** — normally the entity's functional currency (`get_entity("legal_entity", <id>)`); required when the version is created
+6. **Mode** — which of the four modes to use
+
+Nothing is written until the user has seen the preview and said yes (CP6). In
+preview-only use (the `/preview-budget` command) nothing is written at all.
 
 ## Mandatory Checkpoints
 
@@ -38,9 +42,9 @@ You MUST verify each checkpoint before proceeding. If a checkpoint fails, STOP a
 
 - **CP1**: Legal entity has an active chart of accounts (`query("account", filters={"legal_entity_id": <id>})` returns results)
 - **CP2**: Prior year data is available (for copy-forward and forecast modes)
-- **CP3**: All account numbers used in budget lines exist in `v_accounts_effective` for the entity
-- **CP4**: Budget amounts are reasonable — no single line exceeds 50% of total unless the user explicitly confirms
-- **CP5**: Revenue vs expense ratio passes sanity check — inform user if expenses exceed revenue by >20%
+- **CP3**: All account numbers used in budget lines are active, non-header accounts of the entity (the write refuses others; a dry run with `validate_only=True` checks every line first)
+- **CP4**: Budget amounts are reasonable: point out any single line that dominates the total and ask the user to confirm it
+- **CP5**: Revenue vs expense sanity check: tell the user when expenses exceed revenue, and by how much (what counts as acceptable is the user's call)
 - **CP6**: User has reviewed and confirmed the preview before submission
 - **CP7**: Submission via `bulk_upsert` or `create` succeeds
 
@@ -56,22 +60,31 @@ Fetch the entity's active accounts to know what to budget:
 accounts = query("account", filters={
     "legal_entity_id": <entity_id>,
     "is_active": true
-})
+}, limit=200, offset=0)   # repeat with offset += 200 until fewer rows come back
 ```
 
-Group accounts by type (revenue, expense, asset, liability) to build the budget structure.
+Read every page (a chart often has more than the default 50 accounts) and tell
+the user how many accounts you read. Group accounts by `account_type` (revenue,
+expense, asset, liability), never by account number prefix, and leave out header
+accounts.
 
 ### Step 2: Fetch Prior Year Actuals
 
-Get actual GL balances for the prior fiscal year as a baseline:
+Get the prior fiscal year's actual movements as a baseline (use the entity's
+fiscal year dates, not necessarily January to December):
 
 ```python
-# Trial balance as of prior year-end
+# start_date + end_date give each account's debit/credit movements for the year;
+# as_of_date alone would give balances at that date, which for revenue and
+# expense accounts is not the year's activity once the year has been closed.
 actuals = generate_report("trial_balance", {
     "legal_entity_id": <entity_id>,
-    "as_of_date": "2025-12-31"
+    "start_date": "2025-01-01",
+    "end_date": "2025-12-31"
 })
 ```
+
+Check the dates the report says it used before relying on the figures.
 
 Or for monthly detail:
 
@@ -173,8 +186,12 @@ submit("budget_line_dimension", "bulk_set", {
 
 ### Step 9: Next Steps
 
-Inform the user:
-1. Budget version is in **draft** status with XX lines
+Read the version back (`get_entity("budget_version", <id>)`) and its lines
+(`query("budget_line", filters={"budget_version_id": <id>})`, every page), then
+inform the user:
+1. The version's own `status` (a new version is **draft**; the `status: "approved"`
+   in the submit receipt describes the workflow request, not the budget) and the
+   number of lines and totals actually saved
 2. They can submit for approval: `submit("budget_workflow", "submit", {"budget_version_id": <id>})`
 3. After approval, it can be locked to prevent edits
 
@@ -360,12 +377,14 @@ employees = query("employee", filters={
 })
 ```
 
-Also fetch compensation records if available:
+Also fetch compensation records if available, and use only the ones in effect for each budget month (check effective dates and status; a future or ended record is not current pay):
 ```python
 compensation = query("employee_compensation", filters={
     "legal_entity_id": <entity_id>
 })
 ```
+
+Discover the organisation's dimension codes before tagging lines (`query("dimension_value", filters={"legal_entity_id": <entity_id>})`). An employee record ID is not a dimension value; use an "employee" dimension value only if one exists for the person, otherwise name the person in `memo`. The burden rates below are illustrations: confirm the country, year and the client's rates with the user and record them in `notes`.
 
 ### Step 2: Calculate Fully Loaded Cost
 
@@ -401,14 +420,14 @@ submit("budget_line", "bulk_upsert", {
             "account_number": "6000",
             "period_sequence": 1,
             "amount": 3500.00,
-            "dimensions": {"employee_id": "67", "department": "ENG"},
+            "dimensions": {"employee": "EMP-JSMITH", "department": "ENG"},
             "memo": "John Smith - Base salary"
         },
         {
             "account_number": "6010",
             "period_sequence": 1,
             "amount": 1155.00,
-            "dimensions": {"employee_id": "67", "department": "ENG"},
+            "dimensions": {"employee": "EMP-JSMITH", "department": "ENG"},
             "memo": "John Smith - Social tax (33%)"
         },
         // ... more lines per employee per period
@@ -505,10 +524,17 @@ Tell the user:
 
 ## Error Handling
 
-- **"Account XXXX not found"**: Check the chart of accounts. Use `query("account", query="XXXX")` to find the correct account.
-- **"Budget version is locked/archived"**: Cannot modify. Create a new forecast version instead.
-- **"Duplicate budget line"**: A line with the same account/period/dimension combination already exists. Use `bulk_upsert` to update it.
-- **"No prior year data"**: Build from scratch with manual amounts instead of growth-based.
-- **"Period sequence out of range"**: Must be 1-12 for monthly, 1-4 for quarterly, 1 for annual.
-- **"Currency mismatch"**: All lines must use the same currency as the budget version.
-- **"Version already exists"**: An active budget/forecast/stretch version already exists for this entity/year/scenario. Archive the old one first or create a different scenario.
+Every write is checked before anything is saved; a refusal lists every reason
+(`Line N: ...` for `bulk_upsert`) and nothing is written, so fix and resend:
+
+- **"account ... is not an active posting account"**: check the chart of accounts (`query("account", query="XXXX")`); header and inactive accounts cannot carry budget amounts.
+- **"Cannot modify budget in locked/archived/approved status"**: create a new forecast version instead.
+- **"repeats the account, period and scope of line N"** or **"budget line N already has this account, period and scope"**: one line per account, period and scope; use `bulk_upsert` (it updates an existing line) or `budget_line.update`.
+- **"period_sequence N is not a period of this ... version"**: 1 for annual, 1-4 quarterly, 1-12 monthly, or the version's custom period numbers.
+- **"currency ... differs from the version currency"**: every line uses the version's currency.
+- **"Dimension ... is unknown, inactive, ineligible"**: use dimension codes discovered with `query("dimension_value", ...)`.
+- **"customer_id / vendor_id / project_id ... is not a ... of legal entity"**: the party or project must exist for the version's entity.
+- **"Extra inputs are not permitted"**: the field is not part of the operation (for example `copy_from_version_id`); see `references/submission-format.md`.
+- **"No prior year data"**: build from scratch with manual amounts instead of growth-based.
+- **"Version already exists"**: an active budget/forecast/stretch version already exists for this entity/year/scenario. Archive the old one first or create a different scenario.
+- **A submission is pending approval or its outcome is uncertain**: do not resend it under a new idempotency key; check it with `get_submissions` and wait or resume with the same key.

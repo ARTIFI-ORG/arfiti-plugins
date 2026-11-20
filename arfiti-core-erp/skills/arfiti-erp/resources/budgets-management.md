@@ -573,7 +573,11 @@ for bulk):
   dimension value);
 - no two lines in one request share account, period and scope; `create`
   refuses a second line for a key the version already has;
-- dimensions can be set only on a draft or submitted version.
+- dimensions can be set only on a draft or submitted version;
+- a customer, vendor or project on the line belongs to the version's entity.
+
+`budget_version.update` with `notes: null` clears the notes. Budget reads follow
+the caller's entity scope (versions, lines, periods and line dimensions).
 
 `update` checks only the fields it changes. `budget_version.update` refuses a
 `version_type` that strands existing lines and a `currency_code` change while

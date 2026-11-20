@@ -5,7 +5,8 @@ Use these methods when creating a mid-year forecast (Mode 3). The goal is to ble
 ## Setup
 
 Before applying any method, gather:
-- **YTD Actuals**: Actual GL amounts for completed months (from `generate_report`)
+- **YTD Actuals**: actual movements for each completed month, in the entity's functional currency. Read them per month (`query("transaction_line", ..., date_filters={"transaction_date": {...}}, group_by=["account_number"], aggregates={"debit": "sum", "credit": "sum"})`, one call per month, paging until complete) or as one period with `generate_report("trial_balance", {"legal_entity_id": ..., "start_date": ..., "end_date": ...})`. Check the dates the report says it used, and stop at the last closed month: a month still open is not an actual.
+- **Fiscal months**: count months from the entity's fiscal year start (`query("fiscal_period", ...)`), not from January.
 - **Original Budget**: Approved budget line amounts for all 12 months
 - **Prior Year Actuals**: Same period last year (optional, for seasonal methods)
 - **Current Month**: The dividing line between actuals and projections
@@ -42,9 +43,10 @@ Fit a line to the YTD monthly data points and extrapolate forward.
 Month:   Jan    Feb    Mar    Apr    May    Jun
 Actual:  42K    44K    45K    47K    48K    49K
 
-Trend line: y = 41,333 + 1,400 x month_number
-July forecast: 41,333 + 1,400 x 7 = 51,133
-August forecast: 41,333 + 1,400 x 8 = 52,533
+Least squares: slope = 1,400, intercept = 40,933.33
+Trend line: y = 40,933.33 + 1,400 x month_number
+July forecast: 40,933.33 + 1,400 x 7 = 50,733.33
+August forecast: 40,933.33 + 1,400 x 8 = 52,133.33
 ... and so on
 ```
 
@@ -64,19 +66,21 @@ Apply the prior year's seasonal pattern to the current year's run rate.
 
 **Example** (using prior year seasonal pattern):
 ```
-Prior year (2025):
-  Jan: 40K (7%), Feb: 38K (7%), Mar: 42K (7%), Apr: 45K (8%), May: 48K (8%), Jun: 50K (9%)
-  Jul: 52K (9%), Aug: 50K (9%), Sep: 55K (10%), Oct: 58K (10%), Nov: 60K (10%), Dec: 62K (11%)
-  Total: 600K
+Prior year (2025), weight = month / 600K:
+  Jan: 40K (6.67%), Feb: 38K (6.33%), Mar: 42K (7.00%), Apr: 45K (7.50%), May: 48K (8.00%), Jun: 50K (8.33%)
+  Jul: 52K (8.67%), Aug: 50K (8.33%), Sep: 55K (9.17%), Oct: 58K (9.67%), Nov: 60K (10.00%), Dec: 62K (10.33%)
+  Total: 600K (weights add up to 100%)
 
 2026 YTD actual (Jan-Jun): 285K
-2025 H1 weight: 7+7+7+8+8+9 = 46%
-Implied annual run rate: 285K / 0.46 = 619.6K
+2025 H1 weight: 263K / 600K = 43.83%
+Implied annual run rate: 285K / 0.43833 = 650.19K
 
-July forecast: 619.6K x 9% = 55.8K
-August forecast: 619.6K x 9% = 55.8K
-... apply each month's weight
+July forecast: 650.19K x 52/600 = 56.35K
+August forecast: 650.19K x 50/600 = 54.18K
+... apply each month's weight; Jul-Dec together = 365.19K, full year 650.19K
 ```
+
+Calculate weights from the amounts at full precision and round only the final amounts; never type rounded percentages back into the calculation (rounded weights here would add up to 105%).
 
 **Best for**: Seasonal businesses (retail, tourism, agriculture, B2B with fiscal year-end spikes).
 **Weakness**: Assumes the seasonal pattern is stable year-over-year.
@@ -116,11 +120,11 @@ Adjust the remaining budget months by the YTD variance trend.
 **Example**:
 ```
 YTD budget: 270K, YTD actual: 285K
-Variance: +5.6%
+Variance: 15K / 270K = +5.556% (shown rounded as 5.6%)
 
 Remaining budget months (Jul-Dec): 270K total
-Adjusted forecast: 270K x 1.056 = 285,120
-Full-year forecast: 285K + 285.1K = 570.1K
+Adjusted forecast: 270K x (285 / 270) = 285,000
+Full-year forecast: 285K + 285K = 570K
 ```
 
 **Variants**:
@@ -130,6 +134,15 @@ Full-year forecast: 285K + 285.1K = 570.1K
 
 **Best for**: When the budget was reasonably accurate but actual performance is slightly above/below.
 **Weakness**: Assumes the variance trend continues unchanged.
+
+---
+
+## Edge Cases (every method)
+
+- **Precision**: calculate at full precision, round each month to the currency's minor unit at the end, and put any rounding difference in the last month so the months add up to the total you showed.
+- **Too little history**: fewer than 3 closed months for a trend or moving average, or no prior-year data for seasonal weights: say so and offer Run Rate or a manual override instead of guessing.
+- **Zero or negative bases**: a weight or variance with a zero or negative denominator (no prior-year amount, a reversal month) is undefined; leave that account to the user rather than dividing.
+- **Sign**: work in the report's convention (positive amounts for revenue and expenses, see variance-interpretation.md), not the GL's debit/credit sign.
 
 ---
 

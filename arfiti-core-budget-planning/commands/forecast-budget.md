@@ -9,7 +9,7 @@ Help me create a forecast revision:
 
 1. Ask which legal entity and fiscal year
 2. Find the approved/locked budget for that year
-3. Fetch YTD actuals from GL
+3. Fetch YTD actuals for closed months only (period movements, not balances), checking the dates the report used
 4. Show me YTD actual vs budget comparison by account
 5. Ask which forecast method to use (run rate, trend, seasonal, manual, budget-to-actual blend)
 6. Calculate projected amounts for remaining months

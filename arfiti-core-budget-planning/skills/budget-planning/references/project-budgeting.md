@@ -133,12 +133,12 @@ For detailed resource planning, combine `project_id` and employee dimensions:
 ```python
 # John Smith working on Website Redesign (60% allocation)
 {"account_number": "4100", "period_sequence": 1, "amount": 12000.00,
- "project_id": 45, "dimensions": {"employee_id": "67"},
+ "project_id": 45, "dimensions": {"employee": "EMP-JSMITH"},
  "memo": "John Smith - Website Redesign billable (60%)"}
 
 # John Smith working on Mobile App (40% allocation)
 {"account_number": "4100", "period_sequence": 1, "amount": 8100.00,
- "project_id": 52, "dimensions": {"employee_id": "67"},
+ "project_id": 52, "dimensions": {"employee": "EMP-JSMITH"},
  "memo": "John Smith - Mobile App billable (40%)"}
 ```
 
@@ -151,26 +151,24 @@ This enables:
 
 ## Variance Analysis for Projects
 
-After budget is approved, track project performance via `v_budget_vs_actual`:
+After the budget is approved, read project performance from the exact budget vs
+actual report. Its rows carry each budget line's stored scope (`project_id`,
+`customer_id`, `vendor_id`, dimensions), so nothing has to be joined back:
 
-```sql
-SELECT
-    p.project_number,
-    p.project_name,
-    bva.account_number,
-    bva.account_name,
-    SUM(bva.budget_amount) AS budget,
-    SUM(bva.actual_amount) AS actual,
-    SUM(bva.variance_amount) AS variance
-FROM company_<org_id>.v_budget_vs_actual bva
-JOIN company_<org_id>.budget_lines bl ON bl.budget_version_id = bva.budget_version_id
-    AND bl.account_number = bva.account_number
-    AND bl.period_sequence = bva.period_sequence
-JOIN company_<org_id>.projects p ON bl.project_id = p.id
-WHERE bva.budget_version_id = 8
-GROUP BY p.project_number, p.project_name, bva.account_number, bva.account_name
-ORDER BY p.project_number, bva.account_number;
+```python
+report = generate_report("budget_actual", {
+    "legal_entity_id": <entity_id>,
+    "budget_version_id": <id>,
+    "report_contract": 1
+})
+# Group report["report_v1"]["rows"] by project_id (and account), using the
+# report's own budget_amount / actual_amount / variance_amount and verdicts.
 ```
+
+Do not join budget lines to report rows by account and period: two projects
+sharing an account and period would be counted twice or swapped. Respect the
+report's scope verdicts (overlapping scopes are not additive), page through
+`next_cursor` until every row is read, and say which periods are complete.
 
 ---
 

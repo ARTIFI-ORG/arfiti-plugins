@@ -2,27 +2,30 @@
 
 ## Favorable vs Unfavorable Logic
 
-Whether a variance is "good" or "bad" depends on the account type:
+Whether a variance is "good" or "bad" depends on the account's **type**
+(`account_type` from the chart of accounts, never the account number's first
+digit, which differs between charts):
 
-### Revenue Accounts (4xxx)
-- Actual > Budget = **Favorable** (earned more than expected)
-- Actual < Budget = **Unfavorable** (earned less than expected)
+| `account_type` | Favorable when | Unfavorable when |
+|----------------|----------------|------------------|
+| revenue / income | Actual > Budget | Actual < Budget |
+| expense / cogs | Actual < Budget | Actual > Budget |
+| asset | Actual > Budget | Actual < Budget |
+| liability | Actual < Budget | Actual > Budget |
 
-### Expense Accounts (5xxx, 6xxx)
-- Actual < Budget = **Favorable** (spent less than expected)
-- Actual > Budget = **Unfavorable** (spent more than expected)
-
-### Asset Accounts (1xxx)
-- Actual > Budget = **Favorable** (more assets)
-- Actual < Budget = **Unfavorable** (fewer assets)
-
-### Liability Accounts (2xxx)
-- Actual < Budget = **Favorable** (less debt)
-- Actual > Budget = **Unfavorable** (more debt)
+A contra account (for example sales returns under revenue, or accumulated
+depreciation under assets) follows its `account_subtype`: it reduces its parent,
+so its favorable direction is the parent's reversed.
 
 **Formula**: `variance_amount = actual - budget`
 - Positive variance on revenue/asset = favorable
 - Negative variance on expense/liability = favorable
+
+**Sign convention**: budget amounts are entered as positive numbers for revenue
+and for expenses alike, and the budget vs actual report shows actuals the same
+way (revenue 200 and expenses 120 give a net of 80). Do not enter revenue or other
+credit-normal amounts as negative numbers. The report's own `verdict` per row
+already applies this logic; use it rather than recomputing.
 
 ---
 
@@ -31,6 +34,10 @@ Whether a variance is "good" or "bad" depends on the account type:
 Not every variance deserves investigation. Focus on material items:
 
 ### Suggested Thresholds
+
+These are examples to agree with the user, not rules: materiality is the client's or
+the accountant's choice, in the entity's own currency and scale. Ask which
+thresholds to use and say which you applied.
 
 | Criteria | Threshold | Action |
 |----------|-----------|--------|
@@ -135,29 +142,43 @@ generate_report("variance_summary", {
 
 ### Level 2: Period Trend
 "Is this variance growing, shrinking, or one-time?"
-Look at the variance by period — is it consistent across months or concentrated?
+```python
+generate_report("variance_by_period", {"budget_version_id": <id>})
+```
+Look at whether the variance is consistent across periods or concentrated.
 
-### Level 3: Dimension Breakdown
+### Level 3: Dimension, Project or Party Breakdown
 "Which department/project/region is driving this?"
 ```python
-# Filter variance by dimension
-query("budget_line", filters={
+# The exact budget vs actual report: every row carries its stored scope
+# (project_id, customer_id, vendor_id, dimension_combo_json).
+generate_report("budget_actual", {
+    "legal_entity_id": <entity_id>,
     "budget_version_id": <id>,
-    "dimension_type_code": "DEPARTMENT"
+    "report_contract": 1,
+    # optional: only lines in one dimension selection, by master type/value IDs
+    "dimension_filter": {"conditions": [{"dimension_type_id": <type_id>,
+                                         "operator": "is_any_of", "value_ids": [<value_id>]}],
+                         "connectors": []}
 })
 ```
+Group the rows by their scope fields. Respect the report's verdicts: lines that
+cover more than the selection are "unallocated" and overlapping scopes are not
+additive, so do not add them up into a dimension total the report did not give.
+Budget lines cannot be filtered by dimension with `query("budget_line")`.
 
 ### Level 4: Transaction Detail
 "What specific transactions caused this?"
 ```python
-# Look at actual GL transactions for the account/period
-query("transaction", filters={
+# Every posting to the account in the period, with opening and closing balance
+generate_report("account_activity", {
     "legal_entity_id": <entity_id>,
     "account_number": "6500",
-    "date_from": "2026-03-01",
-    "date_to": "2026-03-31"
+    "start_date": "2026-03-01",
+    "end_date": "2026-03-31"
 })
 ```
+Or the lines themselves: `query("transaction_line", filters={"legal_entity_id": <entity_id>, "account_number": "6500"}, date_filters={"transaction_date": {"from": "2026-03-01", "to": "2026-03-31"}})`, paging until complete.
 
 ---
 

@@ -94,16 +94,16 @@ result = submit("budget_line", "bulk_upsert", {
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `account_number` | Yes | GL account number (must exist in v_accounts_effective) |
-| `period_sequence` | Yes | Period number: 1-12 (monthly), 1-4 (quarterly), 1 (annual) |
-| `amount` | Yes | Budget amount (positive for debit-normal, negative for credit-normal) |
+| `account_number` | Yes | An active, non-header account of the version's entity |
+| `period_sequence` | Yes | Period number: 1-12 (monthly), 1-4 (quarterly), 1 (annual), or the version's custom period numbers |
+| `amount` | Yes | Finite budget amount, entered positive for revenue and for expenses alike (the report's convention: revenue 200, expenses 120, net 80); never negative for credit-normal accounts |
 | `description` | No | Human-readable line description |
 | `memo` | No | Internal notes (calculation basis, assumptions) |
 | `source` | No | `manual` (default), `formula`, `import`, `template`, `copy` |
 | `currency_code` | No | Defaults to version currency |
-| `project_id` | No | First-class project reference (direct column) |
-| `customer_id` | No | First-class customer reference |
-| `vendor_id` | No | First-class vendor reference |
+| `project_id` | No | First-class project reference; must be a project of the version's entity |
+| `customer_id` | No | First-class customer reference; must be a customer of the version's entity |
+| `vendor_id` | No | First-class vendor reference; must be a vendor of the version's entity |
 | `dimensions` | No | Flexible dimensions as JSON: `{"department": "SALES", "cost_center": "CC001"}` |
 
 ### Matching Logic (Upsert)
@@ -198,14 +198,20 @@ draft -> submitted -> approved -> locked -> archived
 
 ## Validation Rules
 
-1. **Version editable**: Lines can only be created/updated when version status is `draft` or `submitted`
-2. **Account exists**: All `account_number` values must exist in `v_accounts_effective` for the entity
-3. **Account active**: Accounts must not be deactivated
-4. **Period range**: `period_sequence` must be valid for the version's granularity
-5. **No duplicates**: Same account + period + dimension combination cannot appear twice
-6. **Currency match**: Line currency must match version currency
-7. **Dimensions valid**: All dimension types/values must exist and be active for the entity
-8. **Unique version**: Only one active version per entity/year/scenario
+The server checks every line before anything is saved, in a dry run
+(`validate_only=True`) and in the write alike; a refused request saves nothing
+and lists every reason.
+
+1. **Version editable**: `bulk_upsert` and dimensions need a `draft` or `submitted` version; single `create`/`update` refuse `locked` and `archived` ones
+2. **Account**: an active, non-header account of the version's entity
+3. **Amount**: a finite number (`"NaN"`, `"Infinity"` and text are refused)
+4. **Period**: valid for the version's granularity (or one of its custom period numbers)
+5. **No duplicates**: the same account + period + scope (project, customer, vendor, dimensions) cannot appear twice in a request, and `create` refuses one the version already has
+6. **Currency match**: a line currency, when given, equals the version currency
+7. **Dimensions valid**: dimension types and values must be eligible for the entity
+8. **Parties**: a customer, vendor or project must belong to the version's entity
+9. **Unique version**: only one active version per entity/year/scenario
+10. **Declared fields only**: a field the operation does not declare is refused, never ignored
 
 ---
 
@@ -220,7 +226,7 @@ Build all lines in a single `bulk_upsert` call. A typical operating budget might
 3. `budget_version.create` (with `version_type` and `currency_code`), then one `budget_line.bulk_upsert` with every adjusted line, keeping each line's project, party and dimensions
 
 ### Employee Budget with Dimensions
-Each employee gets separate lines tagged with `dimensions: {"employee_id": "67", "department": "ENG"}`. Multiple cost categories per employee (salary, taxes, benefits).
+Each employee gets separate lines tagged with the organisation's own dimension codes, for example `dimensions: {"employee": "EMP-JSMITH", "department": "ENG"}`, only where those dimension types and values exist and are eligible for the entity (discover them with `query("dimension_value", ...)`). An employee or payroll record ID is not a dimension value: the write refuses it. Without an employee dimension, name the person in `memo`. Multiple cost categories per employee (salary, taxes, benefits).
 
 ### Project Budget with First-Class IDs
 Use `project_id` field (not dimensions) for project budgets — it's a first-class column with FK constraint and fast querying.
