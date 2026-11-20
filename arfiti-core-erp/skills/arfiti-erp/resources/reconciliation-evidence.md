@@ -516,6 +516,72 @@ settle again), date the undo on `settlement_effective_date`, or on the date a
 refusal names when an earlier change on the documents is later. There is no
 default date; `undo_effective_date` stays required.
 
+### Re-dating a card undo that was recorded on the wrong date (AR-1388, migration 916)
+
+An undo already recorded keeps its date in three immutable places: the reversal
+of the CARD_EXPENSE_RECLASS journal, the `card_purchase_undo_receipts` row and
+the unapply row in the application history. When that date is later than it
+should be (before AR-1352 the bound could force an undo past the settlement's
+month), the settlement sits in one period and its undo in the next, in the
+ledger and in the as-of open items. Do not reverse the undo's reversal by hand
+with `transaction.reverse`: the journal stays marked reversed by the first
+reversal and cannot be reversed again on another date.
+
+Move the undo with the same `reconciliation.unmatch` workflow:
+`scope: "ap"`, `legal_entity_id`, `source_transaction_id` (the card charge),
+`redate_card_undo_receipt_id` (the `card_purchase_undo_receipt_id` the original
+unmatch returned), `undo_effective_date` (the new, earlier date) and a `reason`.
+Leave `reconciliation_run_id` and `undo_bundle_receipt_id` out. Nothing is
+unapplied; the bill and the charge keep the amounts the undo restored.
+
+What it writes, in one transaction:
+
+- ledger: the reversal that carries the undo is reversed on its own date, and
+  that reversal is reversed on the new date. Each step is an ordinary reversal
+  pair, so the journal and the undo now cancel on the new date and the old date
+  nets to zero. No reversal link is cleared; the `reversal_pairs` close check
+  is unaffected;
+- application history: one unapply row per application on the new date. As-of
+  reports read the application as undone from that date on. The earlier row
+  stays;
+- evidence: an immutable row in `card_undo_redate_receipts` bound to the
+  original undo receipt, checked by the database at insert and at COMMIT. The
+  original receipt is not changed and still shows the first date.
+
+Refused without effects, each naming its reason:
+
+- a date that is not earlier than the undo's current date (moving an undo
+  later is a different correction and needs a reviewed recovery);
+- a date before the charge or the bill, or before the settlement took effect;
+- another application change on the charge or the bill after the new date and
+  before the undo. A change recorded on the undo's own date after the undo
+  keeps its order and does not refuse. The refusal names the date to use
+  instead;
+- no open, unlocked fiscal period on the new date or on the undo's current
+  date (both get a posting), or a closed or locked period anywhere between
+  them (its as-of balances would change): reopen it first;
+- an undo owned by a bundle receipt (`kind = 'bundle'`): reviewed recovery;
+- the undo's reversal was reversed once, so the settlement journal is live in
+  the ledger again: reverse that reversal first, then re-date. A reversal that
+  was reversed and reversed again on the undo's date is handled; the re-date
+  starts from the last reversal.
+
+The same request again returns the same `card_undo_redate_receipt_id` with
+`replayed: true`. A re-dated undo can be re-dated again, earlier still. The
+result lists, per application, the journal, the reversal that was live, its
+annulment and the new inverse. There is no default date.
+
+Two things to know before relying on it:
+
+- the new inverse is a reversal dated earlier than the entry it reverses (the
+  annulment on the old date). The ledger guards, the `reversal_pairs` close
+  check and the as-of reports accept that; the manual-journal reversal rule
+  (a reversal on or after its original) is not applied to these entries;
+- the first unapply row stays in the history on the old date and still bounds
+  later changes: a new application or undo on the same charge or bill cannot be
+  dated before the old undo date. Re-dating corrects the periods the undo is
+  reported in; it does not reopen the dates in between for new settlements.
+
 ### Owned residual writeoff and dated undo
 
 The locally verified owned residual protocol covers same-currency, dated cash
