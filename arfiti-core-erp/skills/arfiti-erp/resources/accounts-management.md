@@ -1256,7 +1256,8 @@ Used-account header/activity/manual-entry/reconciliation flags, currency, global
 organization and identity remain protected. Entity overrides cannot change effective
 activity/manual-entry scope. A usage marker cannot be cleared, and deletion remains refused
 after references disappear. The operator correction path below applies to other settings
-only with no retained financial evidence. This does not activate AP/AR aging membership.
+only with no retained financial evidence, except clearing a wrong header flag, which it
+allows on a used account. This does not activate AP/AR aging membership.
 
 ### Reviewed configuration corrections (operator maintenance)
 
@@ -1268,7 +1269,9 @@ The tool records the authenticated database actor; its review reference is suppl
 operator, not independently authenticated against a workflow system.
 
 This path is limited to master configuration with no retained GL/document evidence or
-other blocking account references. Category GL fields, item expense fields, vendor/customer
+other blocking account references, with one exception: clearing a wrong header flag
+(`is_header: false` alone) on an account that has history, recorded as
+`header_cleared_history_retained`. Category GL fields, item expense fields, vendor/customer
 defaults and allocation source/target account IDs are included even when their column names
 do not contain `account_number`. Physical bank numbers are excluded. Unknown account-bearing
 columns or unsupported types require operator review of the inventory, never automatic
