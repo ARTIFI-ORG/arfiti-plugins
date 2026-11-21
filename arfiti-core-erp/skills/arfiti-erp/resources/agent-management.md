@@ -610,14 +610,15 @@ submit(object_type="agent_request", operation="create", data=JSON.stringify({
 
 ### Answering a review task as a person
 
-Which operation answers a task depends on who raised it. Read it first with
-`get_entity("agent_request", id=<request_id>)` and decide from what the read
-returns (it does not return the owning agent):
+Which operation answers a task depends on who owns it. Read it first with
+`get_entity("agent_request", id=<request_id>)` (or find it with
+`query("agent_request", …)`); both return `owner_agent_type` and `version`:
 
-- `request_data.action` is `"agent_review"` (its `response_contract.contract_id`
-  is `"agent_review.v1"`): a review task a managed agent or another MCP caller
-  raised. No agent owns it. Answer with `agent_request.update`; `respond`
-  refuses it:
+- `owner_agent_type` is empty and `request_data.action` is `"agent_review"`
+  (its `response_contract.contract_id` is `"agent_review.v1"`; decide from
+  those alone when you hold an older read without `owner_agent_type`): a
+  review task a managed agent or another MCP caller raised. No agent owns it.
+  Answer with `agent_request.update`; `respond` refuses it:
 
 ```
 submit(object_type="agent_request", operation="update", data=JSON.stringify({
@@ -637,11 +638,14 @@ submit(object_type="agent_request", operation="update", data=JSON.stringify({
   To decline the task instead, send `status: "cancelled"` without
   `response_data`. This is the same call the task page makes. The agent that
   asked reads `response_data.selected_option` and `response_data.notes`.
-- Any other task with a response contract (a built-in agent's task, such as
-  a Bill review with `request_data.action` `"review_bill"`): answer with
-  `agent_request.respond`, as described under Request Flow. If `respond`
-  refuses with a sentence naming `update`, the task is a review task: use the
-  call above.
+- `owner_agent_type` is set (a built-in agent's task, such as a Bill review
+  with `owner_agent_type` `"bill_processor"` and `request_data.action`
+  `"review_bill"`): answer with `agent_request.respond`, as described under
+  Request Flow: answer the task's current question (its newest request a
+  person answers, which may be a follow-up question in the same task) with
+  that request's `id` and `version`. If
+  `respond` refuses with a sentence naming `update`, the task is a review task:
+  use the call above.
 - Only a person answers a review task. An agent sending a status or
   `response_data` is refused, the agent that raised it included; it may only
   cancel a task it raised itself.
@@ -650,8 +654,45 @@ submit(object_type="agent_request", operation="update", data=JSON.stringify({
 
 A Bill review answer belongs to the existing task. Read the current request and
 bill before responding; use its offered action and response contract. Human
-answers to a task with an owning agent use `agent_request.respond` with `expected_version`, an idempotency key
-and, for Bill commands, `TaskActionV1` bound to the reviewed draft revision.
+answers to a task with an owning agent (`owner_agent_type` set on the read) use
+`agent_request.respond`, addressed to the task's current question. An owning
+agent can ask a follow-up question inside the same task: a new request with the
+same `thread_id` and a higher `clarification_round`. `respond` takes only the
+newest request a person answers and refuses any other id with "A newer question
+exists in this task; reload before responding". To find it:
+
+1. `query("agent_request", filters={"thread_id": "<task id>"})` lists every
+   request in the task, the task's first request included (its `thread_id` is
+   its own `id`), newest first.
+2. Keep the rows whose `request_type` is one a person answers: `approval`,
+   `verification`, `confirmation`, `bank_configuration`, `receipt`,
+   `receipt_waiver` or `document`. Other types in the thread (for example
+   `master_data` or `configuration`) are the agent's own work, not a question
+   to you.
+3. If more than one remains, read each with `get_entity("agent_request", id=…)`
+   (the list does not return `clarification_round`) and take the one with the
+   highest `clarification_round`, the newest on a tie. Answer that request with
+   its own `id`, `version` and `response_contract`.
+
+```
+submit(object_type="agent_request", operation="respond", data=JSON.stringify({
+  request_id: "<id of the task's current question>",
+  expected_version: <the version field of that request, as just read>,
+  idempotency_key: "<one key per answer, reused unchanged on a retry>",
+  resolution_id: "<option id>",   // only when the contract offers options
+  notes: "<the answer in your own words>"
+}))
+```
+
+For Bill commands send a `TaskActionV1` bound to the reviewed draft revision
+instead of `resolution_id`. Keep the same `idempotency_key` when you retry the
+same answer: a retry with the same key and the same answer (same request,
+`expected_version`, option, fields and notes, from the same person) returns the first attempt instead
+of answering twice; the same key with a different answer is refused.
+A refusal saying the request "has moved on" means something changed after your
+read: read the task again and answer against its new `version`. "A newer question
+exists in this task" means you answered an older request: find the current
+question as above and answer it.
 Comments and read-only questions do not authorize changes. Do not mark a review
 completed through `agent_request.update` or manually post a second invoice to
 bypass its owner.
