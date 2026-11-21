@@ -111,7 +111,8 @@ drop the original because it was later reversed.
    It sums `v_tax_lines`: signed bases and VAT per tax name and rate, by direction
    (`output_vat_details`, `input_vat_details`), credit notes negative, tax-inclusive
    lines net of tax, reversals signed, ledger-effective statuses only. A reverse-charge
-   purchase appears on both sides (self-assessed output and recoverable input). Map each
+   purchase appears on both sides (self-assessed output and input); the input side
+   counts as deductible only when the tax code is recoverable (`recoverable_vat`). Map each
    row to its KMD line with the Step 1 classification. Where two tax codes share a tax
    name but feed different KMD lines, split that row with the document lines below.
    `registration_exceptions` lists deductible documents dated outside the entity's VAT

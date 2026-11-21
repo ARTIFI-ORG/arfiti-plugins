@@ -1035,6 +1035,25 @@ Self-assessed reverse-charge VAT posts DR the code's purchase account (fallback 
 
 Onboarding seeds `sales_account_number` on every VAT code (reverse-charge codes too), so an onboarded code usually resolves at step 1 when the seeded account is a `vat_payable` account; a missing, header or non-`vat_payable` seeded account (e.g. `sales_tax_payable` or untyped) is refused — ask the customer which `vat_payable` account to name. Several postable `vat_payable` accounts and no `sales_account_number` → the posting is **refused** ("ambiguous"); it no longer picks the lowest number. Fix: `submit(object_type="tax_code", operation="update", data=JSON.stringify({tax_code_id: …, sales_account_number: "<output account>"}))`, after the customer confirms which account their chart uses. Never guess the account from its number.
 
+### Non-recoverable reverse charge
+
+A reverse-charge code with `is_recoverable: false` is for a purchase whose self-assessed VAT the company owes but may not deduct. Posting (AP invoice, AP credit memo, both `transaction.update` writers):
+
+```
+DR  Cost (the line's own account)   net + VAT
+CR  Accounts Payable                net        // supplier is owed the net only
+CR  Reverse-charge output account   VAT        // same resolution as above
+```
+
+- `amount` and `amount_due` stay at the net amount, as for recoverable reverse charge. No input-tax account is used.
+- The output account is resolved exactly as above; an ambiguous or unusable account refuses the document and nothing is written.
+- An entity that is not VAT registered on the document date cannot use a reverse-charge code: AP posting and `transaction.update` refuse such a line.
+- A discount line or a credit memo reverses cost and output tax together. A code calculated by components posts one output row per non-zero component.
+- `vat_report` shows the output VAT and zero recoverable input for the line; `v_tax_lines` carries an `output` row and an `input` row with `is_recoverable = false`.
+- Journal-entry posting does not post a reverse-charge output side (recoverable or not); book reverse-charge purchases as AP invoices.
+- Partial deduction (pro rata) is not modelled. Whether a purchase is deductible is the company's or its accountant's choice of tax code: ask, never assume.
+- Lines posted before AR-1413 was deployed put the VAT on the supplier payable and posted no output VAT. They are not rewritten, but a line edit through `transaction.update` (even a patch of one line's description) re-posts an unpaid, uncredited one in the new shape: `amount` and `amount_due` drop by the VAT and the output VAT row is added. Paid or credited bills refuse line edits.
+
 ## Which tax code a line gets
 
 Posting uses the tax code each line names (`tax_code_id` or `tax_code`),

@@ -1111,6 +1111,8 @@ Tax posting adapts automatically based on whether the entity is VAT-registered. 
 
 **Reverse charge tax codes**: Blocked entirely for non-VAT entities (validation error). Reverse charge is a VAT mechanism that requires VAT registration.
 
+**Reverse charge on a VAT-registered entity** (AP): the payable stays at the net amount. A recoverable code posts DR input VAT / CR reverse-charge output VAT. A code with `is_recoverable: false` posts DR cost (net + VAT) / CR AP (net) / CR reverse-charge output VAT (AR-1413); credit memos and `transaction.update` mirror it. See [Tax Management](tax-management.md) (Non-recoverable reverse charge).
+
 **Same tax codes work for both** — the system auto-adjusts posting behavior. No need for separate "non-VAT" tax codes.
 
 ---
