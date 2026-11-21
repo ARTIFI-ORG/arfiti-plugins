@@ -286,7 +286,10 @@ submit(object_type="account", operation="update", data=JSON.stringify({
 **Non-Updatable Fields**:
 - `account_type` (cannot change after creation)
 - `normal_balance` (cannot change after creation)
-- `parent_account_number`, `is_header` (not part of `account.update`)
+- `parent_account_number` (not part of `account.update`)
+- `is_header`: a value different from the stored one is **refused** by `account.update` with a message (it used to be accepted and silently ignored); echoing the current value is harmless. Header status changes only through the reviewed account configuration transition, an operator procedure: ask the administrator. To stop postings to an account, set `is_active: false`.
+
+**Postable accounts**: journal entries, bank entries (including the bank leg generated from `bank_account_id`), expense reports, AP/AR invoice tax accounts, the reverse-charge output account and `transaction.update` refuse an account that is inactive or a header in the entity; payments and bank transfers check theirs before submission. Choose leaf accounts; a header is never a fallback.
 - `is_global` (cannot change after creation)
 
 **Response**:

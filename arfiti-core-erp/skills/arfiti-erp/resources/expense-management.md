@@ -255,6 +255,7 @@ submit(object_type="expense_report", operation="submit", data=JSON.stringify({"e
      2. `item_id` -> `v_items_effective.default_expense_account`
      3. Posting profile for `EXPENSE_REPORT` -> `debit_account_id`
      4. If none resolve -> `ValueError` (line rejected)
+   - Whichever tier supplies it, the account (and the employee payable account) must be active and not a header, or the report is refused and nothing posts
    - Posts via `ExpenseReportExecutor` (transaction type: `EXPENSE_REPORT`)
    - DR Expense accounts per line / CR Employee Payable (2170)
    - Updates status to `posted`

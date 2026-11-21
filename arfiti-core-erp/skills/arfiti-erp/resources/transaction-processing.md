@@ -722,6 +722,14 @@ submit(object_type="transaction", operation="update", data=JSON.stringify({
 - If changing `transaction_date`, the new period must also be open
 - **AP/AR invoices with payments**: Line edits are blocked if the invoice has partial/full payments applied — only header fields can be updated
 - **AP/AR payments**: Line/amount edits are blocked if the payment has been applied to invoices
+- **Paid/reconciled documents**: refused; the error names the exact `reconciliation.unmatch` payload per linked payment (`scope`, `legal_entity_id`, payment as `source_transaction_id`, `reconciliation_run_id` when single; `undo_effective_date` for an explicit-date application). Do not undo a settlement only to make an edit possible — ask the user first
+- **Postable accounts**: every line account and every account the update resolves itself (tax, reverse-charge output, AR/AP control) must be active and not a header; otherwise nothing changes
+
+### Line fields that survive replacement
+
+- `item_id` / `master_item_id` are accepted on update lines and stored on the replacement line. A patch line (with `id`) that omits them keeps the existing item.
+- Tax on a journal-style replacement (debit/credit lines) routes by the line's account type: expense/cogs → the code's `purchase_account_number`, revenue → `sales_account_number`, otherwise `default_tax_account_number`. A missing/inactive/header tax account refuses the update; tax is never dropped.
+- Read the transaction back after an update to confirm what was stored.
 
 ### Success Response
 

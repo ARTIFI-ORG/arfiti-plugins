@@ -393,7 +393,7 @@ submit(object_type="item", operation="create", data=JSON.stringify({
 
 ## Updating an Item
 
-Use the `item.update` workflow:
+Use the `item.update` workflow. The result's `updated_master_fields` lists only the fields whose stored value actually changed; a field resent with its current value is not listed. Read the item back to confirm.
 
 **Update Master Item:**
 

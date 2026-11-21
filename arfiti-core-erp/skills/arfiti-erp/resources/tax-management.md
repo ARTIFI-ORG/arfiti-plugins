@@ -1026,6 +1026,15 @@ tax rows need a separately reviewed historical repair. Do not recommend
 reject reverse-charge shapes or retranslate amounts, and reversal copies the
 original amounts with debit/credit sides swapped.
 
+### Reverse-charge output account
+
+Self-assessed reverse-charge VAT posts DR the code's purchase account (fallback `default_tax_account_number`) and CR the output account, resolved in this order (AP invoice posting and `transaction.update`):
+
+1. The code's `sales_account_number` as the entity sees it (entity override wins). On a reverse-charge code this column names the output side only (reverse-charge codes are refused on sales). It must be active, not a header and have `account_subtype` `vat_payable` (an input-tax, revenue, expense or untyped account is refused), or the posting is refused.
+2. Otherwise the entity's single active, non-header `vat_payable` account.
+
+Onboarding seeds `sales_account_number` on every VAT code (reverse-charge codes too), so an onboarded code usually resolves at step 1 when the seeded account is a `vat_payable` account; a missing, header or non-`vat_payable` seeded account (e.g. `sales_tax_payable` or untyped) is refused — ask the customer which `vat_payable` account to name. Several postable `vat_payable` accounts and no `sales_account_number` → the posting is **refused** ("ambiguous"); it no longer picks the lowest number. Fix: `submit(object_type="tax_code", operation="update", data=JSON.stringify({tax_code_id: …, sales_account_number: "<output account>"}))`, after the customer confirms which account their chart uses. Never guess the account from its number.
+
 ## Which tax code a line gets
 
 Posting uses the tax code each line names (`tax_code_id` or `tax_code`),
